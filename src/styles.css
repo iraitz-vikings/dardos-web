@@ -386,3 +386,9 @@ button {
       cursor: pointer;
 }
 .lightbox-close:hover { border-color: var(--ember); color: var(--ember); }
+
+
+.hero { position: relative; }
+.embers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.ember { position: absolute; bottom: -10px; width: 4px; height: 4px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 6px 2px #c96a2e99; opacity: 0; animation-name: ember-rise; animation-timing-function: ease-in; animation-iteration-count: infinite; }
+@keyframes ember-rise { 0% { transform: translateY(0) translateX(0); opacity: 0; } 12% { opacity: .9; } 85% { opacity: .35; } 100% { transform: translateY(-420px) translateX(var(--drift, 20px)); opacity: 0; } }
