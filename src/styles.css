@@ -320,3 +320,12 @@ button {
 }
 .admin-list-item strong { display: block; font-size: .88rem; }
 .admin-list-item time { display: block; font-size: .68rem; color: var(--steel); text-transform: uppercase; margin-top: .2rem; }
+
+
+.admin-uploading { font-size: .72rem; color: var(--ember); text-transform: none; letter-spacing: normal; }
+.admin-form input[type="file"] {
+      background: var(--iron-2);
+      border: 1px dashed var(--line);
+      padding: .5rem;
+      font-size: .78rem;
+}
