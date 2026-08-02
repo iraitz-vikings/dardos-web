@@ -405,3 +405,7 @@ button {
       .nav-links a { padding: 1rem clamp(1.2rem, 5vw, 3rem); border-top: 1px solid var(--line); }
       .nav-links-open { max-height: 240px; }
 }
+
+
+.hero-emblem-wrap { overflow: hidden; }
+.tournament-badge { width: 110px; height: 110px; object-fit: contain; margin-bottom: .3rem; }
