@@ -420,3 +420,5 @@ button {
 
 body { background-image: linear-gradient(180deg, #0e0f13aa 0%, #0e0f13cc 45%, #0e0f13 85%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); background-size: cover; background-position: top center; background-repeat: no-repeat; background-attachment: fixed; }
 .hero { background-image: none; }
+
+body { background-image: linear-gradient(180deg, #0e0f1370 0%, #0e0f13a0 50%, #0e0f13e6 90%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); }
