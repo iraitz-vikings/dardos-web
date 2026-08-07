@@ -24,6 +24,23 @@ function idVideoYoutube(url) {
   return m ? m[1] : null;
 }
 
+function esVideoDirecto(url) {
+  return url.includes("res.cloudinary.com") && url.includes("/video/upload/");
+}
+
+function posterVideoDirecto(url) {
+  return url.replace(/\.[a-zA-Z0-9]+$/, ".jpg");
+}
+
+// Convierte una URL de vídeo (YouTube o subido directamente) en un objeto
+// { tipo: "youtube", id } o { tipo: "directo", url }, o null si no se reconoce.
+function analizarVideo(url) {
+  const ytId = idVideoYoutube(url);
+  if (ytId) return { tipo: "youtube", id: ytId };
+  if (esVideoDirecto(url)) return { tipo: "directo", url };
+  return null;
+}
+
 const HERO_LOGO_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1785702066/dardos-club/niuidh6tslgizgcrx71n.png";
 const TOURNAMENT_BADGE_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1785705038/dardos-club/ykdezhnoze0porj7fk8q.jpg";
 
@@ -76,8 +93,11 @@ export default function App() {
   const galeria = noticias.flatMap((n) => [
     ...(n.fotos || []).map((src) => ({ tipo: "foto", src, noticia: n.titulo })),
     ...(n.videos || [])
-      .map((url) => ({ tipo: "video", id: idVideoYoutube(url), noticia: n.titulo }))
-      .filter((v) => v.id),
+      .map((url) => {
+        const v = analizarVideo(url);
+        return v ? { ...v, noticia: n.titulo } : null;
+      })
+      .filter(Boolean),
   ]);
 
   return (
@@ -213,16 +233,20 @@ export default function App() {
                     {n.videos?.length > 0 && (
                       <div className="timeline-videos">
                         {n.videos.map((url, i) => {
-                          const id = idVideoYoutube(url);
-                          if (!id) return null;
+                          const v = analizarVideo(url);
+                          if (!v) return null;
                           return (
                             <div key={i} className="timeline-video-embed">
-                              <iframe
-                                src={`https://www.youtube.com/embed/${id}`}
-                                title="Vídeo de la noticia"
-                                loading="lazy"
-                                allowFullScreen
-                              />
+                              {v.tipo === "youtube" ? (
+                                <iframe
+                                  src={`https://www.youtube.com/embed/${v.id}`}
+                                  title="Vídeo de la noticia"
+                                  loading="lazy"
+                                  allowFullScreen
+                                />
+                              ) : (
+                                <video src={v.url} controls preload="metadata" />
+                              )}
                             </div>
                           );
                         })}
@@ -245,28 +269,41 @@ export default function App() {
             </p>
           ) : (
             <div className="gallery-grid">
-              {galeria.map((item, i) =>
-                item.tipo === "foto" ? (
-                  <img
-                    key={i}
-                    src={item.src}
-                    alt=""
-                    loading="lazy"
-                    className="gallery-item gallery-photo"
-                    onClick={() => setLightbox({ tipo: "foto", src: item.src })}
-                  />
-                ) : (
+              {galeria.map((item, i) => {
+                if (item.tipo === "foto") {
+                  return (
+                    <img
+                      key={i}
+                      src={item.src}
+                      alt=""
+                      loading="lazy"
+                      className="gallery-item gallery-photo"
+                      onClick={() => setLightbox({ tipo: "foto", src: item.src })}
+                    />
+                  );
+                }
+                const poster =
+                  item.tipo === "youtube"
+                    ? `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`
+                    : posterVideoDirecto(item.url);
+                return (
                   <button
                     key={i}
                     className="gallery-item gallery-video"
-                    onClick={() => setLightbox({ tipo: "video", src: item.id })}
+                    onClick={() =>
+                      setLightbox(
+                        item.tipo === "youtube"
+                          ? { tipo: "youtube", id: item.id }
+                          : { tipo: "directo", url: item.url }
+                      )
+                    }
                     aria-label="Reproducir vídeo"
                   >
-                    <img src={`https://img.youtube.com/vi/${item.id}/hqdefault.jpg`} alt="" loading="lazy" />
+                    <img src={poster} alt="" loading="lazy" />
                     <span className="gallery-play" aria-hidden="true">▶</span>
                   </button>
-                )
-              )}
+                );
+              })}
             </div>
           )}
         </section>
@@ -275,16 +312,22 @@ export default function App() {
       {lightbox && (
         <div className="lightbox" onClick={() => setLightbox(null)}>
           <button className="lightbox-close" onClick={() => setLightbox(null)} aria-label="Cerrar">✕</button>
-          {lightbox.tipo === "foto" ? (
+          {lightbox.tipo === "foto" && (
             <img src={lightbox.src} alt="" onClick={(e) => e.stopPropagation()} />
-          ) : (
+          )}
+          {lightbox.tipo === "youtube" && (
             <div className="lightbox-video" onClick={(e) => e.stopPropagation()}>
               <iframe
-                src={`https://www.youtube.com/embed/${lightbox.src}?autoplay=1`}
+                src={`https://www.youtube.com/embed/${lightbox.id}?autoplay=1`}
                 title="Vídeo"
                 allow="autoplay; encrypted-media"
                 allowFullScreen
               />
+            </div>
+          )}
+          {lightbox.tipo === "directo" && (
+            <div className="lightbox-video" onClick={(e) => e.stopPropagation()}>
+              <video src={lightbox.url} controls autoPlay />
             </div>
           )}
         </div>
