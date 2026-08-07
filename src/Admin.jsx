@@ -24,6 +24,7 @@ export default function Admin() {
   const [mensaje, setMensaje] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [subiendoVideo, setSubiendoVideo] = useState(false);
 
   const [torneoNombre, setTorneoNombre] = useState("");
   const [torneoDescripcion, setTorneoDescripcion] = useState("");
@@ -108,6 +109,48 @@ export default function Admin() {
       setMensaje({ tipo: "error", texto: "Error de conexión al subir la foto." });
     } finally {
       setSubiendoFoto(false);
+      e.target.value = "";
+    }
+  }
+
+  async function subirVideo(e) {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+
+    setSubiendoVideo(true);
+    setMensaje(null);
+    try {
+      const formData = new FormData();
+      formData.append("imagen", archivo);
+
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: "POST",
+        headers: { "x-admin-token": token },
+        body: formData,
+      });
+
+      if (res.status === 401) {
+        setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+        salir();
+        return;
+      }
+      if (res.status === 413) {
+        setMensaje({ tipo: "error", texto: "El vídeo pesa demasiado (máximo 100 MB)." });
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo subir el vídeo." });
+        return;
+      }
+
+      const data = await res.json();
+      setVideos((prev) => (prev ? `${prev}, ${data.url}` : data.url));
+      setMensaje({ tipo: "ok", texto: "Vídeo subido y añadido." });
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión al subir el vídeo." });
+    } finally {
+      setSubiendoVideo(false);
       e.target.value = "";
     }
   }
@@ -330,6 +373,11 @@ export default function Admin() {
         <label>
           Vídeos de YouTube (URLs separadas por comas, opcional)
           <input value={videos} onChange={(e) => setVideos(e.target.value)} placeholder="https://youtube.com/watch?v=..." />
+        </label>
+        <label>
+          Subir un vídeo (archivo, hasta 100 MB, opcional)
+          <input type="file" accept="video/*" onChange={subirVideo} disabled={subiendoVideo} />
+          {subiendoVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
         </label>
         <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
