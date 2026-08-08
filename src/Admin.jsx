@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
+import AdminTorneosClub from "./AdminTorneosClub.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -565,6 +566,8 @@ export default function Admin() {
           </ul>
         )}
       </section>
+
+            <AdminTorneosClub token={token} salir={salir} />
 
       <section className="admin-list">
         <h2>Noticias publicadas</h2>
