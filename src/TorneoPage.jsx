@@ -15,16 +15,27 @@ export default function TorneoPage({ id }) {
   const [estado, setEstado] = useState("cargando"); // cargando | ok | error
 
   useEffect(() => {
-    fetch(`${API_URL}/api/torneos-club/${id}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("no encontrado");
-        return r.json();
-      })
-      .then((data) => {
-        setTorneo(data);
-        setEstado("ok");
-      })
-      .catch(() => setEstado("error"));
+    let primera = true;
+    const cargar = () => {
+      fetch(`${API_URL}/api/torneos-club/${id}`)
+        .then((r) => {
+          if (!r.ok) throw new Error("no encontrado");
+          return r.json();
+        })
+        .then((data) => {
+          setTorneo(data);
+          setEstado("ok");
+        })
+        .catch(() => {
+          if (primera) setEstado("error");
+        })
+        .finally(() => {
+          primera = false;
+        });
+    };
+    cargar();
+    const intervalo = setInterval(cargar, 15000);
+    return () => clearInterval(intervalo);
   }, [id]);
 
   return (
