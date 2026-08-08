@@ -141,7 +141,12 @@ export default function App() {
             />
             <h3>{torneo ? torneo.nombre : "II Open Villa Errenteria"}</h3>
             {torneo?.cartelUrl && (
-              <img src={torneo.cartelUrl} alt={`Cartel ${torneo.nombre}`} className="tournament-poster" />
+              <img
+                src={torneo.cartelUrl}
+                alt={`Cartel ${torneo.nombre}`}
+                className="tournament-poster"
+                onClick={() => setLightbox({ tipo: "foto", src: torneo.cartelUrl })}
+              />
             )}
             {fechas ? (
               <div className="event-dates">
