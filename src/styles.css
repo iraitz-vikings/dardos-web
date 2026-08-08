@@ -687,7 +687,8 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .video-home-play:hover { color: var(--ember); }
 
 /* Cartel (póster grande) del torneo destacado, si se sube además de la insignia */
-.tournament-poster { width: 100%; max-width: 260px; margin: .6rem 0; border: 1px solid var(--line); }
+.tournament-poster { width: 100%; max-width: 260px; margin: .6rem 0; border: 1px solid var(--line); cursor: pointer; transition: opacity .15s ease; }
+.tournament-poster:hover { opacity: .82; }
 
 /* Selector de imagen: subir nueva o elegir una ya existente en Cloudinary */
 .selector-imagen { display: flex; flex-direction: column; gap: .5rem; text-transform: none; letter-spacing: normal; }
