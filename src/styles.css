@@ -780,3 +780,10 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .bracket-match-reciente { animation: pulso-en-curso 1.4s ease-in-out infinite; }
 .bracket-box-reciente { animation: pulso-en-curso 1.4s ease-in-out infinite; }
+
+/* Sorteo de participantes dentro de un cuadrante */
+.admin-sorteo-form { display: flex; flex-direction: column; gap: .6rem; margin: .8rem 0 1.2rem; padding: .8rem; border: 1px dashed var(--line); }
+.admin-sorteo-form label { display: flex; flex-direction: column; gap: .35rem; font-size: .74rem; color: var(--bone-dim); text-transform: uppercase; letter-spacing: .03em; }
+.admin-sorteo-form textarea { background: var(--iron-2); border: 1px solid var(--line); color: var(--bone); padding: .5rem; font-size: .8rem; font-family: 'IBM Plex Mono', monospace; resize: vertical; }
+.admin-sorteo-form button { align-self: flex-start; background: var(--iron-2); border: 1px solid var(--ember); color: var(--ember); padding: .5rem 1.1rem; font-size: .78rem; text-transform: uppercase; cursor: pointer; }
+.admin-sorteo-form button:disabled { opacity: .5; cursor: default; }
