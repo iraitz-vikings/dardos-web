@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
+const AUDIO_GALERIA_URL = "https://res.cloudinary.com/lodi1y1k/video/upload/v1786204416/Sons_of_the_Northern_Light_h7lq9t.mp3";
 
 function idVideoYoutube(url) {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -28,6 +29,26 @@ export default function Galeria() {
   const [noticias, setNoticias] = useState([]);
   const [galeriaSuelta, setGaleriaSuelta] = useState([]);
   const [lightbox, setLightbox] = useState(null);
+  const [audioBloqueado, setAudioBloqueado] = useState(false);
+  const [audioSonando, setAudioSonando] = useState(false);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.play()
+      .then(() => setAudioSonando(true))
+      .catch(() => setAudioBloqueado(true));
+  }, []);
+
+  function reproducirAudio() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.play().then(() => {
+      setAudioSonando(true);
+      setAudioBloqueado(false);
+    });
+  }
 
   useEffect(() => {
     fetch(`${API_URL}/api/noticias`)
@@ -74,10 +95,18 @@ export default function Galeria() {
     <>
       <Nav />
 
+      <audio ref={audioRef} src={AUDIO_GALERIA_URL} preload="auto" />
+
       <main>
         <section className="gallery gallery-page">
           <p className="eyebrow">Galería</p>
           <h2 className="chronicle-title">Fotos y vídeos del club</h2>
+
+          {audioBloqueado && !audioSonando && (
+            <button type="button" className="audio-play-btn" onClick={reproducirAudio}>
+              🔊 Reproducir sonido
+            </button>
+          )}
 
           {galeria.length === 0 ? (
             <p className="chronicle-status">
