@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
+import Footer from "./Footer.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -148,9 +149,7 @@ export default function Galeria() {
         </div>
       )}
 
-      <footer id="contacto" className="footer">
-        <p>© {new Date().getFullYear()} · Vikings Darts Club</p>
-      </footer>
+      <Footer />
     </>
   );
 }
