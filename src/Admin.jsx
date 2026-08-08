@@ -13,6 +13,11 @@ function aInputDate(iso) {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
+function idVideoYoutube(url) {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
 export default function Admin() {
   const [token, setToken] = useState(() => sessionStorage.getItem("adminToken") || "");
   const [passwordInput, setPasswordInput] = useState("");
@@ -29,6 +34,8 @@ export default function Admin() {
   const [galeriaItems, setGaleriaItems] = useState([]);
   const [subiendoGaleriaFoto, setSubiendoGaleriaFoto] = useState(false);
   const [subiendoGaleriaVideo, setSubiendoGaleriaVideo] = useState(false);
+  const [galeriaYoutubeUrl, setGaleriaYoutubeUrl] = useState("");
+  const [anadiendoGaleriaYoutube, setAnadiendoGaleriaYoutube] = useState(false);
   const [mensajeGaleria, setMensajeGaleria] = useState(null);
 
   const [torneoNombre, setTorneoNombre] = useState("");
@@ -230,6 +237,40 @@ export default function Admin() {
     const archivo = e.target.files?.[0];
     if (archivo) subirAGaleria(archivo, "video");
     e.target.value = "";
+  }
+
+  async function anadirGaleriaYoutube(e) {
+    e.preventDefault();
+    if (!galeriaYoutubeUrl.trim()) return;
+
+    setAnadiendoGaleriaYoutube(true);
+    setMensajeGaleria(null);
+    try {
+      const res = await fetch(`${API_URL}/api/galeria`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ url: galeriaYoutubeUrl.trim(), tipo: "video" }),
+      });
+
+      if (res.status === 401) {
+        setMensajeGaleria({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+        salir();
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMensajeGaleria({ tipo: "error", texto: data.error || "No se pudo añadir el vídeo." });
+        return;
+      }
+
+      setGaleriaYoutubeUrl("");
+      setMensajeGaleria({ tipo: "ok", texto: "Vídeo de YouTube añadido a la galería." });
+      cargarGaleria();
+    } catch {
+      setMensajeGaleria({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setAnadiendoGaleriaYoutube(false);
+    }
   }
 
   async function borrarGaleria(id) {
@@ -487,20 +528,40 @@ export default function Admin() {
           <input type="file" accept="video/*" onChange={subirGaleriaVideo} disabled={subiendoGaleriaVideo} />
           {subiendoGaleriaVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
         </label>
+        <form onSubmit={anadirGaleriaYoutube} className="admin-inline-form">
+          <label>
+            O pegar un enlace de YouTube
+            <input
+              value={galeriaYoutubeUrl}
+              onChange={(e) => setGaleriaYoutubeUrl(e.target.value)}
+              placeholder="https://youtube.com/watch?v=..."
+            />
+          </label>
+          <button type="submit" disabled={anadiendoGaleriaYoutube || !galeriaYoutubeUrl.trim()}>
+            {anadiendoGaleriaYoutube ? "Añadiendo…" : "Añadir"}
+          </button>
+        </form>
         {mensajeGaleria && <p className={`admin-msg admin-msg-${mensajeGaleria.tipo}`}>{mensajeGaleria.texto}</p>}
 
         {galeriaItems.length > 0 && (
           <ul className="admin-gallery-grid">
-            {galeriaItems.map((item) => (
-              <li key={item.id} className="admin-gallery-item">
-                {item.tipo === "video" ? (
-                  <video src={item.url} muted />
-                ) : (
-                  <img src={item.url} alt="" />
-                )}
-                <button type="button" className="admin-link-btn" onClick={() => borrarGaleria(item.id)}>Borrar</button>
-              </li>
-            ))}
+            {galeriaItems.map((item) => {
+              const ytId = item.tipo === "video" ? idVideoYoutube(item.url) : null;
+              return (
+                <li key={item.id} className="admin-gallery-item">
+                  {item.tipo === "video" ? (
+                    ytId ? (
+                      <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt="" />
+                    ) : (
+                      <video src={item.url} muted />
+                    )
+                  ) : (
+                    <img src={item.url} alt="" />
+                  )}
+                  <button type="button" className="admin-link-btn" onClick={() => borrarGaleria(item.id)}>Borrar</button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
