@@ -114,11 +114,11 @@ export default function AdminTorneosClub({ token, salir }) {
     cargarTorneos();
   }
 
-  async function sortearCuadrante(cuadranteId, participantes) {
+  async function sortearCuadrante(cuadranteId, participantes, cabezasDeSerie) {
     const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sorteo`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ participantes }),
+      body: JSON.stringify({ participantes, cabezasDeSerie }),
     });
     cargarTorneos();
     if (!res.ok) {
@@ -126,6 +126,15 @@ export default function AdminTorneosClub({ token, salir }) {
       return data.error || "No se pudo hacer el sorteo.";
     }
     return null;
+  }
+
+  async function reiniciarCuadrante(cuadranteId) {
+    if (!confirm("¿Vaciar todos los resultados de este cuadrante? Se mantiene el reparto de la ronda 1 (y los pases directos), pero se borran los ganadores y resultados de todo el cuadro.")) return;
+    await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/reiniciar`, {
+      method: "POST",
+      headers: { "x-admin-token": token },
+    });
+    cargarTorneos();
   }
 
   async function actualizarPartido(partidoId, datos) {
@@ -240,6 +249,7 @@ export default function AdminTorneosClub({ token, salir }) {
                 onBorrarCuadrante={borrarCuadrante}
                 onActualizarPartido={actualizarPartido}
                 onSortear={sortearCuadrante}
+                onReiniciar={reiniciarCuadrante}
               />
             )}
           </li>
@@ -249,7 +259,7 @@ export default function AdminTorneosClub({ token, salir }) {
   );
 }
 
-function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear }) {
+function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear, onReiniciar }) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
   const [creando, setCreando] = useState(false);
@@ -294,16 +304,18 @@ function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualiz
           numeroMaquinas={torneo.numeroMaquinas}
           onBorrar={() => onBorrarCuadrante(c.id)}
           onActualizarPartido={onActualizarPartido}
-          onSortear={(participantes) => onSortear(c.id, participantes)}
+          onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
+          onReiniciar={() => onReiniciar(c.id)}
         />
       ))}
     </div>
   );
 }
 
-function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear }) {
+function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar }) {
   const [abierto, setAbierto] = useState(false);
   const [nombresTexto, setNombresTexto] = useState("");
+  const [semillasTexto, setSemillasTexto] = useState("");
   const [sorteando, setSorteando] = useState(false);
   const [errorSorteo, setErrorSorteo] = useState(null);
   const [busqueda, setBusqueda] = useState("");
@@ -321,14 +333,19 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
     : [];
 
   const nombres = nombresTexto.split("\n").map((n) => n.trim()).filter(Boolean);
+  const semillas = semillasTexto.split("\n").map((n) => n.trim()).filter(Boolean);
+  const semillasNoValidas = semillas.filter((s) => !nombres.includes(s));
 
   async function hacerSorteo(e) {
     e.preventDefault();
     setSorteando(true);
     setErrorSorteo(null);
-    const error = await onSortear(nombres);
+    const error = await onSortear(nombres, semillas);
     if (error) setErrorSorteo(error);
-    else setNombresTexto("");
+    else {
+      setNombresTexto("");
+      setSemillasTexto("");
+    }
     setSorteando(false);
   }
 
@@ -336,10 +353,11 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
     <div className="admin-cuadrante">
       <div className="admin-cuadrante-header">
         <h4>{cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})</h4>
-        <div style={{ display: "flex", gap: ".5rem" }}>
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
           <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
             {abierto ? "Ocultar" : "Ver enfrentamientos"}
           </button>
+          <button type="button" className="admin-link-btn" onClick={onReiniciar}>Vaciar resultados</button>
           <button type="button" className="admin-link-btn" onClick={onBorrar}>Borrar cuadrante</button>
         </div>
       </div>
@@ -353,6 +371,20 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
             onChange={(e) => setNombresTexto(e.target.value)}
             placeholder={`Jugador 1\nJugador 2\n…`}
           />
+        </label>
+        <label>
+          Cabezas de serie (opcional, un nombre por línea, del mejor al peor — deben estar en la lista de arriba)
+          <textarea
+            rows={2}
+            value={semillasTexto}
+            onChange={(e) => setSemillasTexto(e.target.value)}
+            placeholder={`Mejor jugador\nSegundo mejor\n…`}
+          />
+          {semillasNoValidas.length > 0 && (
+            <span className="admin-hint">
+              No están en la lista de participantes: {semillasNoValidas.join(", ")}
+            </span>
+          )}
         </label>
         <button type="submit" disabled={sorteando || nombres.length === 0}>
           {sorteando ? "Sorteando…" : `Sortear cuadro (${nombres.length} participante${nombres.length === 1 ? "" : "s"})`}
