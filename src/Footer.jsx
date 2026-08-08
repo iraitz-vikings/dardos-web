@@ -1,4 +1,12 @@
-export default function Footer() {
+export default function Footer({ simple = false }) {
+  if (simple) {
+    return (
+      <footer className="footer">
+        <p className="footer-copy">© {new Date().getFullYear()} · Vikings Darts Club</p>
+      </footer>
+    );
+  }
+
   return (
     <footer id="contacto" className="footer">
       <div className="footer-contact">
