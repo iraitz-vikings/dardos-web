@@ -7,9 +7,9 @@ function Partido({ p, mostrarCuadrante }) {
       className={`bracket-match ${p.ganador ? "bracket-match-decided" : ""} ${p.enCurso ? "bracket-match-en-curso" : ""} ${reciente ? "bracket-match-reciente" : ""}`}
     >
       {mostrarCuadrante && p.cuadranteNombre && <span className="bracket-cuadrante">{p.cuadranteNombre}</span>}
-      <span className={p.ganador && p.ganador === p.jugador1 ? "bracket-winner" : ""}>{p.jugador1 || "?"}</span>
+      <span className={p.ganador && p.ganador === p.jugador1 ? "bracket-winner" : ""}>{p.jugador1 || (p.ganador ? "BYE" : "?")}</span>
       <span className="bracket-vs">vs</span>
-      <span className={p.ganador && p.ganador === p.jugador2 ? "bracket-winner" : ""}>{p.jugador2 || "?"}</span>
+      <span className={p.ganador && p.ganador === p.jugador2 ? "bracket-winner" : ""}>{p.jugador2 || (p.ganador ? "BYE" : "?")}</span>
       {p.resultado && <span className="bracket-resultado">{p.resultado}</span>}
     </div>
   );
