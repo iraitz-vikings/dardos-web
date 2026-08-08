@@ -1,6 +1,7 @@
-function Partido({ p }) {
+function Partido({ p, mostrarCuadrante }) {
   return (
     <div className={`bracket-match ${p.ganador ? "bracket-match-decided" : ""} ${p.enCurso ? "bracket-match-en-curso" : ""}`}>
+      {mostrarCuadrante && p.cuadranteNombre && <span className="bracket-cuadrante">{p.cuadranteNombre}</span>}
       <span className={p.ganador && p.ganador === p.jugador1 ? "bracket-winner" : ""}>{p.jugador1 || "?"}</span>
       <span className="bracket-vs">vs</span>
       <span className={p.ganador && p.ganador === p.jugador2 ? "bracket-winner" : ""}>{p.jugador2 || "?"}</span>
@@ -10,7 +11,8 @@ function Partido({ p }) {
 }
 
 export default function TorneoResumen({ torneo }) {
-  const partidos = (torneo.cuadrantes || []).flatMap((c) => c.partidos);
+  const cuadrantes = torneo.cuadrantes || [];
+  const partidos = cuadrantes.flatMap((c) => c.partidos.map((p) => ({ ...p, cuadranteNombre: c.nombre })));
   const porMaquina = {};
   for (const p of partidos) {
     if (!p.maquina) continue;
@@ -33,7 +35,7 @@ export default function TorneoResumen({ torneo }) {
             return (
               <div key={maquina} className="live-tournament-machine">
                 <h4>{maquina}</h4>
-                {actual ? <Partido p={actual} /> : <p className="bracket-sin-actual">Sin enfrentamiento en curso</p>}
+                {actual ? <Partido p={actual} mostrarCuadrante={cuadrantes.length > 1} /> : <p className="bracket-sin-actual">Sin enfrentamiento en curso</p>}
               </div>
             );
           })}
