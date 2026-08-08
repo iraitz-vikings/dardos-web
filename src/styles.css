@@ -650,3 +650,33 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 /* video nativo (subida directa) dentro de embeds y lightbox */
 .timeline-video-embed video,
 .lightbox-video video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+/* Vídeo destacado en la home */
+.video-home { max-width: 800px; margin: 0 auto; padding: 3rem 1.5rem 1rem; text-align: center; }
+.video-home-embed {
+  position: relative;
+  margin-top: 1.2rem;
+  aspect-ratio: 16/9;
+  border: 1px solid var(--line);
+  background: #000;
+  overflow: hidden;
+}
+.video-home-embed > div:first-child, .video-home-embed iframe { width: 100%; height: 100%; }
+.video-home-play {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  background: #0d0e11cc;
+  border: none;
+  color: var(--bone);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+.video-home-play:hover { color: var(--ember); }
