@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
-import LiveTournament from "./LiveTournament.jsx";
+import TorneoResumen from "./TorneoResumen.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -166,10 +166,10 @@ export default function App() {
           <p className="eyebrow">En directo</p>
           <h2 className="chronicle-title">Torneos en directo</h2>
 
-          {torneosClub.length === 0 ? (
+          {torneosClub.filter((t) => !t.finalizado).length === 0 ? (
             <p className="chronicle-status">Ahora mismo no hay ningún torneo en directo.</p>
           ) : (
-            torneosClub.map((t) => <LiveTournament key={t.id} torneo={t} />)
+            torneosClub.filter((t) => !t.finalizado).map((t) => <TorneoResumen key={t.id} torneo={t} />)
           )}
         </section>
 
