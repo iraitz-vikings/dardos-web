@@ -152,6 +152,7 @@ a { color: inherit; text-decoration: none; }
 .live-tournament { margin-bottom: 2.2rem; }
 .live-tournament h3 { font-size: clamp(1.1rem, 3vw, 1.4rem); text-transform: uppercase; margin-bottom: .3rem; color: var(--ember); }
 .live-tournament-machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; margin-top: 1rem; }
+.live-tournament-cuadrantes { grid-template-columns: 1fr; }
 .live-tournament-machine h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--bone-dim); margin-bottom: .6rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
 .live-tournament-toggle { display: flex; gap: .5rem; margin: .8rem 0 .5rem; }
 .live-tournament-toggle button { background: transparent; border: 1px solid var(--line); color: var(--bone-dim); padding: .4rem .9rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
@@ -172,6 +173,10 @@ a { color: inherit; text-decoration: none; }
 .bracket-vs { color: var(--steel); font-size: .7rem; }
 .bracket-winner { color: var(--ember); font-weight: 600; }
 .bracket-resultado { margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: .74rem; color: var(--bone-dim); }
+.bracket-rama { margin-top: 1rem; padding-top: .7rem; border-top: 1px dashed var(--line); }
+.bracket-rama-titulo { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--steel); margin-bottom: .4rem; }
+.bracket-ronda { margin-bottom: .6rem; }
+.bracket-ronda-titulo { font-size: .64rem; text-transform: uppercase; color: var(--bone-dim); display: block; margin-bottom: .2rem; }
 
 .timeline {
     list-style: none;
@@ -427,6 +432,12 @@ button {
 .admin-cuadro-resultado { max-width: 90px; flex: none !important; }
 .admin-cuadro-ronda { font-size: .68rem; text-transform: uppercase; color: var(--steel); min-width: 70px; }
 .admin-cuadro-en-curso { border-left: 2px solid var(--ember); padding-left: .5rem; }
+.admin-ganador-activo { border-color: var(--ember) !important; color: var(--ember) !important; }
+.admin-cuadrante { border: 1px solid var(--line); padding: .8rem 1rem; margin-top: 1rem; }
+.admin-cuadrante-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; }
+.admin-cuadrante-header h4 { font-size: .85rem; text-transform: none; color: var(--bone); }
+.admin-cuadrante-rama { margin-top: 1rem; padding-top: .8rem; border-top: 1px dashed var(--line); }
+.admin-cuadrante-rama h5 { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--steel); margin-bottom: .5rem; }
 
 .admin-gallery-grid { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .7rem; margin-top: .5rem; }
 .admin-gallery-item { display: flex; flex-direction: column; gap: .35rem; }
