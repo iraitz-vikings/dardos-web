@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { EMBLEM_DATA_URI } from "./emblem.js";
+import Nav from "./Nav.jsx";
 import LiveTournament from "./LiveTournament.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
@@ -29,10 +29,6 @@ function esVideoDirecto(url) {
   return url.includes("res.cloudinary.com") && url.includes("/video/upload/");
 }
 
-function posterVideoDirecto(url) {
-  return url.replace(/\.[a-zA-Z0-9]+$/, ".jpg");
-}
-
 // Convierte una URL de vídeo (YouTube o subido directamente) en un objeto
 // { tipo: "youtube", id } o { tipo: "directo", url }, o null si no se reconoce.
 function analizarVideo(url) {
@@ -56,22 +52,13 @@ export default function App() {
   const [noticias, setNoticias] = useState([]);
   const [estado, setEstado] = useState("cargando"); // cargando | ok | error
   const [lightbox, setLightbox] = useState(null); // { tipo: "foto"|"video", src }
-  const [menuOpen, setMenuOpen] = useState(false);
   const [torneo, setTorneo] = useState(null);
-  const [galeriaSuelta, setGaleriaSuelta] = useState([]);
   const [torneosClub, setTorneosClub] = useState([]);
 
   useEffect(() => {
     fetch(`${API_URL}/api/torneos-club`)
       .then((r) => (r.ok ? r.json() : []))
       .then(setTorneosClub)
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch(`${API_URL}/api/galeria`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setGaleriaSuelta)
       .catch(() => {});
   }, []);
 
@@ -106,52 +93,9 @@ export default function App() {
 
   const fechas = torneo ? formatRangoTorneo(torneo.fechaInicio, torneo.fechaFin) : null;
 
-  // Todas las fotos y vídeos de todas las noticias, más los añadidos directamente a la galería
-  const galeria = [
-    ...noticias.flatMap((n) => [
-      ...(n.fotos || []).map((src) => ({ tipo: "foto", src, noticia: n.titulo })),
-      ...(n.videos || [])
-        .map((url) => {
-          const v = analizarVideo(url);
-          return v ? { ...v, noticia: n.titulo } : null;
-        })
-        .filter(Boolean),
-    ]),
-    ...galeriaSuelta
-      .map((item) => {
-        if (item.tipo === "video") return analizarVideo(item.url);
-        return { tipo: "foto", src: item.url };
-      })
-      .filter(Boolean),
-  ];
-
   return (
     <>
-      <header className="nav">
-        <a className="nav-brand" href="#inicio" onClick={() => setMenuOpen(false)}>
-          <img src={EMBLEM_DATA_URI} alt="Escudo Vikings" className="nav-emblem" />
-          <span>Vikings <em>Darts Club</em></span>
-        </a>
-
-        <button
-          className={`nav-toggle ${menuOpen ? "nav-toggle-open" : ""}`}
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Abrir menú"
-          aria-expanded={menuOpen}
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-
-        <nav className={`nav-links ${menuOpen ? "nav-links-open" : ""}`}>
-          <a href="#cronica" onClick={() => setMenuOpen(false)}>Crónica</a>
-          <a href="#galeria" onClick={() => setMenuOpen(false)}>Galería</a>
-          <a href="#torneos-en-directo" onClick={() => setMenuOpen(false)}>Torneos en directo</a>
-          <a href="#torneo" onClick={() => setMenuOpen(false)}>Próximo torneo</a>
-          <a href="#contacto" onClick={() => setMenuOpen(false)}>Contacto</a>
-        </nav>
-      </header>
+      <Nav />
 
       <main>
         <section id="inicio" className="hero">
@@ -296,53 +240,11 @@ export default function App() {
           )}
         </section>
 
-        <section id="galeria" className="gallery">
+        <section className="gallery-teaser">
           <p className="eyebrow">Galería</p>
           <h2 className="chronicle-title">Fotos y vídeos del club</h2>
-
-          {galeria.length === 0 ? (
-            <p className="chronicle-status">
-              Todavía no hay nada en la galería. Se irá llenando con cada noticia y foto o vídeo que se publique.
-            </p>
-          ) : (
-            <div className="gallery-grid">
-              {galeria.map((item, i) => {
-                if (item.tipo === "foto") {
-                  return (
-                    <img
-                      key={i}
-                      src={item.src}
-                      alt=""
-                      loading="lazy"
-                      className="gallery-item gallery-photo"
-                      onClick={() => setLightbox({ tipo: "foto", src: item.src })}
-                    />
-                  );
-                }
-                const poster =
-                  item.tipo === "youtube"
-                    ? `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`
-                    : posterVideoDirecto(item.url);
-                return (
-                  <button
-                    key={i}
-                    className="gallery-item gallery-video"
-                    onClick={() =>
-                      setLightbox(
-                        item.tipo === "youtube"
-                          ? { tipo: "youtube", id: item.id }
-                          : { tipo: "directo", url: item.url }
-                      )
-                    }
-                    aria-label="Reproducir vídeo"
-                  >
-                    <img src={poster} alt="" loading="lazy" />
-                    <span className="gallery-play" aria-hidden="true">▶</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <p className="hero-sub">Revive los mejores momentos del club: fotos de eventos y vídeos de partidas.</p>
+          <a href="/galeria" className="gallery-teaser-link">Ver galería completa →</a>
         </section>
       </main>
 
