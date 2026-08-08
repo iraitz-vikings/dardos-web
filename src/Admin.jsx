@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
+import SelectorImagen from "./SelectorImagen.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -45,9 +46,7 @@ export default function Admin() {
   const [torneoInicio, setTorneoInicio] = useState("");
   const [torneoFin, setTorneoFin] = useState("");
   const [torneoInsignia, setTorneoInsignia] = useState("");
-  const [subiendoInsignia, setSubiendoInsignia] = useState(false);
   const [torneoCartel, setTorneoCartel] = useState("");
-  const [subiendoCartel, setSubiendoCartel] = useState(false);
   const [guardandoTorneo, setGuardandoTorneo] = useState(false);
   const [mensajeTorneo, setMensajeTorneo] = useState(null);
 
@@ -292,82 +291,6 @@ export default function Admin() {
     cargarGaleria();
   }
 
-  async function subirInsignia(e) {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
-
-    setSubiendoInsignia(true);
-    setMensajeTorneo(null);
-    try {
-      const formData = new FormData();
-      formData.append("imagen", archivo);
-
-      const res = await fetch(`${API_URL}/api/upload`, {
-        method: "POST",
-        headers: { "x-admin-token": token },
-        body: formData,
-      });
-
-      if (res.status === 401) {
-        setMensajeTorneo({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
-        salir();
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setMensajeTorneo({ tipo: "error", texto: data.error || "No se pudo subir la insignia." });
-        return;
-      }
-
-      const data = await res.json();
-      setTorneoInsignia(data.url);
-      setMensajeTorneo({ tipo: "ok", texto: "Insignia subida." });
-    } catch {
-      setMensajeTorneo({ tipo: "error", texto: "Error de conexión al subir la insignia." });
-    } finally {
-      setSubiendoInsignia(false);
-      e.target.value = "";
-    }
-  }
-
-  async function subirCartel(e) {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
-
-    setSubiendoCartel(true);
-    setMensajeTorneo(null);
-    try {
-      const formData = new FormData();
-      formData.append("imagen", archivo);
-
-      const res = await fetch(`${API_URL}/api/upload`, {
-        method: "POST",
-        headers: { "x-admin-token": token },
-        body: formData,
-      });
-
-      if (res.status === 401) {
-        setMensajeTorneo({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
-        salir();
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setMensajeTorneo({ tipo: "error", texto: data.error || "No se pudo subir el cartel." });
-        return;
-      }
-
-      const data = await res.json();
-      setTorneoCartel(data.url);
-      setMensajeTorneo({ tipo: "ok", texto: "Cartel subido." });
-    } catch {
-      setMensajeTorneo({ tipo: "error", texto: "Error de conexión al subir el cartel." });
-    } finally {
-      setSubiendoCartel(false);
-      e.target.value = "";
-    }
-  }
-
   async function guardarTorneo(e) {
     e.preventDefault();
     setGuardandoTorneo(true);
@@ -538,19 +461,23 @@ export default function Admin() {
           </label>
           <label>
             Cartel del torneo (opcional)
-            <input type="file" accept="image/*" onChange={subirCartel} disabled={subiendoCartel} />
-            {subiendoCartel && <span className="admin-uploading">Subiendo…</span>}
-            {torneoCartel && !subiendoCartel && (
-              <img src={torneoCartel} alt="Cartel actual" className="admin-badge-preview" />
-            )}
+            <SelectorImagen
+              token={token}
+              valor={torneoCartel}
+              onCambiar={setTorneoCartel}
+              onError={(msg) => setMensajeTorneo({ tipo: "error", texto: msg })}
+              etiqueta="Cartel"
+            />
           </label>
           <label>
             Insignia del torneo (opcional)
-            <input type="file" accept="image/*" onChange={subirInsignia} disabled={subiendoInsignia} />
-            {subiendoInsignia && <span className="admin-uploading">Subiendo…</span>}
-            {torneoInsignia && !subiendoInsignia && (
-              <img src={torneoInsignia} alt="Insignia actual" className="admin-badge-preview" />
-            )}
+            <SelectorImagen
+              token={token}
+              valor={torneoInsignia}
+              onCambiar={setTorneoInsignia}
+              onError={(msg) => setMensajeTorneo({ tipo: "error", texto: msg })}
+              etiqueta="Insignia"
+            />
           </label>
           <button type="submit" disabled={guardandoTorneo}>{guardandoTorneo ? "Guardando…" : "Guardar torneo"}</button>
           {mensajeTorneo && <p className={`admin-msg admin-msg-${mensajeTorneo.tipo}`}>{mensajeTorneo.texto}</p>}
