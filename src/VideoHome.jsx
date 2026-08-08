@@ -34,7 +34,8 @@ export default function VideoHome() {
         videoId: VIDEO_ID,
         playerVars: { autoplay: 1, rel: 0, playsinline: 1 },
         events: {
-          onReady: () => {
+          onReady: (e) => {
+            e.target.setVolume(9);
             setTimeout(() => {
               if (cancelado || !playerRef.current) return;
               const estado = playerRef.current.getPlayerState();
