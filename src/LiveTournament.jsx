@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
+import BracketView from "./BracketView.jsx";
 
 function Partido({ p }) {
   return (
@@ -15,30 +14,10 @@ function Partido({ p }) {
 }
 
 function Cuadrante({ cuadrante }) {
-  const porRama = {};
-  for (const p of cuadrante.partidos) {
-    if (!porRama[p.rama]) porRama[p.rama] = {};
-    if (!porRama[p.rama][p.ronda]) porRama[p.rama][p.ronda] = [];
-    porRama[p.rama][p.ronda].push(p);
-  }
-  const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
-
   return (
-    <div className="live-tournament-machine">
+    <div className="live-tournament-cuadrante-visual">
       <h4>{cuadrante.nombre}</h4>
-      {ramas.map((rama) => (
-        <div key={rama} className="bracket-rama">
-          <p className="bracket-rama-titulo">{RAMA_ETIQUETA[rama]}</p>
-          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => (
-            <div key={ronda} className="bracket-ronda">
-              <span className="bracket-ronda-titulo">Ronda {ronda}</span>
-              {porRama[rama][ronda]
-                .sort((a, b) => a.posicion - b.posicion)
-                .map((p) => <Partido key={p.id} p={p} />)}
-            </div>
-          ))}
-        </div>
-      ))}
+      <BracketView cuadrante={cuadrante} />
     </div>
   );
 }
@@ -96,7 +75,7 @@ export default function LiveTournament({ torneo }) {
           </div>
         )
       ) : (
-        <div className="live-tournament-machines live-tournament-cuadrantes">
+        <div className="live-tournament-cuadrantes-lista">
           {cuadrantes.map((c) => <Cuadrante key={c.id} cuadrante={c} />)}
         </div>
       )}
