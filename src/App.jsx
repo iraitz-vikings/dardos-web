@@ -126,13 +126,17 @@ export default function App() {
         </section>
 
         <section id="torneo" className="tournament">
+          <div className="tournament-heading">
+            <p className="eyebrow">Próximo evento</p>
+            <h2 className="chronicle-title">Próximo torneo</h2>
+          </div>
           <div className="tournament-card">
             <img
               src={torneo?.insigniaUrl || TOURNAMENT_BADGE_URL}
               alt={torneo ? `Insignia ${torneo.nombre}` : "Insignia del torneo"}
               className="tournament-badge"
             />
-            <h2>{torneo ? torneo.nombre : "II Open Villa Errenteria"}</h2>
+            <h3>{torneo ? torneo.nombre : "II Open Villa Errenteria"}</h3>
             {fechas ? (
               <div className="event-dates">
                 <span>{fechas.diaIni}</span>
