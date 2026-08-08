@@ -57,6 +57,14 @@ export default function App() {
   const [lightbox, setLightbox] = useState(null); // { tipo: "foto"|"video", src }
   const [menuOpen, setMenuOpen] = useState(false);
   const [torneo, setTorneo] = useState(null);
+  const [galeriaSuelta, setGaleriaSuelta] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/galeria`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setGaleriaSuelta)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`${API_URL}/api/noticias`)
@@ -89,16 +97,21 @@ export default function App() {
 
   const fechas = torneo ? formatRangoTorneo(torneo.fechaInicio, torneo.fechaFin) : null;
 
-  // Todas las fotos y vídeos de todas las noticias, para la galería
-  const galeria = noticias.flatMap((n) => [
-    ...(n.fotos || []).map((src) => ({ tipo: "foto", src, noticia: n.titulo })),
-    ...(n.videos || [])
-      .map((url) => {
-        const v = analizarVideo(url);
-        return v ? { ...v, noticia: n.titulo } : null;
-      })
-      .filter(Boolean),
-  ]);
+  // Todas las fotos y vídeos de todas las noticias, más los añadidos directamente a la galería
+  const galeria = [
+    ...noticias.flatMap((n) => [
+      ...(n.fotos || []).map((src) => ({ tipo: "foto", src, noticia: n.titulo })),
+      ...(n.videos || [])
+        .map((url) => {
+          const v = analizarVideo(url);
+          return v ? { ...v, noticia: n.titulo } : null;
+        })
+        .filter(Boolean),
+    ]),
+    ...galeriaSuelta.map((item) =>
+      item.tipo === "video" ? { tipo: "directo", url: item.url } : { tipo: "foto", src: item.url }
+    ),
+  ];
 
   return (
     <>
@@ -265,7 +278,7 @@ export default function App() {
 
           {galeria.length === 0 ? (
             <p className="chronicle-status">
-              Todavía no hay nada en la galería. Se irá llenando con cada noticia publicada.
+              Todavía no hay nada en la galería. Se irá llenando con cada noticia y foto o vídeo que se publique.
             </p>
           ) : (
             <div className="gallery-grid">
