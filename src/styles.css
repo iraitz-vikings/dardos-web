@@ -82,16 +82,7 @@ a { color: inherit; text-decoration: none; }
 .hero-emblem-wrap {
     width: clamp(120px, 22vw, 170px);
     aspect-ratio: 1/1;
-    border-radius: 50%;
     position: relative;
-}
-.hero-emblem-wrap::after {
-    content: "";
-    position: absolute;
-    inset: -12px;
-    border-radius: 50%;
-    border: 1px solid var(--line);
-    box-shadow: 0 0 50px 4px #9a2b2822;
 }
 .hero-emblem { width: 100%; height: 100%; object-fit: contain; }
 
@@ -323,6 +314,12 @@ button {
 
 
 .admin-uploading { font-size: .72rem; color: var(--ember); text-transform: none; letter-spacing: normal; }
+.admin-hint { font-size: .78rem; color: var(--steel); margin-top: -.4rem; }
+
+.admin-gallery-grid { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .7rem; margin-top: .5rem; }
+.admin-gallery-item { display: flex; flex-direction: column; gap: .35rem; }
+.admin-gallery-item img, .admin-gallery-item video { width: 100%; height: 100px; object-fit: cover; border: 1px solid var(--line); }
+.admin-gallery-item .admin-link-btn { font-size: .68rem; align-self: flex-start; }
 .admin-form input[type="file"] {
       background: var(--iron-2);
       border: 1px dashed var(--line);
@@ -411,8 +408,7 @@ button {
 .tournament-badge { width: 110px; height: 110px; object-fit: contain; margin-bottom: .3rem; }
 
 
-.hero-emblem-wrap { width: clamp(160px, 32vw, 240px); aspect-ratio: auto; border-radius: 0; overflow: visible; }
-.hero-emblem-wrap::after { border-radius: 16px; box-shadow: 0 0 60px 6px #9a2b2822; }
+.hero-emblem-wrap { width: clamp(160px, 32vw, 240px); aspect-ratio: auto; overflow: visible; }
 .hero-emblem { width: 100%; height: auto; object-fit: contain; }
 
 .hero { background-image: linear-gradient(180deg, #0e0f13ee 0%, #0e0f13cc 35%, #0e0f13 100%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); background-size: cover; background-position: top center; background-repeat: no-repeat; }
