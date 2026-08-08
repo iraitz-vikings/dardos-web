@@ -772,3 +772,11 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .bracket-rama-visual .bracket-final-box + .bracket-final-box { margin-top: .8rem; }
 .bracket-final-desempate { font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; color: var(--steel); margin-right: .4rem; }
+
+/* Resalte temporal (1 minuto) al marcar un enfrentamiento como "en curso" */
+@keyframes pulso-en-curso {
+  0%, 100% { box-shadow: 0 0 0 0 #ff8a3d80; }
+  50% { box-shadow: 0 0 0 7px #ff8a3d00; }
+}
+.bracket-match-reciente { animation: pulso-en-curso 1.4s ease-in-out infinite; }
+.bracket-box-reciente { animation: pulso-en-curso 1.4s ease-in-out infinite; }
