@@ -729,3 +729,42 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .selector-imagen-item { border: 1px solid var(--line); padding: 0; background: none; cursor: pointer; aspect-ratio: 1; overflow: hidden; }
 .selector-imagen-item:hover { border-color: var(--ember); }
 .selector-imagen-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Cuadro visual (bracket) con cajas y líneas de conexión */
+.live-tournament-cuadrantes-lista { display: flex; flex-direction: column; gap: 2.5rem; margin-top: 1rem; }
+.live-tournament-cuadrante-visual h4 { font-size: .9rem; text-transform: uppercase; color: var(--ember); margin-bottom: .8rem; }
+.bracket-visual { display: flex; flex-direction: column; gap: 2rem; }
+.bracket-rama-visual { display: flex; flex-direction: column; gap: .5rem; }
+.bracket-scroll { overflow-x: auto; padding-bottom: .5rem; }
+.bracket-svg { display: block; }
+.bracket-linea { stroke: var(--line); stroke-width: 1.5; }
+.bracket-linea-activa { stroke: var(--ember); stroke-width: 1.5; }
+.bracket-box {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--line);
+  background: var(--iron-2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: .25rem .5rem;
+  box-sizing: border-box;
+  font-size: .72rem;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--bone-dim);
+}
+.bracket-box-en-curso { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember) inset; }
+.bracket-box-decidido { opacity: .92; }
+.bracket-box-ronda { font-size: .58rem; text-transform: uppercase; color: var(--steel); margin-bottom: .15rem; }
+.bracket-box-jugador { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bracket-box-ganador { color: var(--ember); font-weight: 600; }
+.bracket-final-box {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  border: 1px solid var(--ember);
+  padding: .8rem 1.2rem;
+  width: fit-content;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .85rem;
+}
