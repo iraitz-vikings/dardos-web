@@ -46,6 +46,8 @@ export default function Admin() {
   const [torneoFin, setTorneoFin] = useState("");
   const [torneoInsignia, setTorneoInsignia] = useState("");
   const [subiendoInsignia, setSubiendoInsignia] = useState(false);
+  const [torneoCartel, setTorneoCartel] = useState("");
+  const [subiendoCartel, setSubiendoCartel] = useState(false);
   const [guardandoTorneo, setGuardandoTorneo] = useState(false);
   const [mensajeTorneo, setMensajeTorneo] = useState(null);
 
@@ -73,6 +75,7 @@ export default function Admin() {
         setTorneoInicio(aInputDate(t.fechaInicio));
         setTorneoFin(aInputDate(t.fechaFin));
         setTorneoInsignia(t.insigniaUrl || "");
+        setTorneoCartel(t.cartelUrl || "");
       })
       .catch(() => {});
   };
@@ -327,6 +330,44 @@ export default function Admin() {
     }
   }
 
+  async function subirCartel(e) {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+
+    setSubiendoCartel(true);
+    setMensajeTorneo(null);
+    try {
+      const formData = new FormData();
+      formData.append("imagen", archivo);
+
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: "POST",
+        headers: { "x-admin-token": token },
+        body: formData,
+      });
+
+      if (res.status === 401) {
+        setMensajeTorneo({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+        salir();
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMensajeTorneo({ tipo: "error", texto: data.error || "No se pudo subir el cartel." });
+        return;
+      }
+
+      const data = await res.json();
+      setTorneoCartel(data.url);
+      setMensajeTorneo({ tipo: "ok", texto: "Cartel subido." });
+    } catch {
+      setMensajeTorneo({ tipo: "error", texto: "Error de conexión al subir el cartel." });
+    } finally {
+      setSubiendoCartel(false);
+      e.target.value = "";
+    }
+  }
+
   async function guardarTorneo(e) {
     e.preventDefault();
     setGuardandoTorneo(true);
@@ -344,6 +385,7 @@ export default function Admin() {
           fechaInicio: torneoInicio,
           fechaFin: torneoFin,
           insigniaUrl: torneoInsignia,
+          cartelUrl: torneoCartel,
         }),
       });
 
@@ -495,7 +537,15 @@ export default function Admin() {
             <input type="date" value={torneoFin} onChange={(e) => setTorneoFin(e.target.value)} required />
           </label>
           <label>
-            Insignia del torneo
+            Cartel del torneo (opcional)
+            <input type="file" accept="image/*" onChange={subirCartel} disabled={subiendoCartel} />
+            {subiendoCartel && <span className="admin-uploading">Subiendo…</span>}
+            {torneoCartel && !subiendoCartel && (
+              <img src={torneoCartel} alt="Cartel actual" className="admin-badge-preview" />
+            )}
+          </label>
+          <label>
+            Insignia del torneo (opcional)
             <input type="file" accept="image/*" onChange={subirInsignia} disabled={subiendoInsignia} />
             {subiendoInsignia && <span className="admin-uploading">Subiendo…</span>}
             {torneoInsignia && !subiendoInsignia && (
