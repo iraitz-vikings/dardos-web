@@ -1,9 +1,10 @@
 import { useState } from "react";
 import BracketView from "./BracketView.jsx";
 
-function Partido({ p }) {
+function Partido({ p, mostrarCuadrante }) {
   return (
     <div className={`bracket-match ${p.ganador ? "bracket-match-decided" : ""} ${p.enCurso ? "bracket-match-en-curso" : ""}`}>
+      {mostrarCuadrante && p.cuadranteNombre && <span className="bracket-cuadrante">{p.cuadranteNombre}</span>}
       {p.maquina && <span className="bracket-maquina">{p.maquina}</span>}
       <span className={p.ganador && p.ganador === p.jugador1 ? "bracket-winner" : ""}>{p.jugador1 || "?"}</span>
       <span className="bracket-vs">vs</span>
@@ -25,7 +26,7 @@ function Cuadrante({ cuadrante }) {
 export default function LiveTournament({ torneo }) {
   const [vista, setVista] = useState("maquina");
   const cuadrantes = torneo.cuadrantes || [];
-  const partidos = cuadrantes.flatMap((c) => c.partidos);
+  const partidos = cuadrantes.flatMap((c) => c.partidos.map((p) => ({ ...p, cuadranteNombre: c.nombre })));
 
   if (partidos.length === 0) {
     return (
@@ -68,7 +69,7 @@ export default function LiveTournament({ torneo }) {
               return (
                 <div key={maquina} className="live-tournament-machine">
                   <h4>{maquina}</h4>
-                  {actual ? <Partido p={actual} /> : <p className="bracket-sin-actual">Sin enfrentamiento en curso</p>}
+                  {actual ? <Partido p={actual} mostrarCuadrante={cuadrantes.length > 1} /> : <p className="bracket-sin-actual">Sin enfrentamiento en curso</p>}
                 </div>
               );
             })}
