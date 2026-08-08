@@ -275,9 +275,11 @@ a { color: inherit; text-decoration: none; }
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: center;
     gap: .8rem;
     font-size: .82rem;
     letter-spacing: normal;
+    text-align: center;
 }
 .footer-address { color: var(--bone-dim); line-height: 1.6; }
 .footer-address a { color: inherit; }
