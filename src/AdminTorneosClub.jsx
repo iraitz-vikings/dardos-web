@@ -345,7 +345,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
 
       <form onSubmit={hacerSorteo} className="admin-sorteo-form">
         <label>
-          Lista de participantes (un nombre por línea, {cuadrante.tamano} en total)
+          Lista de participantes (un nombre por línea, hasta {cuadrante.tamano}; si hay menos, el resto pasan directos a la ronda 2)
           <textarea
             rows={4}
             value={nombresTexto}
@@ -354,7 +354,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
           />
         </label>
         <button type="submit" disabled={sorteando || nombres.length === 0}>
-          {sorteando ? "Sorteando…" : `Sortear cuadro (${nombres.length}/${cuadrante.tamano})`}
+          {sorteando ? "Sorteando…" : `Sortear cuadro (${nombres.length} participante${nombres.length === 1 ? "" : "s"})`}
         </button>
         {errorSorteo && <p className="admin-msg admin-msg-error">{errorSorteo}</p>}
       </form>
