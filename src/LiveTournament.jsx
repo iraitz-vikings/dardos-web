@@ -18,17 +18,18 @@ function Partido({ p, mostrarCuadrante }) {
   );
 }
 
-function Cuadrante({ cuadrante }) {
+function Cuadrante({ cuadrante, busqueda }) {
   return (
     <div className="live-tournament-cuadrante-visual">
       <h4>{cuadrante.nombre}</h4>
-      <BracketView cuadrante={cuadrante} />
+      <BracketView cuadrante={cuadrante} busqueda={busqueda} />
     </div>
   );
 }
 
 export default function LiveTournament({ torneo }) {
   const [vista, setVista] = useState("maquina");
+  const [busqueda, setBusqueda] = useState("");
   const cuadrantes = torneo.cuadrantes || [];
   const partidos = cuadrantes.flatMap((c) => c.partidos.map((p) => ({ ...p, cuadranteNombre: c.nombre })));
 
@@ -81,7 +82,14 @@ export default function LiveTournament({ torneo }) {
         )
       ) : (
         <div className="live-tournament-cuadrantes-lista">
-          {cuadrantes.map((c) => <Cuadrante key={c.id} cuadrante={c} />)}
+          <input
+            type="text"
+            className="bracket-busqueda"
+            placeholder="Buscar participante…"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+          {cuadrantes.map((c) => <Cuadrante key={c.id} cuadrante={c} busqueda={busqueda} />)}
         </div>
       )}
     </div>
