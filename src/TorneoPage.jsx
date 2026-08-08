@@ -60,6 +60,17 @@ export default function TorneoPage({ id }) {
               )}
               {torneo.descripcion && <p className="event-description">{torneo.descripcion}</p>}
 
+              <details className="torneo-pagina-qr">
+                <summary>Compartir / código QR</summary>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
+                  alt="Código QR de esta página"
+                  width={160}
+                  height={160}
+                />
+                <p className="torneo-pagina-qr-url">{window.location.href}</p>
+              </details>
+
               <LiveTournament torneo={torneo} />
             </>
           )}
