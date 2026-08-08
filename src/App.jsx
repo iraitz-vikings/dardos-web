@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
+import LiveTournament from "./LiveTournament.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -58,6 +59,14 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [torneo, setTorneo] = useState(null);
   const [galeriaSuelta, setGaleriaSuelta] = useState([]);
+  const [torneosClub, setTorneosClub] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/torneos-club`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setTorneosClub)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`${API_URL}/api/galeria`)
@@ -138,6 +147,7 @@ export default function App() {
         <nav className={`nav-links ${menuOpen ? "nav-links-open" : ""}`}>
           <a href="#cronica" onClick={() => setMenuOpen(false)}>Crónica</a>
           <a href="#galeria" onClick={() => setMenuOpen(false)}>Galería</a>
+          <a href="#torneos-en-directo" onClick={() => setMenuOpen(false)}>Torneos en directo</a>
           <a href="#torneo" onClick={() => setMenuOpen(false)}>Próximo torneo</a>
           <a href="#contacto" onClick={() => setMenuOpen(false)}>Contacto</a>
         </nav>
@@ -201,6 +211,17 @@ export default function App() {
               horarios y categorías.
             </p>
           </div>
+        </section>
+
+        <section id="torneos-en-directo" className="live-tournaments">
+          <p className="eyebrow">En directo</p>
+          <h2 className="chronicle-title">Torneos en directo</h2>
+
+          {torneosClub.length === 0 ? (
+            <p className="chronicle-status">Ahora mismo no hay ningún torneo en directo.</p>
+          ) : (
+            torneosClub.map((t) => <LiveTournament key={t.id} torneo={t} />)
+          )}
         </section>
 
         <section id="cronica" className="chronicle">
