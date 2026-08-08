@@ -1,6 +1,11 @@
+import useResaltadoReciente from "./useResaltadoReciente.js";
+
 function Partido({ p, mostrarCuadrante }) {
+  const reciente = useResaltadoReciente(p.enCurso, p.actualizadoEn);
   return (
-    <div className={`bracket-match ${p.ganador ? "bracket-match-decided" : ""} ${p.enCurso ? "bracket-match-en-curso" : ""}`}>
+    <div
+      className={`bracket-match ${p.ganador ? "bracket-match-decided" : ""} ${p.enCurso ? "bracket-match-en-curso" : ""} ${reciente ? "bracket-match-reciente" : ""}`}
+    >
       {mostrarCuadrante && p.cuadranteNombre && <span className="bracket-cuadrante">{p.cuadranteNombre}</span>}
       <span className={p.ganador && p.ganador === p.jugador1 ? "bracket-winner" : ""}>{p.jugador1 || "?"}</span>
       <span className="bracket-vs">vs</span>
