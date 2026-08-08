@@ -80,6 +80,15 @@ export default function AdminTorneosClub({ token, salir }) {
     cargarTorneos();
   }
 
+  async function cambiarFinalizado(torneo, nuevoFinalizado) {
+    await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, finalizado: nuevoFinalizado }),
+    });
+    cargarTorneos();
+  }
+
   async function borrarTorneo(id) {
     if (!confirm("¿Borrar este torneo, sus cuadrantes y todos sus enfrentamientos?")) return;
     await fetch(`${API_URL}/api/torneos-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
@@ -172,6 +181,7 @@ export default function AdminTorneosClub({ token, salir }) {
                   {t.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
                   {t.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"}
                   {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
+                  {t.finalizado ? " · Finalizado" : ""}
                 </time>
               </div>
               <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -181,6 +191,13 @@ export default function AdminTorneosClub({ token, salir }) {
                   onClick={() => cambiarVisibilidad(t, t.visibilidad === "publico" ? "privado" : "publico")}
                 >
                   Hacer {t.visibilidad === "publico" ? "privado" : "público"}
+                </button>
+                <button
+                  type="button"
+                  className="admin-link-btn"
+                  onClick={() => cambiarFinalizado(t, !t.finalizado)}
+                >
+                  {t.finalizado ? "Reabrir torneo" : "Marcar finalizado"}
                 </button>
                 <button type="button" className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === t.id ? null : t.id)}>
                   {abiertoId === t.id ? "Cerrar" : "Ver cuadrantes"}
