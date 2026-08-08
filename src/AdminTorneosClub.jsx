@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SelectorImagen from "./SelectorImagen.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
@@ -23,7 +24,6 @@ export default function AdminTorneosClub({ token, salir }) {
   const [numeroMaquinas, setNumeroMaquinas] = useState("");
   const [tipoEliminacion, setTipoEliminacion] = useState("directa");
   const [insigniaUrl, setInsigniaUrl] = useState("");
-  const [subiendoInsignia, setSubiendoInsignia] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const cargarTorneos = () => {
@@ -36,40 +36,6 @@ export default function AdminTorneosClub({ token, salir }) {
   useEffect(() => {
     cargarTorneos();
   }, []);
-
-  async function subirInsignia(e) {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
-    setSubiendoInsignia(true);
-    setMensaje(null);
-    try {
-      const formData = new FormData();
-      formData.append("imagen", archivo);
-      const res = await fetch(`${API_URL}/api/upload`, {
-        method: "POST",
-        headers: { "x-admin-token": token },
-        body: formData,
-      });
-      if (res.status === 401) {
-        setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
-        salir();
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setMensaje({ tipo: "error", texto: data.error || "No se pudo subir el cartel." });
-        return;
-      }
-      const { url } = await res.json();
-      setInsigniaUrl(url);
-      setMensaje({ tipo: "ok", texto: "Cartel subido." });
-    } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión al subir el cartel." });
-    } finally {
-      setSubiendoInsignia(false);
-      e.target.value = "";
-    }
-  }
 
   async function crearTorneo(e) {
     e.preventDefault();
@@ -185,11 +151,13 @@ export default function AdminTorneosClub({ token, salir }) {
         </label>
         <label>
           Cartel del torneo (opcional)
-          <input type="file" accept="image/*" onChange={subirInsignia} disabled={subiendoInsignia} />
-          {subiendoInsignia && <span className="admin-uploading">Subiendo…</span>}
-          {insigniaUrl && !subiendoInsignia && (
-            <img src={insigniaUrl} alt="Cartel del torneo" className="admin-badge-preview" />
-          )}
+          <SelectorImagen
+            token={token}
+            valor={insigniaUrl}
+            onCambiar={setInsigniaUrl}
+            onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+            etiqueta="Cartel"
+          />
         </label>
         <label>
           Número de máquinas
