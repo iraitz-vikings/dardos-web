@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import TorneoResumen from "./TorneoResumen.jsx";
+import VideoHome from "./VideoHome.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -124,6 +125,8 @@ export default function App() {
             seguir todo lo que pasa dentro y fuera de la diana.
           </p>
         </section>
+
+        <VideoHome />
 
         <section id="torneo" className="tournament">
           <div className="tournament-heading">
