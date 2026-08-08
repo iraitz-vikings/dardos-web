@@ -159,6 +159,7 @@ a { color: inherit; text-decoration: none; }
 .live-tournament-toggle button.active { border-color: var(--ember); color: var(--ember); }
 .bracket-sin-actual { font-size: .78rem; color: var(--steel); font-style: italic; padding: .5rem 0; }
 .bracket-maquina { font-size: .64rem; text-transform: uppercase; color: var(--steel); background: #ffffff0d; padding: .1rem .4rem; }
+.bracket-cuadrante { font-size: .64rem; text-transform: uppercase; color: var(--ember); background: #9a2b2822; padding: .1rem .4rem; }
 .bracket-match-en-curso { border-left: 2px solid var(--ember); padding-left: .5rem; }
 .bracket-match {
     display: flex;
