@@ -140,6 +140,9 @@ export default function App() {
               className="tournament-badge"
             />
             <h3>{torneo ? torneo.nombre : "II Open Villa Errenteria"}</h3>
+            {torneo?.cartelUrl && (
+              <img src={torneo.cartelUrl} alt={`Cartel ${torneo.nombre}`} className="tournament-poster" />
+            )}
             {fechas ? (
               <div className="event-dates">
                 <span>{fechas.diaIni}</span>
