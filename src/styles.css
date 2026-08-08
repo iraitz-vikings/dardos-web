@@ -475,7 +475,7 @@ button {
       .nav-toggle { display: flex; }
       .nav-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; gap: 0; background: #0e0f13f2; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); max-height: 0; overflow: hidden; transition: max-height .25s ease; }
       .nav-links a { padding: 1rem clamp(1.2rem, 5vw, 3rem); border-top: 1px solid var(--line); }
-      .nav-links-open { max-height: 240px; }
+      .nav-links-open { max-height: 320px; }
 }
 
 
