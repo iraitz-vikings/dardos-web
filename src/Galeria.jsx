@@ -37,7 +37,7 @@ export default function Galeria() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.volume = 0.18;
+    audio.volume = 0.09;
     audio.play()
       .then(() => setAudioSonando(true))
       .catch(() => setAudioBloqueado(true));
