@@ -22,6 +22,7 @@ function idVideoYoutube(url) {
 export default function Admin() {
   const [token, setToken] = useState(() => sessionStorage.getItem("adminToken") || "");
   const [passwordInput, setPasswordInput] = useState("");
+  const [pestana, setPestana] = useState("noticias");
   const [noticias, setNoticias] = useState([]);
   const [titulo, setTitulo] = useState("");
   const [contenido, setContenido] = useState("");
@@ -447,6 +448,13 @@ export default function Admin() {
     );
   }
 
+  const TABS = [
+    { id: "noticias", etiqueta: "Noticias" },
+    { id: "torneos-club", etiqueta: "Torneos del club" },
+    { id: "galeria", etiqueta: "Galería" },
+    { id: "torneo-destacado", etiqueta: "Torneo destacado" },
+  ];
+
   return (
     <div className="admin">
       <header className="admin-header">
@@ -454,136 +462,157 @@ export default function Admin() {
         <button className="admin-link-btn" onClick={salir}>Salir</button>
       </header>
 
-      <form onSubmit={guardarTorneo} className="admin-form">
-        <h2>Próximo torneo</h2>
-        <label>
-          Nombre del torneo
-          <input value={torneoNombre} onChange={(e) => setTorneoNombre(e.target.value)} required />
-        </label>
-        <label>
-          Descripción (opcional)
-          <textarea rows={3} value={torneoDescripcion} onChange={(e) => setTorneoDescripcion(e.target.value)} />
-        </label>
-        <label>
-          Fecha de inicio
-          <input type="date" value={torneoInicio} onChange={(e) => setTorneoInicio(e.target.value)} required />
-        </label>
-        <label>
-          Fecha de fin
-          <input type="date" value={torneoFin} onChange={(e) => setTorneoFin(e.target.value)} required />
-        </label>
-        <label>
-          Insignia del torneo
-          <input type="file" accept="image/*" onChange={subirInsignia} disabled={subiendoInsignia} />
-          {subiendoInsignia && <span className="admin-uploading">Subiendo…</span>}
-          {torneoInsignia && !subiendoInsignia && (
-            <img src={torneoInsignia} alt="Insignia actual" className="admin-badge-preview" />
-          )}
-        </label>
-        <button type="submit" disabled={guardandoTorneo}>{guardandoTorneo ? "Guardando…" : "Guardar torneo"}</button>
-        {mensajeTorneo && <p className={`admin-msg admin-msg-${mensajeTorneo.tipo}`}>{mensajeTorneo.texto}</p>}
-      </form>
-
-      <form onSubmit={publicar} className="admin-form">
-        <h2>Publicar noticia</h2>
-        <label>
-          Título
-          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
-        </label>
-        <label>
-          Contenido
-          <textarea rows={5} value={contenido} onChange={(e) => setContenido(e.target.value)} required />
-        </label>
-        <label>
-          Fotos (URLs separadas por comas, opcional)
-          <input value={fotos} onChange={(e) => setFotos(e.target.value)} placeholder="https://..., https://..." />
-        </label>
-        <label>
-          Subir una foto
-          <input type="file" accept="image/*" onChange={subirFoto} disabled={subiendoFoto} />
-          {subiendoFoto && <span className="admin-uploading">Subiendo…</span>}
-        </label>
-        <label>
-          Vídeos de YouTube (URLs separadas por comas, opcional)
-          <input value={videos} onChange={(e) => setVideos(e.target.value)} placeholder="https://youtube.com/watch?v=..." />
-        </label>
-        <label>
-          Subir un vídeo (archivo, hasta 100 MB, opcional)
-          <input type="file" accept="video/*" onChange={subirVideo} disabled={subiendoVideo} />
-          {subiendoVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
-        </label>
-        <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>
-        {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
-      </form>
-
-      <section className="admin-form">
-        <h2>Galería (sin noticia)</h2>
-        <p className="admin-hint">Añade fotos o vídeos sueltos a la galería, sin necesidad de crear una noticia.</p>
-        <label>
-          Subir una foto
-          <input type="file" accept="image/*" onChange={subirGaleriaFoto} disabled={subiendoGaleriaFoto} />
-          {subiendoGaleriaFoto && <span className="admin-uploading">Subiendo…</span>}
-        </label>
-        <label>
-          Subir un vídeo (hasta 100 MB)
-          <input type="file" accept="video/*" onChange={subirGaleriaVideo} disabled={subiendoGaleriaVideo} />
-          {subiendoGaleriaVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
-        </label>
-        <form onSubmit={anadirGaleriaYoutube} className="admin-inline-form">
-          <label>
-            O pegar un enlace de YouTube
-            <input
-              value={galeriaYoutubeUrl}
-              onChange={(e) => setGaleriaYoutubeUrl(e.target.value)}
-              placeholder="https://youtube.com/watch?v=..."
-            />
-          </label>
-          <button type="submit" disabled={anadiendoGaleriaYoutube || !galeriaYoutubeUrl.trim()}>
-            {anadiendoGaleriaYoutube ? "Añadiendo…" : "Añadir"}
+      <nav className="admin-tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`admin-tab ${pestana === t.id ? "admin-tab-active" : ""}`}
+            onClick={() => setPestana(t.id)}
+          >
+            {t.etiqueta}
           </button>
+        ))}
+      </nav>
+
+      {pestana === "torneo-destacado" && (
+        <form onSubmit={guardarTorneo} className="admin-form">
+          <h2>Próximo torneo (destacado en la home)</h2>
+          <label>
+            Nombre del torneo
+            <input value={torneoNombre} onChange={(e) => setTorneoNombre(e.target.value)} required />
+          </label>
+          <label>
+            Descripción (opcional)
+            <textarea rows={3} value={torneoDescripcion} onChange={(e) => setTorneoDescripcion(e.target.value)} />
+          </label>
+          <label>
+            Fecha de inicio
+            <input type="date" value={torneoInicio} onChange={(e) => setTorneoInicio(e.target.value)} required />
+          </label>
+          <label>
+            Fecha de fin
+            <input type="date" value={torneoFin} onChange={(e) => setTorneoFin(e.target.value)} required />
+          </label>
+          <label>
+            Insignia del torneo
+            <input type="file" accept="image/*" onChange={subirInsignia} disabled={subiendoInsignia} />
+            {subiendoInsignia && <span className="admin-uploading">Subiendo…</span>}
+            {torneoInsignia && !subiendoInsignia && (
+              <img src={torneoInsignia} alt="Insignia actual" className="admin-badge-preview" />
+            )}
+          </label>
+          <button type="submit" disabled={guardandoTorneo}>{guardandoTorneo ? "Guardando…" : "Guardar torneo"}</button>
+          {mensajeTorneo && <p className={`admin-msg admin-msg-${mensajeTorneo.tipo}`}>{mensajeTorneo.texto}</p>}
         </form>
-        {mensajeGaleria && <p className={`admin-msg admin-msg-${mensajeGaleria.tipo}`}>{mensajeGaleria.texto}</p>}
+      )}
 
-        {galeriaItems.length > 0 && (
-          <ul className="admin-gallery-grid">
-            {galeriaItems.map((item) => {
-              const ytId = item.tipo === "video" ? idVideoYoutube(item.url) : null;
-              return (
-                <li key={item.id} className="admin-gallery-item">
-                  {item.tipo === "video" ? (
-                    ytId ? (
-                      <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt="" />
-                    ) : (
-                      <video src={item.url} muted />
-                    )
-                  ) : (
-                    <img src={item.url} alt="" />
-                  )}
-                  <button type="button" className="admin-link-btn" onClick={() => borrarGaleria(item.id)}>Borrar</button>
+      {pestana === "noticias" && (
+        <>
+          <form onSubmit={publicar} className="admin-form">
+            <h2>Publicar noticia</h2>
+            <label>
+              Título
+              <input value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
+            </label>
+            <label>
+              Contenido
+              <textarea rows={5} value={contenido} onChange={(e) => setContenido(e.target.value)} required />
+            </label>
+            <label>
+              Fotos (URLs separadas por comas, opcional)
+              <input value={fotos} onChange={(e) => setFotos(e.target.value)} placeholder="https://..., https://..." />
+            </label>
+            <label>
+              Subir una foto
+              <input type="file" accept="image/*" onChange={subirFoto} disabled={subiendoFoto} />
+              {subiendoFoto && <span className="admin-uploading">Subiendo…</span>}
+            </label>
+            <label>
+              Vídeos de YouTube (URLs separadas por comas, opcional)
+              <input value={videos} onChange={(e) => setVideos(e.target.value)} placeholder="https://youtube.com/watch?v=..." />
+            </label>
+            <label>
+              Subir un vídeo (archivo, hasta 100 MB, opcional)
+              <input type="file" accept="video/*" onChange={subirVideo} disabled={subiendoVideo} />
+              {subiendoVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
+            </label>
+            <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>
+            {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+          </form>
+
+          <section className="admin-list">
+            <h2>Noticias publicadas</h2>
+            {noticias.length === 0 && <p className="chronicle-status">Todavía no hay noticias.</p>}
+            <ul>
+              {noticias.map((n) => (
+                <li key={n.id} className="admin-list-item">
+                  <div>
+                    <strong>{n.titulo}</strong>
+                    <time>{formatFecha(n.fechaPublicacion)}</time>
+                  </div>
+                  <button className="admin-link-btn" onClick={() => borrar(n.id)}>Borrar</button>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
 
-            <AdminTorneosClub token={token} salir={salir} />
+      {pestana === "galeria" && (
+        <section className="admin-form">
+          <h2>Galería (sin noticia)</h2>
+          <p className="admin-hint">Añade fotos o vídeos sueltos a la galería, sin necesidad de crear una noticia.</p>
+          <label>
+            Subir una foto
+            <input type="file" accept="image/*" onChange={subirGaleriaFoto} disabled={subiendoGaleriaFoto} />
+            {subiendoGaleriaFoto && <span className="admin-uploading">Subiendo…</span>}
+          </label>
+          <label>
+            Subir un vídeo (hasta 100 MB)
+            <input type="file" accept="video/*" onChange={subirGaleriaVideo} disabled={subiendoGaleriaVideo} />
+            {subiendoGaleriaVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
+          </label>
+          <form onSubmit={anadirGaleriaYoutube} className="admin-inline-form">
+            <label>
+              O pegar un enlace de YouTube
+              <input
+                value={galeriaYoutubeUrl}
+                onChange={(e) => setGaleriaYoutubeUrl(e.target.value)}
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </label>
+            <button type="submit" disabled={anadiendoGaleriaYoutube || !galeriaYoutubeUrl.trim()}>
+              {anadiendoGaleriaYoutube ? "Añadiendo…" : "Añadir"}
+            </button>
+          </form>
+          {mensajeGaleria && <p className={`admin-msg admin-msg-${mensajeGaleria.tipo}`}>{mensajeGaleria.texto}</p>}
 
-      <section className="admin-list">
-        <h2>Noticias publicadas</h2>
-        {noticias.length === 0 && <p className="chronicle-status">Todavía no hay noticias.</p>}
-        <ul>
-          {noticias.map((n) => (
-            <li key={n.id} className="admin-list-item">
-              <div>
-                <strong>{n.titulo}</strong>
-                <time>{formatFecha(n.fechaPublicacion)}</time>
-              </div>
-              <button className="admin-link-btn" onClick={() => borrar(n.id)}>Borrar</button>
-            </li>
-          ))}
-        </ul>
-      </section>
+          {galeriaItems.length > 0 && (
+            <ul className="admin-gallery-grid">
+              {galeriaItems.map((item) => {
+                const ytId = item.tipo === "video" ? idVideoYoutube(item.url) : null;
+                return (
+                  <li key={item.id} className="admin-gallery-item">
+                    {item.tipo === "video" ? (
+                      ytId ? (
+                        <img src={`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`} alt="" />
+                      ) : (
+                        <video src={item.url} muted />
+                      )
+                    ) : (
+                      <img src={item.url} alt="" />
+                    )}
+                    <button type="button" className="admin-link-btn" onClick={() => borrarGaleria(item.id)}>Borrar</button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {pestana === "torneos-club" && <AdminTorneosClub token={token} salir={salir} />}
     </div>
   );
 }
