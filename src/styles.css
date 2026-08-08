@@ -804,3 +804,26 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .bracket-box-encontrado { box-shadow: 0 0 0 2px #4da3ff; }
 .bracket-box-jugador-encontrado { background: #4da3ff33; }
 .admin-cuadro-encontrado { border-left: 2px solid #4da3ff; padding-left: .5rem; background: #4da3ff14; }
+
+/* QR de la página del torneo */
+.torneo-pagina-qr { margin: 1.2rem 0 1.5rem; border: 1px solid var(--line); padding: .8rem 1rem; max-width: 260px; }
+.torneo-pagina-qr summary { cursor: pointer; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ember); }
+.torneo-pagina-qr img { display: block; margin: .8rem auto 0; background: #fff; padding: .4rem; }
+.torneo-pagina-qr-url { font-size: .68rem; color: var(--steel); text-align: center; margin-top: .5rem; word-break: break-all; }
+
+/* Cabecera con los partidos en curso, visible en toda la web */
+.live-ticker {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  background: #1a0d0acc;
+  border-bottom: 1px solid var(--line);
+  padding: .5rem clamp(1.2rem, 5vw, 3rem);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.live-ticker-etiqueta { flex: none; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ember); }
+.live-ticker-lista { display: flex; gap: 1.2rem; }
+.live-ticker-item { font-size: .78rem; color: var(--bone-dim); display: flex; gap: .4rem; align-items: center; }
+.live-ticker-item:hover { color: var(--bone); }
+.live-ticker-item strong { color: var(--steel); font-size: .66rem; text-transform: uppercase; background: #ffffff0d; padding: .1rem .35rem; }
