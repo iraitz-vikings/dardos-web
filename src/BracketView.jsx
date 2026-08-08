@@ -1,3 +1,5 @@
+import useResaltadoReciente from "./useResaltadoReciente.js";
+
 const BOX_W = 176;
 const BOX_H = 50;
 const ROUND_GAP = 56;
@@ -49,9 +51,12 @@ function calcularLayout(partidos) {
 
 function Caja({ x, y, partido }) {
   const decidido = !!partido.ganador;
+  const reciente = useResaltadoReciente(partido.enCurso, partido.actualizadoEn);
   return (
     <foreignObject x={x} y={y - BOX_H / 2} width={BOX_W} height={BOX_H}>
-      <div className={`bracket-box ${decidido ? "bracket-box-decidido" : ""} ${partido.enCurso ? "bracket-box-en-curso" : ""}`}>
+      <div
+        className={`bracket-box ${decidido ? "bracket-box-decidido" : ""} ${partido.enCurso ? "bracket-box-en-curso" : ""} ${reciente ? "bracket-box-reciente" : ""}`}
+      >
         <div className="bracket-box-ronda">{partido.ronda}{partido.maquina ? ` · ${partido.maquina}` : ""}</div>
         <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador1 ? "bracket-box-ganador" : ""}`}>
           {partido.jugador1 || "?"}
