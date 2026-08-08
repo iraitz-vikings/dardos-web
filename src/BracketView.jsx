@@ -59,10 +59,10 @@ function Caja({ x, y, partido }) {
       >
         <div className="bracket-box-ronda">{partido.ronda}{partido.maquina ? ` · ${partido.maquina}` : ""}</div>
         <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador1 ? "bracket-box-ganador" : ""}`}>
-          {partido.jugador1 || "?"}
+          {partido.jugador1 || (partido.ganador ? "BYE" : "?")}
         </div>
         <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador2 ? "bracket-box-ganador" : ""}`}>
-          {partido.jugador2 || "?"}
+          {partido.jugador2 || (partido.ganador ? "BYE" : "?")}
         </div>
       </div>
     </foreignObject>
