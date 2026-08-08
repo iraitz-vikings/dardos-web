@@ -26,6 +26,11 @@ export default function Admin() {
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [subiendoVideo, setSubiendoVideo] = useState(false);
 
+  const [galeriaItems, setGaleriaItems] = useState([]);
+  const [subiendoGaleriaFoto, setSubiendoGaleriaFoto] = useState(false);
+  const [subiendoGaleriaVideo, setSubiendoGaleriaVideo] = useState(false);
+  const [mensajeGaleria, setMensajeGaleria] = useState(null);
+
   const [torneoNombre, setTorneoNombre] = useState("");
   const [torneoDescripcion, setTorneoDescripcion] = useState("");
   const [torneoInicio, setTorneoInicio] = useState("");
@@ -39,6 +44,13 @@ export default function Admin() {
     fetch(`${API_URL}/api/noticias`)
       .then((r) => r.json())
       .then(setNoticias)
+      .catch(() => {});
+  };
+
+  const cargarGaleria = () => {
+    fetch(`${API_URL}/api/galeria`)
+      .then((r) => r.json())
+      .then(setGaleriaItems)
       .catch(() => {});
   };
 
@@ -60,6 +72,7 @@ export default function Admin() {
     if (token) {
       cargarNoticias();
       cargarTorneo();
+      cargarGaleria();
     }
   }, [token]);
 
@@ -153,6 +166,84 @@ export default function Admin() {
       setSubiendoVideo(false);
       e.target.value = "";
     }
+  }
+
+  async function subirAGaleria(archivo, tipo) {
+    const setSubiendo = tipo === "image" ? setSubiendoGaleriaFoto : setSubiendoGaleriaVideo;
+    setSubiendo(true);
+    setMensajeGaleria(null);
+    try {
+      const formData = new FormData();
+      formData.append("imagen", archivo);
+
+      const resUpload = await fetch(`${API_URL}/api/upload`, {
+        method: "POST",
+        headers: { "x-admin-token": token },
+        body: formData,
+      });
+
+      if (resUpload.status === 401) {
+        setMensajeGaleria({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+        salir();
+        return;
+      }
+      if (resUpload.status === 413) {
+        setMensajeGaleria({ tipo: "error", texto: "El archivo pesa demasiado (máximo 100 MB)." });
+        return;
+      }
+      if (!resUpload.ok) {
+        const data = await resUpload.json().catch(() => ({}));
+        setMensajeGaleria({ tipo: "error", texto: data.error || "No se pudo subir el archivo." });
+        return;
+      }
+
+      const { url } = await resUpload.json();
+
+      const resGaleria = await fetch(`${API_URL}/api/galeria`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ url, tipo }),
+      });
+
+      if (!resGaleria.ok) {
+        const data = await resGaleria.json().catch(() => ({}));
+        setMensajeGaleria({ tipo: "error", texto: data.error || "No se pudo añadir a la galería." });
+        return;
+      }
+
+      setMensajeGaleria({ tipo: "ok", texto: tipo === "image" ? "Foto añadida a la galería." : "Vídeo añadido a la galería." });
+      cargarGaleria();
+    } catch {
+      setMensajeGaleria({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  function subirGaleriaFoto(e) {
+    const archivo = e.target.files?.[0];
+    if (archivo) subirAGaleria(archivo, "image");
+    e.target.value = "";
+  }
+
+  function subirGaleriaVideo(e) {
+    const archivo = e.target.files?.[0];
+    if (archivo) subirAGaleria(archivo, "video");
+    e.target.value = "";
+  }
+
+  async function borrarGaleria(id) {
+    if (!confirm("¿Quitar este elemento de la galería?")) return;
+    const res = await fetch(`${API_URL}/api/galeria/${id}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": token },
+    });
+    if (res.status === 401) {
+      setMensajeGaleria({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+      salir();
+      return;
+    }
+    cargarGaleria();
   }
 
   async function subirInsignia(e) {
@@ -382,6 +473,37 @@ export default function Admin() {
         <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
       </form>
+
+      <section className="admin-form">
+        <h2>Galería (sin noticia)</h2>
+        <p className="admin-hint">Añade fotos o vídeos sueltos a la galería, sin necesidad de crear una noticia.</p>
+        <label>
+          Subir una foto
+          <input type="file" accept="image/*" onChange={subirGaleriaFoto} disabled={subiendoGaleriaFoto} />
+          {subiendoGaleriaFoto && <span className="admin-uploading">Subiendo…</span>}
+        </label>
+        <label>
+          Subir un vídeo (hasta 100 MB)
+          <input type="file" accept="video/*" onChange={subirGaleriaVideo} disabled={subiendoGaleriaVideo} />
+          {subiendoGaleriaVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
+        </label>
+        {mensajeGaleria && <p className={`admin-msg admin-msg-${mensajeGaleria.tipo}`}>{mensajeGaleria.texto}</p>}
+
+        {galeriaItems.length > 0 && (
+          <ul className="admin-gallery-grid">
+            {galeriaItems.map((item) => (
+              <li key={item.id} className="admin-gallery-item">
+                {item.tipo === "video" ? (
+                  <video src={item.url} muted />
+                ) : (
+                  <img src={item.url} alt="" />
+                )}
+                <button type="button" className="admin-link-btn" onClick={() => borrarGaleria(item.id)}>Borrar</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="admin-list">
         <h2>Noticias publicadas</h2>
