@@ -108,9 +108,12 @@ export default function App() {
         })
         .filter(Boolean),
     ]),
-    ...galeriaSuelta.map((item) =>
-      item.tipo === "video" ? { tipo: "directo", url: item.url } : { tipo: "foto", src: item.url }
-    ),
+    ...galeriaSuelta
+      .map((item) => {
+        if (item.tipo === "video") return analizarVideo(item.url);
+        return { tipo: "foto", src: item.url };
+      })
+      .filter(Boolean),
   ];
 
   return (
