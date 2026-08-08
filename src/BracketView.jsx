@@ -103,24 +103,27 @@ function BracketRama({ titulo, partidos }) {
 export default function BracketView({ cuadrante }) {
   const ganadores = cuadrante.partidos.filter((p) => p.rama === "ganadores");
   const perdedores = cuadrante.partidos.filter((p) => p.rama === "perdedores");
-  const final = cuadrante.partidos.find((p) => p.rama === "final");
+  const finales = cuadrante.partidos.filter((p) => p.rama === "final").sort((a, b) => a.posicion - b.posicion);
 
   return (
     <div className="bracket-visual">
       <BracketRama titulo={RAMA_ETIQUETA.ganadores} partidos={ganadores} />
       {perdedores.length > 0 && <BracketRama titulo={RAMA_ETIQUETA.perdedores} partidos={perdedores} />}
-      {final && (
+      {finales.length > 0 && (
         <div className="bracket-rama-visual">
           <p className="bracket-rama-titulo">Gran final</p>
-          <div className="bracket-final-box">
-            <span className={final.ganador && final.ganador === final.jugador1 ? "bracket-box-ganador" : ""}>
-              {final.jugador1 || "?"}
-            </span>
-            <span className="bracket-vs">vs</span>
-            <span className={final.ganador && final.ganador === final.jugador2 ? "bracket-box-ganador" : ""}>
-              {final.jugador2 || "?"}
-            </span>
-          </div>
+          {finales.map((final, i) => (
+            <div key={final.id} className="bracket-final-box">
+              {i === 1 && <span className="bracket-final-desempate">Partido decisivo</span>}
+              <span className={final.ganador && final.ganador === final.jugador1 ? "bracket-box-ganador" : ""}>
+                {final.jugador1 || "?"}
+              </span>
+              <span className="bracket-vs">vs</span>
+              <span className={final.ganador && final.ganador === final.jugador2 ? "bracket-box-ganador" : ""}>
+                {final.jugador2 || "?"}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
