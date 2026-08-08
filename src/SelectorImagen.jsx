@@ -2,6 +2,12 @@ import { useState } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
+// Pide a Cloudinary una versión pequeña y optimizada de la imagen (en vez de descargar
+// el archivo original entero solo para mostrar una miniatura de 90px).
+function miniatura(url) {
+  return url.replace("/upload/", "/upload/w_150,h_150,c_fill,q_auto,f_auto/");
+}
+
 export default function SelectorImagen({ token, valor, onCambiar, onError, etiqueta }) {
   const [subiendo, setSubiendo] = useState(false);
   const [mostrarExistentes, setMostrarExistentes] = useState(false);
@@ -91,7 +97,7 @@ export default function SelectorImagen({ token, valor, onCambiar, onError, etiqu
                     setMostrarExistentes(false);
                   }}
                 >
-                  <img src={img.url} alt="" loading="lazy" />
+                  <img src={miniatura(img.url)} alt="" loading="eager" />
                 </button>
               ))}
             </div>
