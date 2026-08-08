@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
+const TAMANOS = [4, 8, 16, 32, 64, 128];
 
 function formatFecha(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function aInputDate(iso) {
-  if (!iso) return "";
-  return new Date(iso).toISOString().slice(0, 10);
-}
+const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
 
 export default function AdminTorneosClub({ token, salir }) {
   const [torneos, setTorneos] = useState([]);
@@ -22,6 +20,8 @@ export default function AdminTorneosClub({ token, salir }) {
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [visibilidad, setVisibilidad] = useState("privado");
+  const [numeroMaquinas, setNumeroMaquinas] = useState("");
+  const [tipoEliminacion, setTipoEliminacion] = useState("directa");
   const [guardando, setGuardando] = useState(false);
 
   const cargarTorneos = () => {
@@ -43,7 +43,7 @@ export default function AdminTorneosClub({ token, salir }) {
       const res = await fetch(`${API_URL}/api/torneos-club`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad }),
+        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -60,6 +60,8 @@ export default function AdminTorneosClub({ token, salir }) {
       setFechaInicio("");
       setFechaFin("");
       setVisibilidad("privado");
+      setNumeroMaquinas("");
+      setTipoEliminacion("directa");
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
       cargarTorneos();
     } catch {
@@ -79,20 +81,24 @@ export default function AdminTorneosClub({ token, salir }) {
   }
 
   async function borrarTorneo(id) {
-    if (!confirm("¿Borrar este torneo y todo su cuadro?")) return;
-    await fetch(`${API_URL}/api/torneos-club/${id}`, {
-      method: "DELETE",
-      headers: { "x-admin-token": token },
-    });
+    if (!confirm("¿Borrar este torneo, sus cuadrantes y todos sus enfrentamientos?")) return;
+    await fetch(`${API_URL}/api/torneos-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     cargarTorneos();
   }
 
-  async function anadirPartido(torneoId, datos) {
-    await fetch(`${API_URL}/api/torneos-club/${torneoId}/partidos`, {
+  async function crearCuadrante(torneoId, datos) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneoId}/cuadrantes`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify(datos),
     });
+    cargarTorneos();
+    return res.ok;
+  }
+
+  async function borrarCuadrante(cuadranteId) {
+    if (!confirm("¿Borrar este cuadrante y todos sus enfrentamientos?")) return;
+    await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}`, { method: "DELETE", headers: { "x-admin-token": token } });
     cargarTorneos();
   }
 
@@ -105,22 +111,13 @@ export default function AdminTorneosClub({ token, salir }) {
     cargarTorneos();
   }
 
-  async function borrarPartido(partidoId) {
-    if (!confirm("¿Borrar este enfrentamiento?")) return;
-    await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}`, {
-      method: "DELETE",
-      headers: { "x-admin-token": token },
-    });
-    cargarTorneos();
-  }
-
   return (
     <section className="admin-form">
       <h2>Torneos del club (cuadros)</h2>
       <p className="admin-hint">
-        Torneos organizados por el club, con un cuadro de enfrentamientos por cada máquina. Marca "Público" para que
-        aparezca en la web en "Torneos en directo"; "Privado" para que solo se vea en la sección de socios (cuando
-        exista el login).
+        Torneos organizados por el club, con cuadrantes generados automáticamente (eliminación directa o doble).
+        Marca "Público" para que aparezca en la web en "Torneos en directo"; "Privado" para que solo se vea en la
+        sección de socios (cuando exista el login).
       </p>
 
       <form onSubmit={crearTorneo} className="admin-form" style={{ marginBottom: "1.5rem" }}>
@@ -139,6 +136,17 @@ export default function AdminTorneosClub({ token, salir }) {
         <label>
           Fecha de fin
           <input type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} required />
+        </label>
+        <label>
+          Número de máquinas
+          <input type="number" min="1" value={numeroMaquinas} onChange={(e) => setNumeroMaquinas(e.target.value)} placeholder="ej. 9" />
+        </label>
+        <label>
+          Tipo de eliminación
+          <select value={tipoEliminacion} onChange={(e) => setTipoEliminacion(e.target.value)}>
+            <option value="directa">Eliminación directa</option>
+            <option value="doble">Doble eliminación</option>
+          </select>
         </label>
         <label>
           Visibilidad
@@ -161,10 +169,12 @@ export default function AdminTorneosClub({ token, salir }) {
                 <strong>{t.nombre}</strong>
                 <time>
                   {formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)} ·{" "}
-                  {t.visibilidad === "publico" ? "Público" : "Privado"}
+                  {t.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
+                  {t.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"}
+                  {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
                 </time>
               </div>
-              <div style={{ display: "flex", gap: ".5rem" }}>
+              <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   className="admin-link-btn"
@@ -172,23 +182,19 @@ export default function AdminTorneosClub({ token, salir }) {
                 >
                   Hacer {t.visibilidad === "publico" ? "privado" : "público"}
                 </button>
-                <button
-                  type="button"
-                  className="admin-link-btn"
-                  onClick={() => setAbiertoId(abiertoId === t.id ? null : t.id)}
-                >
-                  {abiertoId === t.id ? "Cerrar cuadro" : "Ver cuadro"}
+                <button type="button" className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === t.id ? null : t.id)}>
+                  {abiertoId === t.id ? "Cerrar" : "Ver cuadrantes"}
                 </button>
                 <button type="button" className="admin-link-btn" onClick={() => borrarTorneo(t.id)}>Borrar</button>
               </div>
             </div>
 
             {abiertoId === t.id && (
-              <CuadroTorneo
+              <TorneoDetalle
                 torneo={t}
-                onAnadir={(datos) => anadirPartido(t.id, datos)}
-                onActualizar={actualizarPartido}
-                onBorrar={borrarPartido}
+                onCrearCuadrante={(datos) => crearCuadrante(t.id, datos)}
+                onBorrarCuadrante={borrarCuadrante}
+                onActualizarPartido={actualizarPartido}
               />
             )}
           </li>
@@ -198,89 +204,162 @@ export default function AdminTorneosClub({ token, salir }) {
   );
 }
 
-function CuadroTorneo({ torneo, onAnadir, onActualizar, onBorrar }) {
-  const [nivel, setNivel] = useState("");
-  const [maquina, setMaquina] = useState("");
-  const [ronda, setRonda] = useState("");
-  const [jugador1, setJugador1] = useState("");
-  const [jugador2, setJugador2] = useState("");
+function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido }) {
+  const [nombreCuadrante, setNombreCuadrante] = useState("");
+  const [tamano, setTamano] = useState(8);
+  const [creando, setCreando] = useState(false);
+  const [error, setError] = useState(null);
 
-  const partidosPorNivel = {};
-  for (const p of torneo.partidos) {
-    if (!partidosPorNivel[p.nivel]) partidosPorNivel[p.nivel] = [];
-    partidosPorNivel[p.nivel].push(p);
-  }
-
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    if (!nivel.trim() || !maquina.trim() || !ronda.trim()) return;
-    onAnadir({ nivel: nivel.trim(), maquina: maquina.trim(), ronda: ronda.trim(), jugador1, jugador2 });
-    setJugador1("");
-    setJugador2("");
+    if (!nombreCuadrante.trim()) return;
+    setCreando(true);
+    setError(null);
+    const ok = await onCrearCuadrante({ nombre: nombreCuadrante.trim(), tamano, tipoEliminacion: torneo.tipoEliminacion });
+    if (!ok) setError("No se pudo generar el cuadrante.");
+    else setNombreCuadrante("");
+    setCreando(false);
   }
 
   return (
     <div className="admin-cuadro">
       <form onSubmit={submit} className="admin-cuadro-form">
-        <input placeholder="Nivel/cuadrante (ej. Nivel A)" value={nivel} onChange={(e) => setNivel(e.target.value)} />
-        <input placeholder="Máquina (ej. Máquina 1)" value={maquina} onChange={(e) => setMaquina(e.target.value)} />
-        <input placeholder="Ronda (ej. Cuartos)" value={ronda} onChange={(e) => setRonda(e.target.value)} />
-        <input placeholder="Jugador 1" value={jugador1} onChange={(e) => setJugador1(e.target.value)} />
-        <input placeholder="Jugador 2" value={jugador2} onChange={(e) => setJugador2(e.target.value)} />
-        <button type="submit">Añadir enfrentamiento</button>
+        <input
+          placeholder="Nombre del cuadrante (ej. Nivel A)"
+          value={nombreCuadrante}
+          onChange={(e) => setNombreCuadrante(e.target.value)}
+        />
+        <select value={tamano} onChange={(e) => setTamano(Number(e.target.value))}>
+          {TAMANOS.map((n) => (
+            <option key={n} value={n}>{n} participantes</option>
+          ))}
+        </select>
+        <button type="submit" disabled={creando}>
+          {creando ? "Generando…" : `Generar cuadrante (${torneo.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})`}
+        </button>
       </form>
+      {error && <p className="admin-msg admin-msg-error">{error}</p>}
 
-      {Object.keys(partidosPorNivel).length === 0 && (
-        <p className="chronicle-status">Sin enfrentamientos todavía.</p>
-      )}
+      {(torneo.cuadrantes || []).length === 0 && <p className="chronicle-status">Sin cuadrantes todavía.</p>}
 
-      {Object.entries(partidosPorNivel).map(([nombreNivel, partidos]) => (
-        <div key={nombreNivel} className="admin-cuadro-maquina">
-          <h4>{nombreNivel}</h4>
-          {partidos.map((p) => (
-            <div key={p.id} className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
-              <span className="admin-cuadro-ronda">{p.ronda}</span>
-              <input
-                defaultValue={p.maquina || ""}
-                placeholder="Máquina"
-                className="admin-cuadro-maquina-input"
-                onBlur={(e) => e.target.value !== (p.maquina || "") && onActualizar(p.id, { ...p, maquina: e.target.value })}
-              />
-              <input
-                defaultValue={p.jugador1 || ""}
-                placeholder="Jugador 1"
-                onBlur={(e) => e.target.value !== (p.jugador1 || "") && onActualizar(p.id, { ...p, jugador1: e.target.value })}
-              />
-              <span>vs</span>
-              <input
-                defaultValue={p.jugador2 || ""}
-                placeholder="Jugador 2"
-                onBlur={(e) => e.target.value !== (p.jugador2 || "") && onActualizar(p.id, { ...p, jugador2: e.target.value })}
-              />
-              <input
-                defaultValue={p.resultado || ""}
-                placeholder="Resultado"
-                className="admin-cuadro-resultado"
-                onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar(p.id, { ...p, resultado: e.target.value })}
-              />
-              <input
-                defaultValue={p.ganador || ""}
-                placeholder="Ganador"
-                className="admin-cuadro-resultado"
-                onBlur={(e) => e.target.value !== (p.ganador || "") && onActualizar(p.id, { ...p, ganador: e.target.value })}
-              />
-              <button
-                type="button"
-                className="admin-link-btn"
-                onClick={() => onActualizar(p.id, { ...p, enCurso: !p.enCurso })}
-              >
-                {p.enCurso ? "★ En curso" : "Marcar en curso"}
-              </button>
-              <button type="button" className="admin-link-btn" onClick={() => onBorrar(p.id)}>Borrar</button>
+      {(torneo.cuadrantes || []).map((c) => (
+        <CuadranteDetalle
+          key={c.id}
+          cuadrante={c}
+          numeroMaquinas={torneo.numeroMaquinas}
+          onBorrar={() => onBorrarCuadrante(c.id)}
+          onActualizarPartido={onActualizarPartido}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido }) {
+  const [abierto, setAbierto] = useState(false);
+
+  const porRama = {};
+  for (const p of cuadrante.partidos) {
+    if (!porRama[p.rama]) porRama[p.rama] = {};
+    if (!porRama[p.rama][p.ronda]) porRama[p.rama][p.ronda] = [];
+    porRama[p.rama][p.ronda].push(p);
+  }
+  const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
+
+  const maquinasOpciones = numeroMaquinas
+    ? Array.from({ length: numeroMaquinas }, (_, i) => `Máquina ${i + 1}`)
+    : [];
+
+  return (
+    <div className="admin-cuadrante">
+      <div className="admin-cuadrante-header">
+        <h4>{cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})</h4>
+        <div style={{ display: "flex", gap: ".5rem" }}>
+          <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
+            {abierto ? "Ocultar" : "Ver enfrentamientos"}
+          </button>
+          <button type="button" className="admin-link-btn" onClick={onBorrar}>Borrar cuadrante</button>
+        </div>
+      </div>
+
+      {abierto && ramas.map((rama) => (
+        <div key={rama} className="admin-cuadrante-rama">
+          <h5>{RAMA_ETIQUETA[rama]}</h5>
+          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => (
+            <div key={ronda} className="admin-cuadro-maquina">
+              <h4>Ronda {ronda}</h4>
+              {porRama[rama][ronda]
+                .sort((a, b) => a.posicion - b.posicion)
+                .map((p) => (
+                  <PartidoRow
+                    key={p.id}
+                    p={p}
+                    maquinasOpciones={maquinasOpciones}
+                    onActualizar={(datos) => onActualizarPartido(p.id, datos)}
+                  />
+                ))}
             </div>
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+function PartidoRow({ p, maquinasOpciones, onActualizar }) {
+  return (
+    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
+      <input
+        defaultValue={p.jugador1 || ""}
+        placeholder="Jugador 1"
+        onBlur={(e) => e.target.value !== (p.jugador1 || "") && onActualizar({ jugador1: e.target.value })}
+      />
+      <button
+        type="button"
+        className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
+        disabled={!p.jugador1 || !p.jugador2}
+        onClick={() => onActualizar({ ganador: p.jugador1 })}
+      >
+        Ganó
+      </button>
+      <span>vs</span>
+      <input
+        defaultValue={p.jugador2 || ""}
+        placeholder="Jugador 2"
+        onBlur={(e) => e.target.value !== (p.jugador2 || "") && onActualizar({ jugador2: e.target.value })}
+      />
+      <button
+        type="button"
+        className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
+        disabled={!p.jugador1 || !p.jugador2}
+        onClick={() => onActualizar({ ganador: p.jugador2 })}
+      >
+        Ganó
+      </button>
+      <input
+        defaultValue={p.resultado || ""}
+        placeholder="Resultado"
+        className="admin-cuadro-resultado"
+        onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
+      />
+      {maquinasOpciones.length > 0 ? (
+        <select defaultValue={p.maquina || ""} onChange={(e) => onActualizar({ maquina: e.target.value })}>
+          <option value="">Máquina…</option>
+          {maquinasOpciones.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      ) : (
+        <input
+          defaultValue={p.maquina || ""}
+          placeholder="Máquina"
+          className="admin-cuadro-maquina-input"
+          onBlur={(e) => e.target.value !== (p.maquina || "") && onActualizar({ maquina: e.target.value })}
+        />
+      )}
+      <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
+        {p.enCurso ? "★ En curso" : "Marcar en curso"}
+      </button>
     </div>
   );
 }
