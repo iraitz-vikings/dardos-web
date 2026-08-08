@@ -58,10 +58,15 @@ export default function App() {
   const [torneosClub, setTorneosClub] = useState([]);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/torneos-club`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setTorneosClub)
-      .catch(() => {});
+    const cargar = () => {
+      fetch(`${API_URL}/api/torneos-club`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setTorneosClub)
+        .catch(() => {});
+    };
+    cargar();
+    const intervalo = setInterval(cargar, 15000);
+    return () => clearInterval(intervalo);
   }, []);
 
   useEffect(() => {
