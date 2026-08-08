@@ -114,6 +114,20 @@ export default function AdminTorneosClub({ token, salir }) {
     cargarTorneos();
   }
 
+  async function sortearCuadrante(cuadranteId, participantes) {
+    const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sorteo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ participantes }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo hacer el sorteo.";
+    }
+    return null;
+  }
+
   async function actualizarPartido(partidoId, datos) {
     await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}`, {
       method: "PUT",
@@ -225,6 +239,7 @@ export default function AdminTorneosClub({ token, salir }) {
                 onCrearCuadrante={(datos) => crearCuadrante(t.id, datos)}
                 onBorrarCuadrante={borrarCuadrante}
                 onActualizarPartido={actualizarPartido}
+                onSortear={sortearCuadrante}
               />
             )}
           </li>
@@ -234,7 +249,7 @@ export default function AdminTorneosClub({ token, salir }) {
   );
 }
 
-function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido }) {
+function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear }) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
   const [creando, setCreando] = useState(false);
@@ -279,14 +294,18 @@ function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualiz
           numeroMaquinas={torneo.numeroMaquinas}
           onBorrar={() => onBorrarCuadrante(c.id)}
           onActualizarPartido={onActualizarPartido}
+          onSortear={(participantes) => onSortear(c.id, participantes)}
         />
       ))}
     </div>
   );
 }
 
-function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido }) {
+function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear }) {
   const [abierto, setAbierto] = useState(false);
+  const [nombresTexto, setNombresTexto] = useState("");
+  const [sorteando, setSorteando] = useState(false);
+  const [errorSorteo, setErrorSorteo] = useState(null);
 
   const porRama = {};
   for (const p of cuadrante.partidos) {
@@ -300,6 +319,18 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
     ? Array.from({ length: numeroMaquinas }, (_, i) => `Máquina ${i + 1}`)
     : [];
 
+  const nombres = nombresTexto.split("\n").map((n) => n.trim()).filter(Boolean);
+
+  async function hacerSorteo(e) {
+    e.preventDefault();
+    setSorteando(true);
+    setErrorSorteo(null);
+    const error = await onSortear(nombres);
+    if (error) setErrorSorteo(error);
+    else setNombresTexto("");
+    setSorteando(false);
+  }
+
   return (
     <div className="admin-cuadrante">
       <div className="admin-cuadrante-header">
@@ -311,6 +342,22 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
           <button type="button" className="admin-link-btn" onClick={onBorrar}>Borrar cuadrante</button>
         </div>
       </div>
+
+      <form onSubmit={hacerSorteo} className="admin-sorteo-form">
+        <label>
+          Lista de participantes (un nombre por línea, {cuadrante.tamano} en total)
+          <textarea
+            rows={4}
+            value={nombresTexto}
+            onChange={(e) => setNombresTexto(e.target.value)}
+            placeholder={`Jugador 1\nJugador 2\n…`}
+          />
+        </label>
+        <button type="submit" disabled={sorteando || nombres.length === 0}>
+          {sorteando ? "Sorteando…" : `Sortear cuadro (${nombres.length}/${cuadrante.tamano})`}
+        </button>
+        {errorSorteo && <p className="admin-msg admin-msg-error">{errorSorteo}</p>}
+      </form>
 
       {abierto && ramas.map((rama) => (
         <div key={rama} className="admin-cuadrante-rama">
