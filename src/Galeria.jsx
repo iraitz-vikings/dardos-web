@@ -31,11 +31,13 @@ export default function Galeria() {
   const [lightbox, setLightbox] = useState(null);
   const [audioBloqueado, setAudioBloqueado] = useState(false);
   const [audioSonando, setAudioSonando] = useState(false);
+  const [silenciado, setSilenciado] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    audio.volume = 0.18;
     audio.play()
       .then(() => setAudioSonando(true))
       .catch(() => setAudioBloqueado(true));
@@ -48,6 +50,13 @@ export default function Galeria() {
       setAudioSonando(true);
       setAudioBloqueado(false);
     });
+  }
+
+  function alternarSilencio() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = !audio.muted;
+    setSilenciado(audio.muted);
   }
 
   useEffect(() => {
@@ -105,6 +114,11 @@ export default function Galeria() {
           {audioBloqueado && !audioSonando && (
             <button type="button" className="audio-play-btn" onClick={reproducirAudio}>
               🔊 Reproducir sonido
+            </button>
+          )}
+          {audioSonando && (
+            <button type="button" className="audio-play-btn" onClick={alternarSilencio}>
+              {silenciado ? "🔇 Sonido silenciado" : "🔊 Silenciar"}
             </button>
           )}
 
