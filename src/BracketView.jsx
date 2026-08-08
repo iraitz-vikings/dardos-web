@@ -49,19 +49,24 @@ function calcularLayout(partidos) {
   return { posiciones, alturaTotal, anchoTotal, idPosicion: Object.fromEntries(posiciones.map((p) => [p.partido.id, p])) };
 }
 
-function Caja({ x, y, partido }) {
+function coincide(nombre, busqueda) {
+  return !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
+}
+
+function Caja({ x, y, partido, busqueda }) {
   const decidido = !!partido.ganador;
   const reciente = useResaltadoReciente(partido.enCurso, partido.actualizadoEn);
+  const encontrado = coincide(partido.jugador1, busqueda) || coincide(partido.jugador2, busqueda);
   return (
     <foreignObject x={x} y={y - BOX_H / 2} width={BOX_W} height={BOX_H}>
       <div
-        className={`bracket-box ${decidido ? "bracket-box-decidido" : ""} ${partido.enCurso ? "bracket-box-en-curso" : ""} ${reciente ? "bracket-box-reciente" : ""}`}
+        className={`bracket-box ${decidido ? "bracket-box-decidido" : ""} ${partido.enCurso ? "bracket-box-en-curso" : ""} ${reciente ? "bracket-box-reciente" : ""} ${encontrado ? "bracket-box-encontrado" : ""}`}
       >
         <div className="bracket-box-ronda">{partido.ronda}{partido.maquina ? ` · ${partido.maquina}` : ""}</div>
-        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador1 ? "bracket-box-ganador" : ""}`}>
+        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador1 ? "bracket-box-ganador" : ""} ${coincide(partido.jugador1, busqueda) ? "bracket-box-jugador-encontrado" : ""}`}>
           {partido.jugador1 || (partido.ganador ? "BYE" : "?")}
         </div>
-        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador2 ? "bracket-box-ganador" : ""}`}>
+        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador2 ? "bracket-box-ganador" : ""} ${coincide(partido.jugador2, busqueda) ? "bracket-box-jugador-encontrado" : ""}`}>
           {partido.jugador2 || (partido.ganador ? "BYE" : "?")}
         </div>
       </div>
@@ -69,7 +74,7 @@ function Caja({ x, y, partido }) {
   );
 }
 
-function BracketRama({ titulo, partidos }) {
+function BracketRama({ titulo, partidos, busqueda }) {
   const { posiciones, alturaTotal, anchoTotal, idPosicion } = calcularLayout(partidos);
   if (posiciones.length === 0) return null;
 
@@ -97,7 +102,7 @@ function BracketRama({ titulo, partidos }) {
             );
           })}
           {posiciones.map(({ x, y, partido }) => (
-            <Caja key={partido.id} x={x + PAD} y={y + PAD} partido={partido} />
+            <Caja key={partido.id} x={x + PAD} y={y + PAD} partido={partido} busqueda={busqueda} />
           ))}
         </svg>
       </div>
@@ -105,20 +110,20 @@ function BracketRama({ titulo, partidos }) {
   );
 }
 
-export default function BracketView({ cuadrante }) {
+export default function BracketView({ cuadrante, busqueda }) {
   const ganadores = cuadrante.partidos.filter((p) => p.rama === "ganadores");
   const perdedores = cuadrante.partidos.filter((p) => p.rama === "perdedores");
   const finales = cuadrante.partidos.filter((p) => p.rama === "final").sort((a, b) => a.posicion - b.posicion);
 
   return (
     <div className="bracket-visual">
-      <BracketRama titulo={RAMA_ETIQUETA.ganadores} partidos={ganadores} />
-      {perdedores.length > 0 && <BracketRama titulo={RAMA_ETIQUETA.perdedores} partidos={perdedores} />}
+      <BracketRama titulo={RAMA_ETIQUETA.ganadores} partidos={ganadores} busqueda={busqueda} />
+      {perdedores.length > 0 && <BracketRama titulo={RAMA_ETIQUETA.perdedores} partidos={perdedores} busqueda={busqueda} />}
       {finales.length > 0 && (
         <div className="bracket-rama-visual">
           <p className="bracket-rama-titulo">Gran final</p>
           {finales.map((final, i) => (
-            <div key={final.id} className="bracket-final-box">
+            <div key={final.id} className={`bracket-final-box ${coincide(final.jugador1, busqueda) || coincide(final.jugador2, busqueda) ? "bracket-box-encontrado" : ""}`}>
               {i === 1 && <span className="bracket-final-desempate">Partido decisivo</span>}
               <span className={final.ganador && final.ganador === final.jugador1 ? "bracket-box-ganador" : ""}>
                 {final.jugador1 || "?"}
