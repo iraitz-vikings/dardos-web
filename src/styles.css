@@ -787,3 +787,20 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .admin-sorteo-form textarea { background: var(--iron-2); border: 1px solid var(--line); color: var(--bone); padding: .5rem; font-size: .8rem; font-family: 'IBM Plex Mono', monospace; resize: vertical; }
 .admin-sorteo-form button { align-self: flex-start; background: var(--iron-2); border: 1px solid var(--ember); color: var(--ember); padding: .5rem 1.1rem; font-size: .78rem; text-transform: uppercase; cursor: pointer; }
 .admin-sorteo-form button:disabled { opacity: .5; cursor: default; }
+
+/* Búsqueda de participantes en el cuadrante */
+.bracket-busqueda, .admin-busqueda {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  background: var(--iron-2);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  padding: .55rem .8rem;
+  font-size: .82rem;
+  margin-bottom: 1rem;
+}
+.bracket-busqueda:focus, .admin-busqueda:focus { border-color: var(--ember); outline: none; }
+.bracket-box-encontrado { box-shadow: 0 0 0 2px #4da3ff; }
+.bracket-box-jugador-encontrado { background: #4da3ff33; }
+.admin-cuadro-encontrado { border-left: 2px solid #4da3ff; padding-left: .5rem; background: #4da3ff14; }
