@@ -149,7 +149,7 @@ export default function Galeria() {
         </div>
       )}
 
-      <Footer />
+      <Footer simple />
     </>
   );
 }
