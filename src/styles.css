@@ -688,3 +688,44 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 
 /* Cartel (póster grande) del torneo destacado, si se sube además de la insignia */
 .tournament-poster { width: 100%; max-width: 260px; margin: .6rem 0; border: 1px solid var(--line); }
+
+/* Selector de imagen: subir nueva o elegir una ya existente en Cloudinary */
+.selector-imagen { display: flex; flex-direction: column; gap: .5rem; text-transform: none; letter-spacing: normal; }
+.selector-imagen-botones { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.selector-imagen-subir {
+  position: relative;
+  display: inline-block;
+  background: var(--iron-2);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  padding: .45rem .9rem;
+  font-size: .74rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  overflow: hidden;
+}
+.selector-imagen-subir input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.selector-imagen-modal {
+  position: fixed;
+  inset: 0;
+  background: #000000b3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+.selector-imagen-panel {
+  background: var(--iron);
+  border: 1px solid var(--line);
+  max-width: 640px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1.2rem;
+}
+.selector-imagen-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.selector-imagen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: .6rem; }
+.selector-imagen-item { border: 1px solid var(--line); padding: 0; background: none; cursor: pointer; aspect-ratio: 1; overflow: hidden; }
+.selector-imagen-item:hover { border-color: var(--ember); }
+.selector-imagen-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
