@@ -306,6 +306,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
   const [nombresTexto, setNombresTexto] = useState("");
   const [sorteando, setSorteando] = useState(false);
   const [errorSorteo, setErrorSorteo] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
 
   const porRama = {};
   for (const p of cuadrante.partidos) {
@@ -359,6 +360,16 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
         {errorSorteo && <p className="admin-msg admin-msg-error">{errorSorteo}</p>}
       </form>
 
+      {abierto && (
+        <input
+          type="text"
+          className="admin-busqueda"
+          placeholder="Buscar participante en este cuadrante…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      )}
+
       {abierto && ramas.map((rama) => (
         <div key={rama} className="admin-cuadrante-rama">
           <h5>{RAMA_ETIQUETA[rama]}</h5>
@@ -373,6 +384,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
                     p={p}
                     maquinasOpciones={maquinasOpciones}
                     onActualizar={(datos) => onActualizarPartido(p.id, datos)}
+                    busqueda={busqueda}
                   />
                 ))}
             </div>
@@ -383,9 +395,11 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
   );
 }
 
-function PartidoRow({ p, maquinasOpciones, onActualizar }) {
+function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda }) {
+  const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
+  const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
   return (
-    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
+    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${encontrado ? "admin-cuadro-encontrado" : ""}`}>
       <input
         defaultValue={p.jugador1 || ""}
         placeholder="Jugador 1"
