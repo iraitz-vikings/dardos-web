@@ -6,23 +6,31 @@ const VIDEO_URL = "https://res.cloudinary.com/lodi1y1k/video/upload/v1786280571/
 export default function VideoHome() {
   const { t } = useLang();
   const videoRef = useRef(null);
-  const [bloqueado, setBloqueado] = useState(false);
-  const [reproduciendo, setReproduciendo] = useState(false);
+  const [silenciado, setSilenciado] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.volume = 0.8;
+    video.volume = 0.6;
+    video.muted = false;
     const intento = video.play();
     if (intento !== undefined) {
-      intento.then(() => setReproduciendo(true)).catch(() => setBloqueado(true));
+      intento.catch(() => {
+        // El navegador bloqueó el autoplay con sonido: reintentamos silenciado
+        video.muted = true;
+        setSilenciado(true);
+        video.play();
+      });
     }
   }, []);
 
-  function reproducirManual() {
-    videoRef.current?.play();
-    setReproduciendo(true);
-    setBloqueado(false);
+  function activarSonido() {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    video.volume = 0.6;
+    video.play();
+    setSilenciado(false);
   }
 
   return (
@@ -30,17 +38,10 @@ export default function VideoHome() {
       <p className="eyebrow">{t("video.eyebrow")}</p>
       <h2 className="chronicle-title">{t("video.title")}</h2>
       <div className="video-home-embed">
-        <video
-          ref={videoRef}
-          src={VIDEO_URL}
-          playsInline
-          controls
-          preload="auto"
-          onPlay={() => setReproduciendo(true)}
-        />
-        {bloqueado && !reproduciendo && (
-          <button type="button" className="video-home-play" onClick={reproducirManual}>
-            {t("video.play")}
+        <video ref={videoRef} src={VIDEO_URL} playsInline autoPlay loop controls />
+        {silenciado && (
+          <button type="button" className="video-home-play" onClick={activarSonido}>
+            {t("video.unmute")}
           </button>
         )}
       </div>
