@@ -5,6 +5,7 @@ import Admin from "./Admin.jsx";
 import Galeria from "./Galeria.jsx";
 import TorneoPage from "./TorneoPage.jsx";
 import Historico from "./Historico.jsx";
+import { LanguageProvider } from "./i18n.jsx";
 import "./styles.css";
 
 const path = window.location.pathname;
@@ -23,6 +24,8 @@ function Pagina() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-      <Pagina />
+      <LanguageProvider>
+        <Pagina />
+      </LanguageProvider>
         </React.StrictMode>
         );
