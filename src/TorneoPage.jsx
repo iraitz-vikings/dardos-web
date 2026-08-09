@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import LiveTournament from "./LiveTournament.jsx";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -11,6 +12,7 @@ function formatFecha(iso) {
 }
 
 export default function TorneoPage({ id }) {
+  const { t } = useLang();
   const [torneo, setTorneo] = useState(null);
   const [estado, setEstado] = useState("cargando"); // cargando | ok | error
 
@@ -43,13 +45,13 @@ export default function TorneoPage({ id }) {
       <Nav />
       <main>
         <section className="torneo-pagina">
-          {estado === "cargando" && <p className="chronicle-status">Cargando el torneo…</p>}
+          {estado === "cargando" && <p className="chronicle-status">{t("torneoPage.loading")}</p>}
           {estado === "error" && (
-            <p className="chronicle-status">No hemos encontrado este torneo, o ya no es público.</p>
+            <p className="chronicle-status">{t("torneoPage.notfound")}</p>
           )}
           {estado === "ok" && torneo && (
             <>
-              <p className="eyebrow">Torneo del club</p>
+              <p className="eyebrow">{t("torneoPage.eyebrow")}</p>
               <h1 className="chronicle-title">{torneo.nombre}</h1>
               <p className="torneo-pagina-fechas">
                 {formatFecha(torneo.fechaInicio)} – {formatFecha(torneo.fechaFin)}
@@ -61,7 +63,7 @@ export default function TorneoPage({ id }) {
               {torneo.descripcion && <p className="event-description">{torneo.descripcion}</p>}
 
               <details className="torneo-pagina-qr">
-                <summary>Compartir / código QR</summary>
+                <summary>{t("torneoPage.share")}</summary>
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
                   alt="Código QR de esta página"
