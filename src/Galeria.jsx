@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const AUDIO_GALERIA_URL = "https://res.cloudinary.com/lodi1y1k/video/upload/v1786204416/Sons_of_the_Northern_Light_h7lq9t.mp3";
@@ -26,6 +27,7 @@ function analizarVideo(url) {
 }
 
 export default function Galeria() {
+  const { t } = useLang();
   const [noticias, setNoticias] = useState([]);
   const [galeriaSuelta, setGaleriaSuelta] = useState([]);
   const [lightbox, setLightbox] = useState(null);
@@ -108,23 +110,23 @@ export default function Galeria() {
 
       <main>
         <section className="gallery gallery-page">
-          <p className="eyebrow">Galería</p>
-          <h2 className="chronicle-title">Fotos y vídeos del club</h2>
+          <p className="eyebrow">{t("galeria.eyebrow")}</p>
+          <h2 className="chronicle-title">{t("galeria.title")}</h2>
 
           {audioBloqueado && !audioSonando && (
             <button type="button" className="audio-play-btn" onClick={reproducirAudio}>
-              🔊 Reproducir sonido
+              {t("galeria.playSound")}
             </button>
           )}
           {audioSonando && (
             <button type="button" className="audio-play-btn" onClick={alternarSilencio}>
-              {silenciado ? "🔇 Sonido silenciado" : "🔊 Silenciar"}
+              {silenciado ? t("galeria.muted") : t("galeria.mute")}
             </button>
           )}
 
           {galeria.length === 0 ? (
             <p className="chronicle-status">
-              Todavía no hay nada en la galería. Se irá llenando con cada noticia y foto o vídeo que se publique.
+              {t("galeria.none")}
             </p>
           ) : (
             <div className="gallery-grid">
