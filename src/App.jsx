@@ -3,6 +3,7 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import TorneoResumen from "./TorneoResumen.jsx";
 import VideoHome from "./VideoHome.jsx";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -51,11 +52,20 @@ const EMBERS = Array.from({ length: 14 }, (_, i) => ({
 }));
 
 export default function App() {
+  const { t } = useLang();
   const [noticias, setNoticias] = useState([]);
   const [estado, setEstado] = useState("cargando"); // cargando | ok | error
   const [lightbox, setLightbox] = useState(null); // { tipo: "foto"|"video", src }
   const [torneo, setTorneo] = useState(null);
   const [torneosClub, setTorneosClub] = useState([]);
+  const [patrocinadores, setPatrocinadores] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/patrocinadores`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setPatrocinadores)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const cargar = () => {
@@ -123,20 +133,17 @@ export default function App() {
           <div className="hero-emblem-wrap">
             <img src={HERO_LOGO_URL} alt="Escudo Vikings" className="hero-emblem" />
           </div>
-          <p className="eyebrow">Vikings · Club de dardos</p>
-          <h1>La incursión<br /><span>ya ha comenzado</span></h1>
-          <p className="hero-sub">
-            Noticias, fotos de eventos y crónicas del club. Un solo lugar para
-            seguir todo lo que pasa dentro y fuera de la diana.
-          </p>
+          <p className="eyebrow">{t("hero.eyebrow")}</p>
+          <h1>{t("hero.title1")}<br /><span>{t("hero.title2")}</span></h1>
+          <p className="hero-sub">{t("hero.subtitle")}</p>
         </section>
 
         <VideoHome />
 
         <section id="torneo" className="tournament">
           <div className="tournament-heading">
-            <p className="eyebrow">Próximo evento</p>
-            <h2 className="chronicle-title">Próximo torneo</h2>
+            <p className="eyebrow">{t("torneo.eyebrow")}</p>
+            <h2 className="chronicle-title">{t("torneo.title")}</h2>
           </div>
           <div className="tournament-card">
             <img
@@ -179,19 +186,19 @@ export default function App() {
         </section>
 
         <section id="torneos-en-directo" className="live-tournaments">
-          <p className="eyebrow">En directo</p>
-          <h2 className="chronicle-title">Torneos en directo</h2>
+          <p className="eyebrow">{t("live.eyebrow")}</p>
+          <h2 className="chronicle-title">{t("live.title")}</h2>
 
-          {torneosClub.filter((t) => !t.finalizado).length === 0 ? (
-            <p className="chronicle-status">Ahora mismo no hay ningún torneo en directo.</p>
+          {torneosClub.filter((tc) => !tc.finalizado).length === 0 ? (
+            <p className="chronicle-status">{t("live.none")}</p>
           ) : (
-            torneosClub.filter((t) => !t.finalizado).map((t) => <TorneoResumen key={t.id} torneo={t} />)
+            torneosClub.filter((tc) => !tc.finalizado).map((tc) => <TorneoResumen key={tc.id} torneo={tc} />)
           )}
         </section>
 
         <section id="cronica" className="chronicle">
-          <p className="eyebrow">Crónica del club</p>
-          <h2 className="chronicle-title">Últimas noticias</h2>
+          <p className="eyebrow">{t("cronica.eyebrow")}</p>
+          <h2 className="chronicle-title">{t("cronica.title")}</h2>
 
           {estado === "cargando" && (
             <p className="chronicle-status">Desenterrando las últimas noticias…</p>
@@ -262,11 +269,28 @@ export default function App() {
         </section>
 
         <section className="gallery-teaser">
-          <p className="eyebrow">Galería</p>
-          <h2 className="chronicle-title">Fotos y vídeos del club</h2>
-          <p className="hero-sub">Revive los mejores momentos del club: fotos de eventos y vídeos de partidas.</p>
-          <a href="/galeria" className="gallery-teaser-link">Ver galería completa →</a>
+          <p className="eyebrow">{t("galeria.eyebrow")}</p>
+          <h2 className="chronicle-title">{t("galeria.title")}</h2>
+          <p className="hero-sub">{t("galeria.teaser")}</p>
+          <a href="/galeria" className="gallery-teaser-link">{t("galeria.cta")}</a>
         </section>
+
+        {patrocinadores.length > 0 && (
+          <section className="patrocinadores">
+            <p className="eyebrow">{t("patrocinadores.eyebrow")}</p>
+            <div className="patrocinadores-lista">
+              {patrocinadores.map((p) =>
+                p.url ? (
+                  <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" title={p.nombre}>
+                    <img src={p.logoUrl} alt={p.nombre} />
+                  </a>
+                ) : (
+                  <img key={p.id} src={p.logoUrl} alt={p.nombre} title={p.nombre} />
+                )
+              )}
+            </div>
+          </section>
+        )}
       </main>
 
       {lightbox && (
