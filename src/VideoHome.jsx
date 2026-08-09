@@ -12,7 +12,7 @@ export default function VideoHome() {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.volume = 0.6;
+    video.volume = 0.8;
     const intento = video.play();
     if (intento !== undefined) {
       intento.then(() => setReproduciendo(true)).catch(() => setBloqueado(true));
