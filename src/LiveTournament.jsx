@@ -1,6 +1,7 @@
 import { useState } from "react";
 import BracketView from "./BracketView.jsx";
 import useResaltadoReciente from "./useResaltadoReciente.js";
+import { useLang } from "./i18n.jsx";
 
 function Partido({ p, mostrarCuadrante }) {
   const reciente = useResaltadoReciente(p.enCurso, p.actualizadoEn);
@@ -28,6 +29,7 @@ function Cuadrante({ cuadrante, busqueda }) {
 }
 
 export default function LiveTournament({ torneo }) {
+  const { t } = useLang();
   const [vista, setVista] = useState("maquina");
   const [busqueda, setBusqueda] = useState("");
   const cuadrantes = torneo.cuadrantes || [];
@@ -38,7 +40,7 @@ export default function LiveTournament({ torneo }) {
       <div className="live-tournament">
         <h3>{torneo.nombre}</h3>
         {torneo.descripcion && <p className="event-description">{torneo.descripcion}</p>}
-        <p className="chronicle-status">El cuadro todavía no está publicado.</p>
+        <p className="chronicle-status">{t("live.notPublished")}</p>
       </div>
     );
   }
@@ -57,10 +59,10 @@ export default function LiveTournament({ torneo }) {
 
       <div className="live-tournament-toggle">
         <button className={vista === "maquina" ? "active" : ""} onClick={() => setVista("maquina")}>
-          Por máquina
+          {t("live.byMachine")}
         </button>
         <button className={vista === "cuadrante" ? "active" : ""} onClick={() => setVista("cuadrante")}>
-          Por cuadrante
+          {t("live.byBracket")}
         </button>
       </div>
 
@@ -74,7 +76,7 @@ export default function LiveTournament({ torneo }) {
               return (
                 <div key={maquina} className="live-tournament-machine">
                   <h4>{maquina}</h4>
-                  {actual ? <Partido p={actual} mostrarCuadrante={cuadrantes.length > 1} /> : <p className="bracket-sin-actual">Sin enfrentamiento en curso</p>}
+                  {actual ? <Partido p={actual} mostrarCuadrante={cuadrantes.length > 1} /> : <p className="bracket-sin-actual">{t("live.noActiveMatch")}</p>}
                 </div>
               );
             })}
@@ -85,7 +87,7 @@ export default function LiveTournament({ torneo }) {
           <input
             type="text"
             className="bracket-busqueda"
-            placeholder="Buscar participante…"
+            placeholder={t("live.searchPlaceholder")}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
