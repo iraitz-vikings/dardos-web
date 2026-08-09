@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { EMBLEM_DATA_URI } from "./emblem.js";
+const ADMIN_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png";
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
 import AdminPatrocinadores from "./AdminPatrocinadores.jsx";
 import AdminSocios from "./AdminSocios.jsx";
@@ -399,7 +399,7 @@ export default function Admin() {
   if (!token) {
     return (
       <div className="admin-gate">
-        <img src={EMBLEM_DATA_URI} alt="Escudo Vikings" className="admin-emblem" />
+        <img src={ADMIN_EMBLEM_URL} alt="Escudo Vikings" className="admin-emblem" />
         <h1>Panel del club</h1>
         <form onSubmit={entrar} className="admin-login-form">
           <input
