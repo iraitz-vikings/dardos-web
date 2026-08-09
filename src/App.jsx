@@ -59,6 +59,7 @@ export default function App() {
   const [torneo, setTorneo] = useState(null);
   const [torneosClub, setTorneosClub] = useState([]);
   const [patrocinadores, setPatrocinadores] = useState([]);
+  const [mensajeAnclado, setMensajeAnclado] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/api/patrocinadores`)
@@ -66,7 +67,14 @@ export default function App() {
       .then(setPatrocinadores)
       .catch(() => {});
   }, []);
-
+  
+  useEffect(() => {
+    fetch(`${API_URL}/api/mensaje-anclado`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMensajeAnclado)
+      .catch(() => {});
+  }, []);
+  
   useEffect(() => {
     const cargar = () => {
       fetch(`${API_URL}/api/torneos-club`)
@@ -138,65 +146,15 @@ export default function App() {
           <p className="hero-sub">{t("hero.subtitle")}</p>
         </section>
 
+        {mensajeAnclado && (
+          <div className="mensaje-anclado">
+            <p>{mensajeAnclado.texto}</p>
+          </div>
+        )}
+    
         <VideoHome />
 
-        <section id="torneo" className="tournament">
-          <div className="tournament-heading">
-            <p className="eyebrow">{t("torneo.eyebrow")}</p>
-            <h2 className="chronicle-title">{t("torneo.title")}</h2>
-          </div>
-          <div className="tournament-card">
-            <img
-              src={torneo?.insigniaUrl || TOURNAMENT_BADGE_URL}
-              alt={torneo ? `Insignia ${torneo.nombre}` : "Insignia del torneo"}
-              className="tournament-badge"
-            />
-            <h3>{torneo ? torneo.nombre : "II Open Villa Errenteria"}</h3>
-            {torneo?.cartelUrl && (
-              <img
-                src={torneo.cartelUrl}
-                alt={`Cartel ${torneo.nombre}`}
-                className="tournament-poster"
-                onClick={() => setLightbox({ tipo: "foto", src: torneo.cartelUrl })}
-              />
-            )}
-            {fechas ? (
-              <div className="event-dates">
-                <span>{fechas.diaIni}</span>
-                <em>—</em>
-                <span>{fechas.diaFin}</span>
-                <small>{fechas.mesAnio}</small>
-              </div>
-            ) : (
-              <div className="event-dates">
-                <span>10</span>
-                <em>—</em>
-                <span>11</span>
-                <small>Octubre 2026</small>
-              </div>
-            )}
-            {torneo?.descripcion && (
-              <p className="event-description">{torneo.descripcion}</p>
-            )}
-            <p className="event-note">
-              Vikings is coming. Próximamente más información: inscripciones,
-              horarios y categorías.
-            </p>
-          </div>
-        </section>
-
-        <section id="torneos-en-directo" className="live-tournaments">
-          <p className="eyebrow">{t("live.eyebrow")}</p>
-          <h2 className="chronicle-title">{t("live.title")}</h2>
-
-          {torneosClub.filter((tc) => !tc.finalizado).length === 0 ? (
-            <p className="chronicle-status">{t("live.none")}</p>
-          ) : (
-            torneosClub.filter((tc) => !tc.finalizado).map((tc) => <TorneoResumen key={tc.id} torneo={tc} />)
-          )}
-        </section>
-
-        <section id="cronica" className="chronicle">
+         <section id="cronica" className="chronicle">
           <p className="eyebrow">{t("cronica.eyebrow")}</p>
           <h2 className="chronicle-title">{t("cronica.title")}</h2>
 
@@ -267,6 +225,64 @@ export default function App() {
             </ol>
           )}
         </section>
+        
+        <section id="torneo" className="tournament">
+          <div className="tournament-heading">
+            <p className="eyebrow">{t("torneo.eyebrow")}</p>
+            <h2 className="chronicle-title">{t("torneo.title")}</h2>
+          </div>
+          <div className="tournament-card">
+            <img
+              src={torneo?.insigniaUrl || TOURNAMENT_BADGE_URL}
+              alt={torneo ? `Insignia ${torneo.nombre}` : "Insignia del torneo"}
+              className="tournament-badge"
+            />
+            <h3>{torneo ? torneo.nombre : "II Open Villa Errenteria"}</h3>
+            {torneo?.cartelUrl && (
+              <img
+                src={torneo.cartelUrl}
+                alt={`Cartel ${torneo.nombre}`}
+                className="tournament-poster"
+                onClick={() => setLightbox({ tipo: "foto", src: torneo.cartelUrl })}
+              />
+            )}
+            {fechas ? (
+              <div className="event-dates">
+                <span>{fechas.diaIni}</span>
+                <em>—</em>
+                <span>{fechas.diaFin}</span>
+                <small>{fechas.mesAnio}</small>
+              </div>
+            ) : (
+              <div className="event-dates">
+                <span>10</span>
+                <em>—</em>
+                <span>11</span>
+                <small>Octubre 2026</small>
+              </div>
+            )}
+            {torneo?.descripcion && (
+              <p className="event-description">{torneo.descripcion}</p>
+            )}
+            <p className="event-note">
+              Vikings is coming. Próximamente más información: inscripciones,
+              horarios y categorías.
+            </p>
+          </div>
+        </section>
+
+        <section id="torneos-en-directo" className="live-tournaments">
+          <p className="eyebrow">{t("live.eyebrow")}</p>
+          <h2 className="chronicle-title">{t("live.title")}</h2>
+
+          {torneosClub.filter((tc) => !tc.finalizado).length === 0 ? (
+            <p className="chronicle-status">{t("live.none")}</p>
+          ) : (
+            torneosClub.filter((tc) => !tc.finalizado).map((tc) => <TorneoResumen key={tc.id} torneo={tc} />)
+          )}
+        </section>
+
+       
 
         <section className="gallery-teaser">
           <p className="eyebrow">{t("galeria.eyebrow")}</p>
