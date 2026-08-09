@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
+import AdminPatrocinadores from "./AdminPatrocinadores.jsx";
 import SelectorImagen from "./SelectorImagen.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
@@ -418,6 +419,7 @@ export default function Admin() {
     { id: "torneos-club", etiqueta: "Torneos del club" },
     { id: "galeria", etiqueta: "Galería" },
     { id: "torneo-destacado", etiqueta: "Torneo destacado" },
+    { id: "patrocinadores", etiqueta: "Patrocinadores" },
   ];
 
   return (
@@ -590,6 +592,7 @@ export default function Admin() {
       )}
 
       {pestana === "torneos-club" && <AdminTorneosClub token={token} salir={salir} />}
+      {pestana === "patrocinadores" && <AdminPatrocinadores token={token} salir={salir} />}
     </div>
   );
 }
