@@ -72,7 +72,7 @@ export default function VideoHome() {
         <div ref={contenedorRef} />
         {bloqueado && !reproduciendo && (
           <button type="button" className="video-home-play" onClick={reproducirManual}>
-            ▶ Reproducir vídeo
+            {t("video.play")}
           </button>
         )}
       </div>
