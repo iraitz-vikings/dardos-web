@@ -13,6 +13,7 @@ const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de
 
 export default function AdminTorneosClub({ token, salir }) {
   const [torneos, setTorneos] = useState([]);
+  const [jugadores, setJugadores] = useState([]);
   const [abiertoId, setAbiertoId] = useState(null);
   const [mensaje, setMensaje] = useState(null);
 
@@ -33,8 +34,16 @@ export default function AdminTorneosClub({ token, salir }) {
       .catch(() => {});
   };
 
+  const cargarJugadores = () => {
+    fetch(`${API_URL}/api/jugadores`, { headers: { "x-admin-token": token } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setJugadores)
+      .catch(() => {});
+  };
+
   useEffect(() => {
     cargarTorneos();
+    cargarJugadores();
   }, []);
 
   async function crearTorneo(e) {
@@ -146,13 +155,60 @@ export default function AdminTorneosClub({ token, salir }) {
     cargarTorneos();
   }
 
+  async function crearParticipante(cuadranteId, datos) {
+    const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/participantes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo añadir el participante.";
+    }
+    return null;
+  }
+
+  async function borrarParticipante(participanteId) {
+    await fetch(`${API_URL}/api/torneos-club/participantes/${participanteId}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    cargarTorneos();
+  }
+
+  async function sortearParejas(cuadranteId, jugadorIds) {
+    const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sortear-parejas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ jugadorIds }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo sortear las parejas.";
+    }
+    return null;
+  }
+
+  async function crearJugadorRapido(nombreJugador) {
+    const res = await fetch(`${API_URL}/api/jugadores`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ nombre: nombreJugador }),
+    });
+    cargarJugadores();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "No se pudo crear el jugador." };
+    }
+    return { jugador: await res.json() };
+  }
+
   return (
     <section className="admin-form">
       <h2>Torneos del club (cuadros)</h2>
       <p className="admin-hint">
         Torneos organizados por el club, con cuadrantes generados automáticamente (eliminación directa o doble).
         Marca "Público" para que aparezca en la web en "Torneos en directo"; "Privado" para que solo se vea en la
-        sección de socios (cuando exista el login).
+        sección de socios.
       </p>
 
       <form onSubmit={crearTorneo} className="admin-form" style={{ marginBottom: "1.5rem" }}>
@@ -245,11 +301,16 @@ export default function AdminTorneosClub({ token, salir }) {
             {abiertoId === t.id && (
               <TorneoDetalle
                 torneo={t}
+                jugadores={jugadores}
                 onCrearCuadrante={(datos) => crearCuadrante(t.id, datos)}
                 onBorrarCuadrante={borrarCuadrante}
                 onActualizarPartido={actualizarPartido}
                 onSortear={sortearCuadrante}
                 onReiniciar={reiniciarCuadrante}
+                onCrearParticipante={crearParticipante}
+                onBorrarParticipante={borrarParticipante}
+                onSortearParejas={sortearParejas}
+                onCrearJugadorRapido={crearJugadorRapido}
               />
             )}
           </li>
@@ -259,7 +320,10 @@ export default function AdminTorneosClub({ token, salir }) {
   );
 }
 
-function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear, onReiniciar }) {
+function TorneoDetalle({
+  torneo, jugadores, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear, onReiniciar,
+  onCrearParticipante, onBorrarParticipante, onSortearParejas, onCrearJugadorRapido,
+}) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
   const [creando, setCreando] = useState(false);
@@ -301,18 +365,143 @@ function TorneoDetalle({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualiz
         <CuadranteDetalle
           key={c.id}
           cuadrante={c}
+          jugadores={jugadores}
           numeroMaquinas={torneo.numeroMaquinas}
           onBorrar={() => onBorrarCuadrante(c.id)}
           onActualizarPartido={onActualizarPartido}
           onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
           onReiniciar={() => onReiniciar(c.id)}
+          onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
+          onBorrarParticipante={onBorrarParticipante}
+          onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
+          onCrearJugadorRapido={onCrearJugadorRapido}
         />
       ))}
     </div>
   );
 }
 
-function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar }) {
+function ParticipantesPanel({ cuadrante, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas, onCrearJugadorRapido }) {
+  const [jugador1Id, setJugador1Id] = useState("");
+  const [jugador2Id, setJugador2Id] = useState("");
+  const [nombreRapido, setNombreRapido] = useState("");
+  const [seleccionados, setSeleccionados] = useState([]);
+  const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  const participantes = cuadrante.participantes || [];
+
+  async function anadir(e) {
+    e.preventDefault();
+    if (!jugador1Id) return;
+    setEnviando(true);
+    setMensaje(null);
+    const error = await onCrearParticipante({ jugador1Id, jugador2Id: jugador2Id || undefined });
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else {
+      setMensaje({ tipo: "ok", texto: "Participante añadido." });
+      setJugador1Id("");
+      setJugador2Id("");
+    }
+    setEnviando(false);
+  }
+
+  async function crearRapido() {
+    if (!nombreRapido.trim()) return;
+    const { jugador, error } = await onCrearJugadorRapido(nombreRapido.trim());
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else {
+      setNombreRapido("");
+      setJugador1Id(jugador.id);
+      setMensaje({ tipo: "ok", texto: `Jugador "${jugador.nombre}" creado y seleccionado.` });
+    }
+  }
+
+  function toggleSeleccionado(id) {
+    setSeleccionados((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function sortear() {
+    setEnviando(true);
+    setMensaje(null);
+    const error = await onSortearParejas(seleccionados);
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else {
+      setMensaje({ tipo: "ok", texto: "Parejas sorteadas." });
+      setSeleccionados([]);
+    }
+    setEnviando(false);
+  }
+
+  return (
+    <div className="admin-cuadrante-participantes" style={{ marginBottom: "1rem" }}>
+      <h5>Participantes apuntados ({participantes.length})</h5>
+      <p className="admin-hint">
+        Opcional: si apuntas aquí a jugadores reales (individuales o en pareja), el sorteo de abajo los usará
+        automáticamente si dejas la lista de nombres vacía — así queda registrado quién ha jugado cada uno, para
+        el histórico. Si prefieres seguir escribiendo los nombres a mano como siempre, no hace falta tocar esto.
+      </p>
+      {participantes.length === 0 && <p className="chronicle-status">Nadie apuntado todavía con jugadores reales.</p>}
+      <ul>
+        {participantes.map((p) => (
+          <li key={p.id} className="admin-list-item">
+            <span>{p.etiqueta}</span>
+            <button type="button" className="admin-link-btn" onClick={() => onBorrarParticipante(p.id)}>Quitar</button>
+          </li>
+        ))}
+      </ul>
+
+      <form onSubmit={anadir} className="admin-inline-form">
+        <label>
+          Jugador / pareja
+          <select value={jugador1Id} onChange={(e) => setJugador1Id(e.target.value)}>
+            <option value="">Elige un jugador…</option>
+            {jugadores.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
+          </select>
+        </label>
+        <label>
+          Compañero (opcional, para pareja ya formada)
+          <select value={jugador2Id} onChange={(e) => setJugador2Id(e.target.value)}>
+            <option value="">— Individual —</option>
+            {jugadores.filter((j) => j.id !== jugador1Id).map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
+          </select>
+        </label>
+        <button type="submit" disabled={enviando || !jugador1Id}>Añadir</button>
+      </form>
+
+      <div className="admin-inline-form">
+        <label>
+          Jugador nuevo (invitado, sin cuenta)
+          <input value={nombreRapido} onChange={(e) => setNombreRapido(e.target.value)} placeholder="Nombre" />
+        </label>
+        <button type="button" className="admin-link-btn" onClick={crearRapido}>+ Crear y seleccionar</button>
+      </div>
+
+      <details style={{ marginTop: ".8rem" }}>
+        <summary style={{ cursor: "pointer" }}>Sortear parejas ciegas</summary>
+        <p className="admin-hint">Marca un número par de jugadores; se emparejarán al azar.</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: ".6rem", marginBottom: ".6rem" }}>
+          {jugadores.map((j) => (
+            <label key={j.id} style={{ display: "flex", alignItems: "center", gap: ".3rem" }}>
+              <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccionado(j.id)} style={{ width: "auto" }} />
+              {j.nombre}
+            </label>
+          ))}
+        </div>
+        <button type="button" disabled={enviando || seleccionados.length < 2 || seleccionados.length % 2 !== 0} onClick={sortear}>
+          Sortear {seleccionados.length} jugadores en parejas
+        </button>
+      </details>
+
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
+function CuadranteDetalle({
+  cuadrante, jugadores, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar,
+  onCrearParticipante, onBorrarParticipante, onSortearParejas, onCrearJugadorRapido,
+}) {
   const [abierto, setAbierto] = useState(false);
   const [nombresTexto, setNombresTexto] = useState("");
   const [semillasTexto, setSemillasTexto] = useState("");
@@ -335,6 +524,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
   const nombres = nombresTexto.split("\n").map((n) => n.trim()).filter(Boolean);
   const semillas = semillasTexto.split("\n").map((n) => n.trim()).filter(Boolean);
   const semillasNoValidas = semillas.filter((s) => !nombres.includes(s));
+  const participantesApuntados = cuadrante.participantes || [];
 
   async function hacerSorteo(e) {
     e.preventDefault();
@@ -362,9 +552,18 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
         </div>
       </div>
 
+      <ParticipantesPanel
+        cuadrante={cuadrante}
+        jugadores={jugadores}
+        onCrearParticipante={onCrearParticipante}
+        onBorrarParticipante={onBorrarParticipante}
+        onSortearParejas={onSortearParejas}
+        onCrearJugadorRapido={onCrearJugadorRapido}
+      />
+
       <form onSubmit={hacerSorteo} className="admin-sorteo-form">
         <label>
-          Lista de participantes (un nombre por línea, hasta {cuadrante.tamano}; si hay menos, el resto pasan directos a la ronda 2)
+          Lista de participantes escritos a mano (opcional si ya has apuntado participantes arriba; un nombre por línea, hasta {cuadrante.tamano})
           <textarea
             rows={4}
             value={nombresTexto}
@@ -386,8 +585,12 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
             </span>
           )}
         </label>
-        <button type="submit" disabled={sorteando || nombres.length === 0}>
-          {sorteando ? "Sorteando…" : `Sortear cuadro (${nombres.length} participante${nombres.length === 1 ? "" : "s"})`}
+        <button type="submit" disabled={sorteando || (nombres.length === 0 && participantesApuntados.length === 0)}>
+          {sorteando
+            ? "Sorteando…"
+            : nombres.length > 0
+              ? `Sortear cuadro (${nombres.length} participante${nombres.length === 1 ? "" : "s"} escritos)`
+              : `Sortear cuadro (${participantesApuntados.length} participante${participantesApuntados.length === 1 ? "" : "s"} apuntados)`}
         </button>
         {errorSorteo && <p className="admin-msg admin-msg-error">{errorSorteo}</p>}
       </form>
