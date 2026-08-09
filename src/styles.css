@@ -664,11 +664,12 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   background: #000;
   overflow: hidden;
 }
-.video-home-embed > div:first-child, .video-home-embed iframe {
+.video-home-embed > div:first-child, .video-home-embed iframe, .video-home-embed video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 .video-home-play {
   position: absolute;
