@@ -294,7 +294,7 @@ export default function AdminTorneosClub({ token, salir }) {
                 <button type="button" className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === t.id ? null : t.id)}>
                   {abiertoId === t.id ? "Cerrar" : "Ver cuadrantes"}
                 </button>
-
+                <a
                   className="admin-link-btn"
                   href={`${window.location.origin}/torneo/${t.id}`}
                   target="_blank"
