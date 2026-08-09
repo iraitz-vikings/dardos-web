@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { useLang } from "./i18n.jsx";
+import ZonaSocio from "./ZonaSocio.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -92,11 +93,7 @@ export default function Socios() {
           <h2 className="chronicle-title">{t("socios.title")}</h2>
 
           {usuario ? (
-            <div className="admin-form" style={{ maxWidth: 420, margin: "0 auto" }}>
-              <p>{t("socios.bienvenida").replace("{nombre}", usuario.nombre)}</p>
-              <p className="admin-hint">{t("socios.portalProximamente")}</p>
-              <button type="button" onClick={salir}>{t("socios.salir")}</button>
-            </div>
+            <ZonaSocio usuario={usuario} salir={salir} />
           ) : (
             <div className="admin-form" style={{ maxWidth: 420, margin: "0 auto" }}>
               <div className="admin-tabs" style={{ marginBottom: "1.2rem" }}>
