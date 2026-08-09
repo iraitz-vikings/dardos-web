@@ -71,7 +71,7 @@ const dic = {
     "torneoPage.notfound": "No hemos encontrado este torneo, o ya no es público.",
     "torneoPage.share": "Compartir / código QR",
 
-    "patrocinadores.eyebrow": "Con la ayuda de",
+    "patrocinadores.eyebrow": "Patrocinador oficial",
 
     "footer.copy": "Vikings Darts Club",
   },
@@ -145,7 +145,7 @@ const dic = {
     "torneoPage.notfound": "Ez dugu txapelketa hau aurkitu, edo jada ez da publikoa.",
     "torneoPage.share": "Partekatu / QR kodea",
 
-    "patrocinadores.eyebrow": "Hauen laguntzarekin",
+    "patrocinadores.eyebrow": "Babesle ofiziala",
 
     "footer.copy": "Vikings Darts Club",
   },
