@@ -1,36 +1,67 @@
 import { useEffect, useRef, useState } from "react";
 import { useLang } from "./i18n.jsx";
 
-const VIDEO_URL = "https://res.cloudinary.com/lodi1y1k/video/upload/v1786280571/VID-20260809-WA0007_goixms.mp4";
+const VIDEO_ID = "RV6ZBv9Y8wo";
+
+let apiCargandose = null;
+function cargarYoutubeApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (apiCargandose) return apiCargandose;
+  apiCargandose = new Promise((resolve) => {
+    const anterior = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (anterior) anterior();
+      resolve();
+    };
+    const script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(script);
+  });
+  return apiCargandose;
+}
 
 export default function VideoHome() {
   const { t } = useLang();
-  const videoRef = useRef(null);
-  const [silenciado, setSilenciado] = useState(false);
+  const contenedorRef = useRef(null);
+  const playerRef = useRef(null);
+  const [bloqueado, setBloqueado] = useState(false);
+  const [reproduciendo, setReproduciendo] = useState(false);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.volume = 0.6;
-    video.muted = false;
-    const intento = video.play();
-    if (intento !== undefined) {
-      intento.catch(() => {
-        // El navegador bloqueó el autoplay con sonido: reintentamos silenciado
-        video.muted = true;
-        setSilenciado(true);
-        video.play();
+    let cancelado = false;
+
+    cargarYoutubeApi().then(() => {
+      if (cancelado || !contenedorRef.current) return;
+      playerRef.current = new window.YT.Player(contenedorRef.current, {
+        videoId: VIDEO_ID,
+        playerVars: { autoplay: 1, rel: 0, playsinline: 1 },
+        events: {
+          onReady: (e) => {
+            e.target.setVolume(60);
+            setTimeout(() => {
+              if (cancelado || !playerRef.current) return;
+              const estado = playerRef.current.getPlayerState();
+              if (estado === 1) setReproduciendo(true);
+              else setBloqueado(true);
+            }, 1200);
+          },
+          onStateChange: (e) => {
+            if (e.data === 1) {
+              setReproduciendo(true);
+              setBloqueado(false);
+            }
+          },
+        },
       });
-    }
+    });
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
-  function activarSonido() {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = false;
-    video.volume = 0.6;
-    video.play();
-    setSilenciado(false);
+  function reproducirManual() {
+    playerRef.current?.playVideo();
   }
 
   return (
@@ -38,10 +69,10 @@ export default function VideoHome() {
       <p className="eyebrow">{t("video.eyebrow")}</p>
       <h2 className="chronicle-title">{t("video.title")}</h2>
       <div className="video-home-embed">
-        <video ref={videoRef} src={VIDEO_URL} playsInline autoPlay loop controls />
-        {silenciado && (
-          <button type="button" className="video-home-play" onClick={activarSonido}>
-            {t("video.unmute")}
+        <div ref={contenedorRef} />
+        {bloqueado && !reproduciendo && (
+          <button type="button" className="video-home-play" onClick={reproducirManual}>
+            {t("video.play")}
           </button>
         )}
       </div>
