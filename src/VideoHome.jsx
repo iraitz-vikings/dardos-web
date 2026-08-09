@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 const VIDEO_ID = "jxptIpCYAJA";
 
@@ -20,6 +21,7 @@ function cargarYoutubeApi() {
 }
 
 export default function VideoHome() {
+  const { t } = useLang();
   const contenedorRef = useRef(null);
   const playerRef = useRef(null);
   const [bloqueado, setBloqueado] = useState(false);
@@ -64,8 +66,8 @@ export default function VideoHome() {
 
   return (
     <section id="video" className="video-home">
-      <p className="eyebrow">Vikings TV</p>
-      <h2 className="chronicle-title">Con esto empieza todo</h2>
+      <p className="eyebrow">{t("video.eyebrow")}</p>
+      <h2 className="chronicle-title">{t("video.title")}</h2>
       <div className="video-home-embed">
         <div ref={contenedorRef} />
         {bloqueado && !reproduciendo && (
