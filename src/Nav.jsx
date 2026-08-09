@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
+const NAV_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png";
 import LiveTicker from "./LiveTicker.jsx";
 import { useLang } from "./i18n.jsx";
 
@@ -11,7 +12,7 @@ export default function Nav() {
     <>
       <header className="nav">
         <a className="nav-brand" href="/#inicio" onClick={() => setMenuOpen(false)}>
-          <img src={EMBLEM_DATA_URI} alt="Escudo Vikings" className="nav-emblem" />
+          <img src={NAV_EMBLEM_URL} alt="Escudo Vikings" className="nav-emblem" />
           <span>Vikings <em>Darts Club</em></span>
         </a>
 
