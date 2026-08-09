@@ -37,6 +37,7 @@ const dic = {
     "video.eyebrow": "Vikings TV",
     "video.title": "Con esto empieza todo",
     "video.play": "▶ Reproducir vídeo",
+    "video.unmute": "🔊 Activar sonido",
 
     "live.eyebrow": "En directo",
     "live.title": "Torneos en directo",
@@ -110,6 +111,7 @@ const dic = {
     "video.eyebrow": "Vikings TV",
     "video.title": "Honela hasten da dena",
     "video.play": "▶ Bideoa erreproduzitu",
+    "video.unmute": "🔊 Soinua aktibatu",
 
     "live.eyebrow": "Zuzenean",
     "live.title": "Zuzeneko txapelketak",
