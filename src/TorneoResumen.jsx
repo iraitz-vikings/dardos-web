@@ -1,4 +1,5 @@
 import useResaltadoReciente from "./useResaltadoReciente.js";
+import { useLang } from "./i18n.jsx";
 
 function Partido({ p, mostrarCuadrante }) {
   const reciente = useResaltadoReciente(p.enCurso, p.actualizadoEn);
@@ -16,6 +17,7 @@ function Partido({ p, mostrarCuadrante }) {
 }
 
 export default function TorneoResumen({ torneo }) {
+  const { t } = useLang();
   const cuadrantes = torneo.cuadrantes || [];
   const partidos = cuadrantes.flatMap((c) => c.partidos.map((p) => ({ ...p, cuadranteNombre: c.nombre })));
   const porMaquina = {};
@@ -32,7 +34,7 @@ export default function TorneoResumen({ torneo }) {
       {torneo.descripcion && <p className="event-description">{torneo.descripcion}</p>}
 
       {maquinas.length === 0 ? (
-        <p className="chronicle-status">El cuadro todavía no está publicado.</p>
+        <p className="chronicle-status">{t("live.notPublished")}</p>
       ) : (
         <div className="live-tournament-machines">
           {maquinas.map((maquina) => {
@@ -40,14 +42,14 @@ export default function TorneoResumen({ torneo }) {
             return (
               <div key={maquina} className="live-tournament-machine">
                 <h4>{maquina}</h4>
-                {actual ? <Partido p={actual} mostrarCuadrante={cuadrantes.length > 1} /> : <p className="bracket-sin-actual">Sin enfrentamiento en curso</p>}
+                {actual ? <Partido p={actual} mostrarCuadrante={cuadrantes.length > 1} /> : <p className="bracket-sin-actual">{t("live.noActiveMatch")}</p>}
               </div>
             );
           })}
         </div>
       )}
 
-      <a href={`/torneo/${torneo.id}`} className="gallery-teaser-link">Ver torneo completo →</a>
+      <a href={`/torneo/${torneo.id}`} className="gallery-teaser-link">{t("live.viewFull")}</a>
     </div>
   );
 }
