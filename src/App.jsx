@@ -279,15 +279,15 @@ export default function App() {
           <section className="patrocinadores">
             <p className="eyebrow">{t("patrocinadores.eyebrow")}</p>
             <div className="patrocinadores-lista">
-              {patrocinadores.map((p) =>
-                p.url ? (
-                  <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer" title={p.nombre}>
-                    <img src={p.logoUrl} alt={p.nombre} />
-                  </a>
-                ) : (
-                  <img key={p.id} src={p.logoUrl} alt={p.nombre} title={p.nombre} />
-                )
-              )}
+              {patrocinadores.map((p) => (
+                  <img
+                  key={p.id}
+                  src={p.logoUrl}
+                  alt={p.nombre}
+                  title={p.nombre}
+                  onClick={() => setLightbox({ tipo: "foto", src: p.logoUrl })}
+                  />
+              ))}
             </div>
           </section>
         )}
