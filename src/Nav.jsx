@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
 import LiveTicker from "./LiveTicker.jsx";
+import { useLang } from "./i18n.jsx";
 
 export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { lang, setLang, t } = useLang();
 
   return (
     <>
@@ -25,12 +27,17 @@ export default function Nav() {
         </button>
 
         <nav className={`nav-links ${menuOpen ? "nav-links-open" : ""}`}>
-          <a href="/#cronica" onClick={() => setMenuOpen(false)}>Crónica</a>
-          <a href="/galeria" onClick={() => setMenuOpen(false)}>Galería</a>
-          <a href="/#torneos-en-directo" onClick={() => setMenuOpen(false)}>Torneos en directo</a>
-          <a href="/historico" onClick={() => setMenuOpen(false)}>Histórico</a>
-          <a href="/#torneo" onClick={() => setMenuOpen(false)}>Próximo torneo</a>
-          <a href="/#contacto" onClick={() => setMenuOpen(false)}>Contacto</a>
+          <a href="/#cronica" onClick={() => setMenuOpen(false)}>{t("nav.cronica")}</a>
+          <a href="/galeria" onClick={() => setMenuOpen(false)}>{t("nav.galeria")}</a>
+          <a href="/#torneos-en-directo" onClick={() => setMenuOpen(false)}>{t("nav.torneosDirecto")}</a>
+          <a href="/historico" onClick={() => setMenuOpen(false)}>{t("nav.historico")}</a>
+          <a href="/#torneo" onClick={() => setMenuOpen(false)}>{t("nav.proximoTorneo")}</a>
+          <a href="/#contacto" onClick={() => setMenuOpen(false)}>{t("nav.contacto")}</a>
+          <div className="nav-lang">
+            <button type="button" className={lang === "es" ? "nav-lang-activo" : ""} onClick={() => setLang("es")}>ES</button>
+            <span>/</span>
+            <button type="button" className={lang === "eu" ? "nav-lang-activo" : ""} onClick={() => setLang("eu")}>EU</button>
+          </div>
           <a
             href="https://www.facebook.com/Vikingsdartsclub/"
             target="_blank"
