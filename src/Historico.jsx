@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -10,6 +11,7 @@ function formatFecha(iso) {
 }
 
 export default function Historico() {
+  const { t } = useLang();
   const [torneos, setTorneos] = useState([]);
   const [estado, setEstado] = useState("cargando");
 
@@ -17,7 +19,7 @@ export default function Historico() {
     fetch(`${API_URL}/api/torneos-club`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
-        setTorneos(data.filter((t) => t.finalizado));
+        setTorneos(data.filter((tc) => tc.finalizado));
         setEstado("ok");
       })
       .catch(() => setEstado("error"));
@@ -28,20 +30,20 @@ export default function Historico() {
       <Nav />
       <main>
         <section className="gallery gallery-page">
-          <p className="eyebrow">Histórico</p>
-          <h2 className="chronicle-title">Torneos finalizados</h2>
+          <p className="eyebrow">{t("historico.eyebrow")}</p>
+          <h2 className="chronicle-title">{t("historico.title")}</h2>
 
-          {estado === "cargando" && <p className="chronicle-status">Cargando…</p>}
+          {estado === "cargando" && <p className="chronicle-status">{t("historico.loading")}</p>}
           {estado === "ok" && torneos.length === 0 && (
-            <p className="chronicle-status">Todavía no hay torneos finalizados.</p>
+            <p className="chronicle-status">{t("historico.none")}</p>
           )}
           {estado === "ok" && torneos.length > 0 && (
             <ul className="historico-lista">
-              {torneos.map((t) => (
-                <li key={t.id} className="historico-item">
-                  <a href={`/torneo/${t.id}`}>
-                    <strong>{t.nombre}</strong>
-                    <time>{formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)}</time>
+              {torneos.map((tc) => (
+                <li key={tc.id} className="historico-item">
+                  <a href={`/torneo/${tc.id}`}>
+                    <strong>{tc.nombre}</strong>
+                    <time>{formatFecha(tc.fechaInicio)} – {formatFecha(tc.fechaFin)}</time>
                   </a>
                 </li>
               ))}
