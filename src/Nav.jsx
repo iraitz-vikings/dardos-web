@@ -31,6 +31,7 @@ export default function Nav() {
           <a href="/galeria" onClick={() => setMenuOpen(false)}>{t("nav.galeria")}</a>
           <a href="/#torneos-en-directo" onClick={() => setMenuOpen(false)}>{t("nav.torneosDirecto")}</a>
           <a href="/historico" onClick={() => setMenuOpen(false)}>{t("nav.historico")}</a>
+          <a href="/socios" onClick={() => setMenuOpen(false)}>{t("nav.socios")}</a>
           <a href="/#torneo" onClick={() => setMenuOpen(false)}>{t("nav.proximoTorneo")}</a>
           <a href="/#contacto" onClick={() => setMenuOpen(false)}>{t("nav.contacto")}</a>
           <div className="nav-lang">
