@@ -5,6 +5,7 @@ import AdminPatrocinadores from "./AdminPatrocinadores.jsx";
 import AdminSocios from "./AdminSocios.jsx";
 import AdminMensajeAnclado from "./AdminMensajeAnclado.jsx";
 import SelectorImagen from "./SelectorImagen.jsx";
+import AdminJugadores from "./AdminJugadores.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -424,6 +425,7 @@ export default function Admin() {
     { id: "patrocinadores", etiqueta: "Patrocinadores" },
     { id: "socios", etiqueta: "Socios" },
     { id: "mensaje", etiqueta: "Mensaje" },
+    { id: "jugadores", etiqueta: "Jugadores" },
   ];
 
   return (
@@ -599,6 +601,7 @@ export default function Admin() {
       {pestana === "patrocinadores" && <AdminPatrocinadores token={token} salir={salir} />}
       {pestana === "socios" && <AdminSocios token={token} salir={salir} />}
       {pestana === "mensaje" && <AdminMensajeAnclado token={token} salir={salir} />}
+      {pestana === "jugadores" && <AdminJugadores token={token} salir={salir} />}
     </div>
   );
 }
