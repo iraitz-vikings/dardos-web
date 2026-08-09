@@ -17,6 +17,9 @@ const dic = {
     "torneo.eyebrow": "Próximo evento",
     "torneo.title": "Próximo torneo",
 
+    "video.eyebrow": "Vikings TV",
+    "video.title": "Con esto empieza todo",
+
     "live.eyebrow": "En directo",
     "live.title": "Torneos en directo",
     "live.none": "Ahora mismo no hay ningún torneo en directo.",
@@ -35,6 +38,9 @@ const dic = {
     "galeria.teaser": "Revive los mejores momentos del club: fotos de eventos y vídeos de partidas.",
     "galeria.cta": "Ver galería completa →",
     "galeria.none": "Todavía no hay nada en la galería. Se irá llenando con cada noticia y foto o vídeo que se publique.",
+    "galeria.playSound": "🔊 Reproducir sonido",
+    "galeria.mute": "🔊 Silenciar",
+    "galeria.muted": "🔇 Sonido silenciado",
 
     "historico.eyebrow": "Histórico",
     "historico.title": "Torneos finalizados",
@@ -66,6 +72,9 @@ const dic = {
     "torneo.eyebrow": "Hurrengo ekitaldia",
     "torneo.title": "Hurrengo txapelketa",
 
+    "video.eyebrow": "Vikings TV",
+    "video.title": "Honela hasten da dena",
+
     "live.eyebrow": "Zuzenean",
     "live.title": "Zuzeneko txapelketak",
     "live.none": "Une honetan ez dago zuzeneko txapelketarik.",
@@ -84,6 +93,9 @@ const dic = {
     "galeria.teaser": "Berrikusi klubaren momenturik onenak: ekitaldien argazkiak eta partiden bideoak.",
     "galeria.cta": "Galeria osoa ikusi →",
     "galeria.none": "Oraindik ez dago ezer galerian. Argitaratzen den albiste, argazki edo bideo bakoitzarekin beteko da.",
+    "galeria.playSound": "🔊 Soinua erreproduzitu",
+    "galeria.mute": "🔊 Isilarazi",
+    "galeria.muted": "🔇 Soinua isilarazita",
 
     "historico.eyebrow": "Historikoa",
     "historico.title": "Amaitutako txapelketak",
