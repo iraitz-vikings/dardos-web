@@ -53,6 +53,8 @@ export default function Admin() {
   const [torneoCartel, setTorneoCartel] = useState("");
   const [guardandoTorneo, setGuardandoTorneo] = useState(false);
   const [mensajeTorneo, setMensajeTorneo] = useState(null);
+  const [mensaje, setMensaje] = useState(null);
+  const [editandoNoticiaId, setEditandoNoticiaId] = useState(null);
 
   const cargarNoticias = () => {
     fetch(`${API_URL}/api/noticias`)
@@ -335,55 +337,69 @@ export default function Admin() {
     }
   }
 
-  async function publicar(e) {
-    e.preventDefault();
-    setEnviando(true);
-    setMensaje(null);
-    try {
-      const res = await fetch(`${API_URL}/api/noticias`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-token": token,
-        },
-        body: JSON.stringify({
-          titulo,
-          contenido,
-          fotos: fotos
-            .split(",")
-            .map((f) => f.trim())
-            .filter(Boolean),
-          videos: videos
-            .split(",")
-            .map((v) => v.trim())
-            .filter(Boolean),
-        }),
-      });
+ async function publicar(e) {
+  e.preventDefault();
+  setEnviando(true);
+  setMensaje(null);
+  const editando = !!editandoNoticiaId;
+  try {
+    const res = await fetch(`${API_URL}/api/noticias${editando ? `/${editandoNoticiaId}` : ""}`, {
+      method: editando ? "PUT" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-token": token,
+      },
+      body: JSON.stringify({
+        titulo,
+        contenido,
+        fotos: fotos.split(",").map((f) => f.trim()).filter(Boolean),
+        videos: videos.split(",").map((v) => v.trim()).filter(Boolean),
+      }),
+    });
 
-      if (res.status === 401) {
-        setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
-        salir();
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setMensaje({ tipo: "error", texto: data.error || "No se pudo publicar la noticia." });
-        return;
-      }
-
-      setTitulo("");
-      setContenido("");
-      setFotos("");
-      setVideos("");
-      setMensaje({ tipo: "ok", texto: "Noticia publicada." });
-      cargarNoticias();
-    } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión con el servidor." });
-    } finally {
-      setEnviando(false);
+    if (res.status === 401) {
+      setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+      salir();
+      return;
     }
-  }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMensaje({ tipo: "error", texto: data.error || "No se pudo guardar la noticia." });
+      return;
+    }
 
+    setTitulo("");
+    setContenido("");
+    setFotos("");
+    setVideos("");
+    setEditandoNoticiaId(null);
+    setMensaje({ tipo: "ok", texto: editando ? "Noticia actualizada." : "Noticia publicada." });
+    cargarNoticias();
+  } catch {
+    setMensaje({ tipo: "error", texto: "Error de conexión con el servidor." });
+  } finally {
+    setEnviando(false);
+  }
+}
+
+function editarNoticia(n) {
+  setEditandoNoticiaId(n.id);
+  setTitulo(n.titulo);
+  setContenido(n.contenido);
+  setFotos((n.fotos || []).join(", "));
+  setVideos((n.videos || []).join(", "));
+  setMensaje(null);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function cancelarEdicionNoticia() {
+  setEditandoNoticiaId(null);
+  setTitulo("");
+  setContenido("");
+  setFotos("");
+  setVideos("");
+  setMensaje(null);
+}
   async function borrar(id) {
     if (!confirm("¿Borrar esta noticia?")) return;
     const res = await fetch(`${API_URL}/api/noticias/${id}`, {
@@ -495,7 +511,7 @@ export default function Admin() {
       {pestana === "noticias" && (
         <>
           <form onSubmit={publicar} className="admin-form">
-            <h2>Publicar noticia</h2>
+            <h2>{editandoNoticiaId ? "Editar noticia" : "Publicar noticia"}</h2>
             <label>
               Título
               <input value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
@@ -522,7 +538,14 @@ export default function Admin() {
               <input type="file" accept="video/*" onChange={subirVideo} disabled={subiendoVideo} />
               {subiendoVideo && <span className="admin-uploading">Subiendo vídeo, puede tardar unos minutos…</span>}
             </label>
-            <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>
+            <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
+              <button type="submit" disabled={enviando}>
+                {enviando ? "Guardando…" : editandoNoticiaId ? "Guardar cambios" : "Publicar"}
+              </button>
+            {editandoNoticiaId && (
+              <button type="button" className="admin-link-btn" onClick={cancelarEdicionNoticia}>Cancelar edición</button>
+             )}
+            </div>
             {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
           </form>
 
