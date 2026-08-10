@@ -17,7 +17,14 @@ function formatFecha(iso) {
 
 const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
 
-export default function AdminTorneosClub({ token, salir, onIrAJugadores }) {
+function rondaAbierta(cuadrante, partido) {
+  if (partido.ronda <= 1) return true;
+  const anteriores = cuadrante.partidos.filter((p) => p.rama === partido.rama && p.ronda === partido.ronda - 1);
+  if (anteriores.length === 0) return true;
+  return anteriores.every((p) => !!p.ganador || p.resultado === "__BYE_DOBLE__");
+}
+
+export default function AdminTorneosClub({ token, salir }) {
   const [torneos, setTorneos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [gestionandoId, setGestionandoId] = useState(null);
@@ -197,6 +204,20 @@ export default function AdminTorneosClub({ token, salir, onIrAJugadores }) {
     return null;
   }
 
+  async function crearJugadorClub(nombreJugador) {
+    const res = await fetch(`${API_URL}/api/jugadores`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ nombre: nombreJugador }),
+    });
+    cargarJugadores();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "No se pudo crear el jugador." };
+    }
+    return { jugador: await res.json() };
+  }
+
   const torneoEnGestion = torneos.find((t) => t.id === gestionandoId);
 
   if (torneoEnGestion) {
@@ -205,7 +226,6 @@ export default function AdminTorneosClub({ token, salir, onIrAJugadores }) {
         torneo={torneoEnGestion}
         jugadores={jugadores}
         onVolver={() => setGestionandoId(null)}
-        onIrAJugadores={onIrAJugadores}
         onCrearCuadrante={(datos) => crearCuadrante(torneoEnGestion.id, datos)}
         onBorrarCuadrante={borrarCuadrante}
         onActualizarPartido={actualizarPartido}
@@ -214,6 +234,7 @@ export default function AdminTorneosClub({ token, salir, onIrAJugadores }) {
         onCrearParticipante={crearParticipante}
         onBorrarParticipante={borrarParticipante}
         onSortearParejas={sortearParejas}
+        onCrearJugadorClub={crearJugadorClub}
       />
     );
   }
@@ -329,8 +350,8 @@ export default function AdminTorneosClub({ token, salir, onIrAJugadores }) {
 }
 
 function TorneoGestion({
-  torneo, jugadores, onVolver, onIrAJugadores, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido,
-  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas,
+  torneo, jugadores, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas, onCrearJugadorClub,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -366,13 +387,12 @@ function TorneoGestion({
 
       {subpestana === "participantes" && (
         <div>
-          <p className="admin-hint">
-            Aquí apuntas quién juega cada cuadrante, antes de sortearlo. ¿Falta alguien en la lista de jugadores?{" "}
-            {onIrAJugadores ? (
-              <button type="button" className="admin-link-btn" onClick={onIrAJugadores}>Dalo de alta en la pestaña Jugadores</button>
-            ) : (
-              "Dalo de alta primero en la pestaña Jugadores."
-            )}
+          <JugadoresDelClub jugadores={jugadores} onCrear={onCrearJugadorClub} />
+
+          <p className="admin-hint" style={{ marginTop: "1.2rem" }}>
+            Apunta aquí a jugadores del club (arriba) a los cuadrantes de este torneo. Si vienen invitados que no
+            son del club y no necesitas guardar su historial, no hace falta apuntarlos aquí: escribe su nombre
+            directamente en la lista de la pestaña "Cuadrantes" al hacer el sorteo.
           </p>
           {(torneo.cuadrantes || []).length === 0 && (
             <p className="chronicle-status">Todavía no hay cuadrantes creados — crea uno primero en la pestaña "Cuadrantes".</p>
@@ -404,6 +424,58 @@ function TorneoGestion({
         />
       )}
     </section>
+  );
+}
+
+function JugadoresDelClub({ jugadores, onCrear }) {
+  const [abierto, setAbierto] = useState(false);
+  const [nombre, setNombre] = useState("");
+  const [creando, setCreando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  async function crear(e) {
+    e.preventDefault();
+    if (!nombre.trim()) return;
+    setCreando(true);
+    setMensaje(null);
+    const { jugador, error } = await onCrear(nombre.trim());
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else {
+      setMensaje({ tipo: "ok", texto: `"${jugador.nombre}" añadido al plantel del club.` });
+      setNombre("");
+    }
+    setCreando(false);
+  }
+
+  return (
+    <div className="admin-cuadrante-participantes">
+      <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
+        {abierto ? "Ocultar" : "Ver / gestionar"} jugadores del club ({jugadores.length})
+      </button>
+      {abierto && (
+        <div style={{ marginTop: ".6rem" }}>
+          <p className="admin-hint">
+            Este es el plantel permanente del club — solo quien esté aquí tendrá historial personal más adelante.
+          </p>
+          <ul>
+            {jugadores.map((j) => (
+              <li key={j.id} className="admin-list-item">
+                <span>{j.nombre}{j.apodo ? ` — "${j.apodo}"` : ""}</span>
+              </li>
+            ))}
+            {jugadores.length === 0 && <p className="chronicle-status">Todavía no hay nadie en el plantel del club.</p>}
+          </ul>
+          <form onSubmit={crear} className="admin-inline-form">
+            <label>
+              Nombre del nuevo jugador del club
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre y apellido" />
+            </label>
+            <button type="submit" disabled={creando || !nombre.trim()}>{creando ? "Añadiendo…" : "Añadir al plantel"}</button>
+          </form>
+          {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -519,7 +591,11 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
         ))}
       </ul>
 
-      {!esParejasCiegas && (
+      {jugadores.length === 0 && (
+        <p className="admin-hint">Añade jugadores al plantel del club arriba antes de poder apuntarlos aquí.</p>
+      )}
+
+      {jugadores.length > 0 && !esParejasCiegas && (
         <form onSubmit={anadir} className="admin-inline-form">
           <label>
             {esParejasHechas ? "Jugador 1 de la pareja" : "Jugador"}
@@ -549,9 +625,9 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
         </form>
       )}
 
-      {esParejasCiegas && (
+      {jugadores.length > 0 && esParejasCiegas && (
         <div>
-          <p className="admin-hint">Marca un número par de jugadores; se emparejarán al azar.</p>
+          <p className="admin-hint">Marca un número par de jugadores del club; se emparejarán al azar.</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: ".6rem", marginBottom: ".6rem" }}>
             {jugadores.map((j) => (
               <label key={j.id} style={{ display: "flex", alignItems: "center", gap: ".3rem" }}>
@@ -622,11 +698,11 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
         </div>
       </div>
 
-      <p className="admin-hint">{participantesApuntados.length} participante{participantesApuntados.length === 1 ? "" : "s"} apuntados (gestiónalos en la pestaña "Participantes").</p>
+      <p className="admin-hint">{participantesApuntados.length} participante{participantesApuntados.length === 1 ? "" : "s"} del club apuntados (gestiónalos en la pestaña "Participantes").</p>
 
       <form onSubmit={hacerSorteo} className="admin-sorteo-form">
         <label>
-          Lista de participantes escritos a mano (opcional si ya hay apuntados en la pestaña Participantes; un nombre por línea, hasta {cuadrante.tamano})
+          Lista de participantes escritos a mano — usa esto para invitados que no son del club (un nombre por línea, hasta {cuadrante.tamano}; déjalo vacío para usar solo los apuntados arriba)
           <textarea
             rows={4}
             value={nombresTexto}
@@ -683,6 +759,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
                     maquinasOpciones={maquinasOpciones}
                     onActualizar={(datos) => onActualizarPartido(p.id, datos)}
                     busqueda={busqueda}
+                    bloqueado={!rondaAbierta(cuadrante, p) && !p.enCurso}
                   />
                 ))}
             </div>
@@ -693,20 +770,22 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
   );
 }
 
-function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda }) {
+function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda, bloqueado }) {
   const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
   const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
   return (
-    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${encontrado ? "admin-cuadro-encontrado" : ""}`}>
+    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${encontrado ? "admin-cuadro-encontrado" : ""} ${bloqueado ? "admin-cuadro-bloqueado" : ""}`}>
+      {bloqueado && <span className="admin-hint" style={{ display: "block" }}>🔒 Bloqueado hasta terminar la ronda anterior — "Marcar en curso" lo activa manualmente.</span>}
       <input
         defaultValue={p.jugador1 || ""}
         placeholder="Jugador 1"
+        disabled={bloqueado}
         onBlur={(e) => e.target.value !== (p.jugador1 || "") && onActualizar({ jugador1: e.target.value })}
       />
       <button
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
-        disabled={!p.jugador1 || !p.jugador2}
+        disabled={bloqueado || !p.jugador1 || !p.jugador2}
         onClick={() => onActualizar({ ganador: p.jugador1 })}
       >
         Ganó
@@ -715,12 +794,13 @@ function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda }) {
       <input
         defaultValue={p.jugador2 || ""}
         placeholder="Jugador 2"
+        disabled={bloqueado}
         onBlur={(e) => e.target.value !== (p.jugador2 || "") && onActualizar({ jugador2: e.target.value })}
       />
       <button
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
-        disabled={!p.jugador1 || !p.jugador2}
+        disabled={bloqueado || !p.jugador1 || !p.jugador2}
         onClick={() => onActualizar({ ganador: p.jugador2 })}
       >
         Ganó
@@ -729,10 +809,11 @@ function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda }) {
         defaultValue={p.resultado || ""}
         placeholder="Resultado"
         className="admin-cuadro-resultado"
+        disabled={bloqueado}
         onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
       />
       {maquinasOpciones.length > 0 ? (
-        <select defaultValue={p.maquina || ""} onChange={(e) => onActualizar({ maquina: e.target.value })}>
+        <select defaultValue={p.maquina || ""} disabled={bloqueado} onChange={(e) => onActualizar({ maquina: e.target.value })}>
           <option value="">Máquina…</option>
           {maquinasOpciones.map((m) => (
             <option key={m} value={m}>{m}</option>
@@ -743,6 +824,7 @@ function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda }) {
           defaultValue={p.maquina || ""}
           placeholder="Máquina"
           className="admin-cuadro-maquina-input"
+          disabled={bloqueado}
           onBlur={(e) => e.target.value !== (p.maquina || "") && onActualizar({ maquina: e.target.value })}
         />
       )}
