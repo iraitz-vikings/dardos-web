@@ -440,7 +440,6 @@ function cancelarEdicionNoticia() {
     { id: "patrocinadores", etiqueta: "Patrocinadores" },
     { id: "socios", etiqueta: "Socios" },
     { id: "mensaje", etiqueta: "Mensaje" },
-    { id: "jugadores", etiqueta: "Jugadores" },
   ];
 
   return (
@@ -622,11 +621,10 @@ function cancelarEdicionNoticia() {
         </section>
       )}
 
-      {pestana === "torneos-club" && <AdminTorneosClub token={token} salir={salir} onIrAJugadores={() => setPestana("jugadores")} />}
+      {pestana === "torneos-club" && <AdminTorneosClub token={token} salir={salir} />}
       {pestana === "patrocinadores" && <AdminPatrocinadores token={token} salir={salir} />}
       {pestana === "socios" && <AdminSocios token={token} salir={salir} />}
       {pestana === "mensaje" && <AdminMensajeAnclado token={token} salir={salir} />}
-      {pestana === "jugadores" && <AdminJugadores token={token} salir={salir} />}
     </div>
   );
 }
