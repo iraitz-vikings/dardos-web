@@ -53,7 +53,6 @@ export default function Admin() {
   const [torneoCartel, setTorneoCartel] = useState("");
   const [guardandoTorneo, setGuardandoTorneo] = useState(false);
   const [mensajeTorneo, setMensajeTorneo] = useState(null);
-  const [mensaje, setMensaje] = useState(null);
   const [editandoNoticiaId, setEditandoNoticiaId] = useState(null);
 
   const cargarNoticias = () => {
