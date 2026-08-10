@@ -430,6 +430,7 @@ button {
 
 .admin-cuadro-maquina h4 { font-size: .82rem; text-transform: uppercase; color: var(--ember); margin-bottom: .5rem; }
 .admin-cuadro-partido { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; flex-wrap: wrap; }
+.admin-cuadro-partido.admin-cuadro-bloqueado { opacity: .5; }
 .admin-cuadro-partido input { background: var(--iron-2); border: 1px solid var(--line); color: var(--bone); padding: .4rem; font-size: .76rem; flex: 1; min-width: 90px; }
 .admin-cuadro-maquina-input { max-width: 110px; flex: none !important; }
 .admin-cuadro-resultado { max-width: 90px; flex: none !important; }
