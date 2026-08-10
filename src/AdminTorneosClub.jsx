@@ -4,6 +4,12 @@ import SelectorImagen from "./SelectorImagen.jsx";
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
 
+const MODALIDADES = [
+  { id: "individual", etiqueta: "Individual" },
+  { id: "parejas_hechas", etiqueta: "Parejas ya formadas" },
+  { id: "parejas_ciegas", etiqueta: "Parejas ciegas (se sortean)" },
+];
+
 function formatFecha(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
@@ -11,10 +17,10 @@ function formatFecha(iso) {
 
 const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
 
-export default function AdminTorneosClub({ token, salir }) {
+export default function AdminTorneosClub({ token, salir, onIrAJugadores }) {
   const [torneos, setTorneos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
-  const [abiertoId, setAbiertoId] = useState(null);
+  const [gestionandoId, setGestionandoId] = useState(null);
   const [mensaje, setMensaje] = useState(null);
 
   const [nombre, setNombre] = useState("");
@@ -24,6 +30,7 @@ export default function AdminTorneosClub({ token, salir }) {
   const [visibilidad, setVisibilidad] = useState("privado");
   const [numeroMaquinas, setNumeroMaquinas] = useState("");
   const [tipoEliminacion, setTipoEliminacion] = useState("directa");
+  const [modalidad, setModalidad] = useState("individual");
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [guardando, setGuardando] = useState(false);
 
@@ -54,7 +61,7 @@ export default function AdminTorneosClub({ token, salir }) {
       const res = await fetch(`${API_URL}/api/torneos-club`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, insigniaUrl }),
+        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -73,6 +80,7 @@ export default function AdminTorneosClub({ token, salir }) {
       setVisibilidad("privado");
       setNumeroMaquinas("");
       setTipoEliminacion("directa");
+      setModalidad("individual");
       setInsigniaUrl("");
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
       cargarTorneos();
@@ -104,6 +112,7 @@ export default function AdminTorneosClub({ token, salir }) {
   async function borrarTorneo(id) {
     if (!confirm("¿Borrar este torneo, sus cuadrantes y todos sus enfrentamientos?")) return;
     await fetch(`${API_URL}/api/torneos-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    if (gestionandoId === id) setGestionandoId(null);
     cargarTorneos();
   }
 
@@ -188,18 +197,25 @@ export default function AdminTorneosClub({ token, salir }) {
     return null;
   }
 
-  async function crearJugadorRapido(nombreJugador) {
-    const res = await fetch(`${API_URL}/api/jugadores`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ nombre: nombreJugador }),
-    });
-    cargarJugadores();
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      return { error: data.error || "No se pudo crear el jugador." };
-    }
-    return { jugador: await res.json() };
+  const torneoEnGestion = torneos.find((t) => t.id === gestionandoId);
+
+  if (torneoEnGestion) {
+    return (
+      <TorneoGestion
+        torneo={torneoEnGestion}
+        jugadores={jugadores}
+        onVolver={() => setGestionandoId(null)}
+        onIrAJugadores={onIrAJugadores}
+        onCrearCuadrante={(datos) => crearCuadrante(torneoEnGestion.id, datos)}
+        onBorrarCuadrante={borrarCuadrante}
+        onActualizarPartido={actualizarPartido}
+        onSortear={sortearCuadrante}
+        onReiniciar={reiniciarCuadrante}
+        onCrearParticipante={crearParticipante}
+        onBorrarParticipante={borrarParticipante}
+        onSortearParejas={sortearParejas}
+      />
+    );
   }
 
   return (
@@ -208,7 +224,7 @@ export default function AdminTorneosClub({ token, salir }) {
       <p className="admin-hint">
         Torneos organizados por el club, con cuadrantes generados automáticamente (eliminación directa o doble).
         Marca "Público" para que aparezca en la web en "Torneos en directo"; "Privado" para que solo se vea en la
-        sección de socios.
+        sección de socios (su página con QR sigue siendo accesible por enlace directo en ambos casos).
       </p>
 
       <form onSubmit={crearTorneo} className="admin-form" style={{ marginBottom: "1.5rem" }}>
@@ -250,6 +266,18 @@ export default function AdminTorneosClub({ token, salir }) {
           </select>
         </label>
         <label>
+          Modalidad
+          <select value={modalidad} onChange={(e) => setModalidad(e.target.value)}>
+            {MODALIDADES.map((m) => (
+              <option key={m.id} value={m.id}>{m.etiqueta}</option>
+            ))}
+          </select>
+          <span className="admin-hint">
+            Define cómo se apuntan participantes a los cuadrantes de este torneo: uno a uno, en parejas que tú
+            eliges, o en parejas sorteadas al azar.
+          </span>
+        </label>
+        <label>
           Visibilidad
           <select value={visibilidad} onChange={(e) => setVisibilidad(e.target.value)}>
             <option value="privado">Privado (solo socios)</option>
@@ -264,63 +292,35 @@ export default function AdminTorneosClub({ token, salir }) {
 
       <ul className="admin-torneos-club-list">
         {torneos.map((t) => (
-          <li key={t.id} className="admin-torneo-club-item">
-            <div className="admin-list-item">
-              <div>
-                <strong>{t.nombre}</strong>
-                <time>
-                  {formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)} ·{" "}
-                  {t.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
-                  {t.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"}
-                  {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
-                  {t.finalizado ? " · Finalizado" : ""}
-                </time>
-              </div>
-              <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="admin-link-btn"
-                  onClick={() => cambiarVisibilidad(t, t.visibilidad === "publico" ? "privado" : "publico")}
-                >
-                  Hacer {t.visibilidad === "publico" ? "privado" : "público"}
-                </button>
-                <button
-                  type="button"
-                  className="admin-link-btn"
-                  onClick={() => cambiarFinalizado(t, !t.finalizado)}
-                >
-                  {t.finalizado ? "Reabrir torneo" : "Marcar finalizado"}
-                </button>
-                <button type="button" className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === t.id ? null : t.id)}>
-                  {abiertoId === t.id ? "Cerrar" : "Ver cuadrantes"}
-                </button>
-                <a
-                  className="admin-link-btn"
-                  href={`${window.location.origin}/torneo/${t.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Ver página / QR
-                </a>
-                <button type="button" className="admin-link-btn" onClick={() => borrarTorneo(t.id)}>Borrar</button>
-              </div>
+          <li key={t.id} className="admin-list-item">
+            <div>
+              <strong>{t.nombre}</strong>
+              <time>
+                {formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)} ·{" "}
+                {t.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
+                {t.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"} ·{" "}
+                {MODALIDADES.find((m) => m.id === t.modalidad)?.etiqueta || "Individual"}
+                {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
+                {t.finalizado ? " · Finalizado" : ""}
+              </time>
             </div>
-
-            {abiertoId === t.id && (
-              <TorneoDetalle
-                torneo={t}
-                jugadores={jugadores}
-                onCrearCuadrante={(datos) => crearCuadrante(t.id, datos)}
-                onBorrarCuadrante={borrarCuadrante}
-                onActualizarPartido={actualizarPartido}
-                onSortear={sortearCuadrante}
-                onReiniciar={reiniciarCuadrante}
-                onCrearParticipante={crearParticipante}
-                onBorrarParticipante={borrarParticipante}
-                onSortearParejas={sortearParejas}
-                onCrearJugadorRapido={crearJugadorRapido}
-              />
-            )}
+            <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="admin-link-btn"
+                onClick={() => cambiarVisibilidad(t, t.visibilidad === "publico" ? "privado" : "publico")}
+              >
+                Hacer {t.visibilidad === "publico" ? "privado" : "público"}
+              </button>
+              <button type="button" className="admin-link-btn" onClick={() => cambiarFinalizado(t, !t.finalizado)}>
+                {t.finalizado ? "Reabrir torneo" : "Marcar finalizado"}
+              </button>
+              <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(t.id)}>Gestionar</button>
+              <a className="admin-link-btn" href={`${window.location.origin}/torneo/${t.id}`} target="_blank" rel="noopener noreferrer">
+                Ver página / QR
+              </a>
+              <button type="button" className="admin-link-btn" onClick={() => borrarTorneo(t.id)}>Borrar</button>
+            </div>
           </li>
         ))}
       </ul>
@@ -328,10 +328,86 @@ export default function AdminTorneosClub({ token, salir }) {
   );
 }
 
-function TorneoDetalle({
-  torneo, jugadores, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear, onReiniciar,
-  onCrearParticipante, onBorrarParticipante, onSortearParejas, onCrearJugadorRapido,
+function TorneoGestion({
+  torneo, jugadores, onVolver, onIrAJugadores, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas,
 }) {
+  const [subpestana, setSubpestana] = useState("participantes");
+
+  return (
+    <section className="admin-form">
+      <div className="admin-list-item" style={{ marginBottom: "1rem" }}>
+        <div>
+          <button type="button" className="admin-link-btn" onClick={onVolver}>← Volver a la lista</button>
+          <h2 style={{ margin: ".4rem 0 0" }}>{torneo.nombre}</h2>
+          <span className="admin-hint">
+            {MODALIDADES.find((m) => m.id === torneo.modalidad)?.etiqueta || "Individual"} ·{" "}
+            {torneo.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"}
+          </span>
+        </div>
+      </div>
+
+      <nav className="admin-tabs" style={{ marginBottom: "1.2rem" }}>
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "participantes" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("participantes")}
+        >
+          Participantes
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "cuadrantes" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("cuadrantes")}
+        >
+          Cuadrantes
+        </button>
+      </nav>
+
+      {subpestana === "participantes" && (
+        <div>
+          <p className="admin-hint">
+            Aquí apuntas quién juega cada cuadrante, antes de sortearlo. ¿Falta alguien en la lista de jugadores?{" "}
+            {onIrAJugadores ? (
+              <button type="button" className="admin-link-btn" onClick={onIrAJugadores}>Dalo de alta en la pestaña Jugadores</button>
+            ) : (
+              "Dalo de alta primero en la pestaña Jugadores."
+            )}
+          </p>
+          {(torneo.cuadrantes || []).length === 0 && (
+            <p className="chronicle-status">Todavía no hay cuadrantes creados — crea uno primero en la pestaña "Cuadrantes".</p>
+          )}
+          {(torneo.cuadrantes || []).map((c) => (
+            <div key={c.id} className="admin-cuadrante">
+              <h4>{c.nombre} — {c.tamano} participantes</h4>
+              <ParticipantesPanel
+                cuadrante={c}
+                modalidad={torneo.modalidad}
+                jugadores={jugadores}
+                onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
+                onBorrarParticipante={onBorrarParticipante}
+                onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {subpestana === "cuadrantes" && (
+        <TorneoCuadrantes
+          torneo={torneo}
+          onCrearCuadrante={onCrearCuadrante}
+          onBorrarCuadrante={onBorrarCuadrante}
+          onActualizarPartido={onActualizarPartido}
+          onSortear={onSortear}
+          onReiniciar={onReiniciar}
+        />
+      )}
+    </section>
+  );
+}
+
+function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear, onReiniciar }) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
   const [creando, setCreando] = useState(false);
@@ -373,35 +449,35 @@ function TorneoDetalle({
         <CuadranteDetalle
           key={c.id}
           cuadrante={c}
-          jugadores={jugadores}
           numeroMaquinas={torneo.numeroMaquinas}
           onBorrar={() => onBorrarCuadrante(c.id)}
           onActualizarPartido={onActualizarPartido}
           onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
           onReiniciar={() => onReiniciar(c.id)}
-          onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
-          onBorrarParticipante={onBorrarParticipante}
-          onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
-          onCrearJugadorRapido={onCrearJugadorRapido}
         />
       ))}
     </div>
   );
 }
 
-function ParticipantesPanel({ cuadrante, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas, onCrearJugadorRapido }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas }) {
   const [jugador1Id, setJugador1Id] = useState("");
   const [jugador2Id, setJugador2Id] = useState("");
-  const [nombreRapido, setNombreRapido] = useState("");
   const [seleccionados, setSeleccionados] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
   const participantes = cuadrante.participantes || [];
+  const esParejasCiegas = modalidad === "parejas_ciegas";
+  const esParejasHechas = modalidad === "parejas_hechas";
 
   async function anadir(e) {
     e.preventDefault();
     if (!jugador1Id) return;
+    if (esParejasHechas && !jugador2Id) {
+      setMensaje({ tipo: "error", texto: "Este torneo es de parejas ya formadas: elige también el compañero." });
+      return;
+    }
     setEnviando(true);
     setMensaje(null);
     const error = await onCrearParticipante({ jugador1Id, jugador2Id: jugador2Id || undefined });
@@ -412,17 +488,6 @@ function ParticipantesPanel({ cuadrante, jugadores, onCrearParticipante, onBorra
       setJugador2Id("");
     }
     setEnviando(false);
-  }
-
-  async function crearRapido() {
-    if (!nombreRapido.trim()) return;
-    const { jugador, error } = await onCrearJugadorRapido(nombreRapido.trim());
-    if (error) setMensaje({ tipo: "error", texto: error });
-    else {
-      setNombreRapido("");
-      setJugador1Id(jugador.id);
-      setMensaje({ tipo: "ok", texto: `Jugador "${jugador.nombre}" creado y seleccionado.` });
-    }
   }
 
   function toggleSeleccionado(id) {
@@ -442,14 +507,9 @@ function ParticipantesPanel({ cuadrante, jugadores, onCrearParticipante, onBorra
   }
 
   return (
-    <div className="admin-cuadrante-participantes" style={{ marginBottom: "1rem" }}>
+    <div className="admin-cuadrante-participantes" style={{ marginBottom: "1.5rem" }}>
       <h5>Participantes apuntados ({participantes.length})</h5>
-      <p className="admin-hint">
-        Opcional: si apuntas aquí a jugadores reales (individuales o en pareja), el sorteo de abajo los usará
-        automáticamente si dejas la lista de nombres vacía — así queda registrado quién ha jugado cada uno, para
-        el histórico. Si prefieres seguir escribiendo los nombres a mano como siempre, no hace falta tocar esto.
-      </p>
-      {participantes.length === 0 && <p className="chronicle-status">Nadie apuntado todavía con jugadores reales.</p>}
+      {participantes.length === 0 && <p className="chronicle-status">Nadie apuntado todavía.</p>}
       <ul>
         {participantes.map((p) => (
           <li key={p.id} className="admin-list-item">
@@ -459,57 +519,59 @@ function ParticipantesPanel({ cuadrante, jugadores, onCrearParticipante, onBorra
         ))}
       </ul>
 
-      <form onSubmit={anadir} className="admin-inline-form">
-        <label>
-          Jugador / pareja
-          <select value={jugador1Id} onChange={(e) => setJugador1Id(e.target.value)}>
-            <option value="">Elige un jugador…</option>
-            {jugadores.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-          </select>
-        </label>
-        <label>
-          Compañero (opcional, para pareja ya formada)
-          <select value={jugador2Id} onChange={(e) => setJugador2Id(e.target.value)}>
-            <option value="">— Individual —</option>
-            {jugadores.filter((j) => j.id !== jugador1Id).map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-          </select>
-        </label>
-        <button type="submit" disabled={enviando || !jugador1Id}>Añadir</button>
-      </form>
-
-      <div className="admin-inline-form">
-        <label>
-          Jugador nuevo (invitado, sin cuenta)
-          <input value={nombreRapido} onChange={(e) => setNombreRapido(e.target.value)} placeholder="Nombre" />
-        </label>
-        <button type="button" className="admin-link-btn" onClick={crearRapido}>+ Crear y seleccionar</button>
-      </div>
-
-      <details style={{ marginTop: ".8rem" }}>
-        <summary style={{ cursor: "pointer" }}>Sortear parejas ciegas</summary>
-        <p className="admin-hint">Marca un número par de jugadores; se emparejarán al azar.</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: ".6rem", marginBottom: ".6rem" }}>
-          {jugadores.map((j) => (
-            <label key={j.id} style={{ display: "flex", alignItems: "center", gap: ".3rem" }}>
-              <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccionado(j.id)} style={{ width: "auto" }} />
-              {j.nombre}
+      {!esParejasCiegas && (
+        <form onSubmit={anadir} className="admin-inline-form">
+          <label>
+            {esParejasHechas ? "Jugador 1 de la pareja" : "Jugador"}
+            <select value={jugador1Id} onChange={(e) => setJugador1Id(e.target.value)}>
+              <option value="">Elige un jugador…</option>
+              {jugadores.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
+            </select>
+          </label>
+          {esParejasHechas ? (
+            <label>
+              Jugador 2 de la pareja
+              <select value={jugador2Id} onChange={(e) => setJugador2Id(e.target.value)}>
+                <option value="">Elige el compañero…</option>
+                {jugadores.filter((j) => j.id !== jugador1Id).map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
+              </select>
             </label>
-          ))}
+          ) : (
+            <label>
+              Compañero (opcional)
+              <select value={jugador2Id} onChange={(e) => setJugador2Id(e.target.value)}>
+                <option value="">— Individual —</option>
+                {jugadores.filter((j) => j.id !== jugador1Id).map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
+              </select>
+            </label>
+          )}
+          <button type="submit" disabled={enviando || !jugador1Id}>Añadir</button>
+        </form>
+      )}
+
+      {esParejasCiegas && (
+        <div>
+          <p className="admin-hint">Marca un número par de jugadores; se emparejarán al azar.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: ".6rem", marginBottom: ".6rem" }}>
+            {jugadores.map((j) => (
+              <label key={j.id} style={{ display: "flex", alignItems: "center", gap: ".3rem" }}>
+                <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccionado(j.id)} style={{ width: "auto" }} />
+                {j.nombre}
+              </label>
+            ))}
+          </div>
+          <button type="button" disabled={enviando || seleccionados.length < 2 || seleccionados.length % 2 !== 0} onClick={sortear}>
+            Sortear {seleccionados.length} jugadores en parejas
+          </button>
         </div>
-        <button type="button" disabled={enviando || seleccionados.length < 2 || seleccionados.length % 2 !== 0} onClick={sortear}>
-          Sortear {seleccionados.length} jugadores en parejas
-        </button>
-      </details>
+      )}
 
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
     </div>
   );
 }
 
-function CuadranteDetalle({
-  cuadrante, jugadores, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar,
-  onCrearParticipante, onBorrarParticipante, onSortearParejas, onCrearJugadorRapido,
-}) {
+function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar }) {
   const [abierto, setAbierto] = useState(false);
   const [nombresTexto, setNombresTexto] = useState("");
   const [semillasTexto, setSemillasTexto] = useState("");
@@ -560,18 +622,11 @@ function CuadranteDetalle({
         </div>
       </div>
 
-      <ParticipantesPanel
-        cuadrante={cuadrante}
-        jugadores={jugadores}
-        onCrearParticipante={onCrearParticipante}
-        onBorrarParticipante={onBorrarParticipante}
-        onSortearParejas={onSortearParejas}
-        onCrearJugadorRapido={onCrearJugadorRapido}
-      />
+      <p className="admin-hint">{participantesApuntados.length} participante{participantesApuntados.length === 1 ? "" : "s"} apuntados (gestiónalos en la pestaña "Participantes").</p>
 
       <form onSubmit={hacerSorteo} className="admin-sorteo-form">
         <label>
-          Lista de participantes escritos a mano (opcional si ya has apuntado participantes arriba; un nombre por línea, hasta {cuadrante.tamano})
+          Lista de participantes escritos a mano (opcional si ya hay apuntados en la pestaña Participantes; un nombre por línea, hasta {cuadrante.tamano})
           <textarea
             rows={4}
             value={nombresTexto}
