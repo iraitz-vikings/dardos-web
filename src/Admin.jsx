@@ -559,7 +559,10 @@ function cancelarEdicionNoticia() {
                     <strong>{n.titulo}</strong>
                     <time>{formatFecha(n.fechaPublicacion)}</time>
                   </div>
-                  <button className="admin-link-btn" onClick={() => borrar(n.id)}>Borrar</button>
+                  <div style={{ display: "flex", gap: ".5rem" }}>
+                    <button className="admin-link-btn" onClick={() => editarNoticia(n)}>Editar</button>
+                    <button className="admin-link-btn" onClick={() => borrar(n.id)}>Borrar</button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -620,7 +623,7 @@ function cancelarEdicionNoticia() {
         </section>
       )}
 
-      {pestana === "torneos-club" && <AdminTorneosClub token={token} salir={salir} />}
+      {pestana === "torneos-club" && <AdminTorneosClub token={token} salir={salir} onIrAJugadores={() => setPestana("jugadores")} />}
       {pestana === "patrocinadores" && <AdminPatrocinadores token={token} salir={salir} />}
       {pestana === "socios" && <AdminSocios token={token} salir={salir} />}
       {pestana === "mensaje" && <AdminMensajeAnclado token={token} salir={salir} />}
