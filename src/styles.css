@@ -846,3 +846,8 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .nav-lang { display: flex; align-items: center; gap: .3rem; font-size: .74rem; color: var(--bone-dim); }
 .nav-lang button { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: inherit; text-transform: uppercase; }
 .nav-lang-activo { color: var(--ember) !important; font-weight: 600; }
+
+.admin-tabla-clasificacion { width: 100%; border-collapse: collapse; margin-top: .8rem; font-size: .85rem; }
+.admin-tabla-clasificacion th, .admin-tabla-clasificacion td { border: 1px solid var(--line); padding: .4rem .6rem; text-align: center; }
+.admin-tabla-clasificacion th { color: var(--ember); text-transform: uppercase; font-size: .72rem; letter-spacing: .04em; }
+.admin-tabla-clasificacion td:nth-child(2) { text-align: left; }
