@@ -177,6 +177,8 @@ export default function AdminLigasClub({ token, salir }) {
         onSortearParejasGrupos={(entradas) => sortearParejasGrupos(ligaEnGestion.id, entradas)}
         onGenerarCalendario={() => generarCalendario(ligaEnGestion.id)}
         onActualizarPartido={actualizarPartido}
+        token={token}
+        onRecargar={cargarLigas}
       />
     );
   }
@@ -297,7 +299,7 @@ export default function AdminLigasClub({ token, salir }) {
   );
 }
 
-function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onGenerarCalendario, onActualizarPartido }) {
+function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onGenerarCalendario, onActualizarPartido, token, onRecargar }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
   return (
@@ -323,6 +325,9 @@ function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarP
         <button type="button" className={`admin-tab ${subpestana === "clasificacion" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("clasificacion")}>
           Clasificación
         </button>
+        <button type="button" className={`admin-tab ${subpestana === "final" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("final")}>
+          Cuadrante final
+        </button>
       </nav>
 
       {subpestana === "participantes" && (
@@ -341,6 +346,7 @@ function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarP
 
       {subpestana === "calendario" && <CalendarioLiga liga={liga} onActualizarPartido={onActualizarPartido} />}
       {subpestana === "clasificacion" && <ClasificacionLiga liga={liga} />}
+      {subpestana === "final" && <CuadranteFinalLiga liga={liga} token={token} onRecargar={onRecargar} />}
     </section>
   );
 }
@@ -750,5 +756,212 @@ function ClasificacionLiga({ liga }) {
         ))}
       </tbody>
     </table>
+  );
+}
+function siguienteTamanoValido(n) {
+  const tamanos = [4, 8, 16, 32, 64, 128];
+  return tamanos.find((t) => t >= n) || 128;
+}
+
+function CuadranteFinalLiga({ liga, token, onRecargar }) {
+  const cuadrante = (liga.cuadrantes || [])[0];
+  const clasificacion = calcularClasificacion(liga);
+
+  const [numClasificados, setNumClasificados] = useState(Math.min(4, clasificacion.length || 2));
+  const [emparejamiento, setEmparejamiento] = useState("posiciones");
+  const [tipoEliminacion, setTipoEliminacion] = useState("directa");
+  const [creando, setCreando] = useState(false);
+  const [error, setError] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [abierto, setAbierto] = useState(true);
+
+  async function crearCuadranteFinal(e) {
+    e.preventDefault();
+    setCreando(true);
+    setError(null);
+    try {
+      const topN = clasificacion.slice(0, numClasificados).map((f) => f.nombre);
+      if (topN.length < 2) {
+        setError("Hacen falta al menos 2 participantes con clasificación.");
+        return;
+      }
+      const tamano = siguienteTamanoValido(topN.length);
+
+      const resCuadrante = await fetch(`${API_URL}/api/ligas-club/${liga.id}/cuadrante-final`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ nombre: "Cuadrante final", tamano, tipoEliminacion }),
+      });
+      if (!resCuadrante.ok) {
+        const data = await resCuadrante.json().catch(() => ({}));
+        setError(data.error || "No se pudo crear el cuadrante.");
+        return;
+      }
+      const nuevoCuadrante = await resCuadrante.json();
+
+      const resSorteo = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${nuevoCuadrante.id}/sorteo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({
+          participantes: topN,
+          cabezasDeSerie: emparejamiento === "posiciones" ? topN : [],
+        }),
+      });
+      if (!resSorteo.ok) {
+        const data = await resSorteo.json().catch(() => ({}));
+        setError(data.error || "El cuadrante se creó pero no se pudo sortear.");
+      }
+      onRecargar();
+    } finally {
+      setCreando(false);
+    }
+  }
+
+  async function reiniciarCuadrante() {
+    if (!confirm("¿Vaciar todos los resultados del cuadrante final?")) return;
+    await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadrante.id}/reiniciar`, {
+      method: "POST",
+      headers: { "x-admin-token": token },
+    });
+    onRecargar();
+  }
+  async function borrarCuadrante() {
+    if (!confirm("¿Borrar el cuadrante final? Podrás volver a crearlo desde la clasificación.")) return;
+    await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadrante.id}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": token },
+    });
+    onRecargar();
+  }
+  async function actualizarPartidoFinal(partidoId, datos) {
+    await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    onRecargar();
+  }
+
+  if (!cuadrante) {
+    return (
+      <div className="admin-cuadrante-participantes">
+        <p className="admin-hint">
+          Se genera a partir de la clasificación actual. Elige cuántos clasifican y cómo se emparejan.
+        </p>
+        <form onSubmit={crearCuadranteFinal} className="admin-form">
+          <label>
+            Cuántos participantes clasifican
+            <input
+              type="number"
+              min="2"
+              max={clasificacion.length}
+              value={numClasificados}
+              onChange={(e) => setNumClasificados(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            Emparejamiento
+            <select value={emparejamiento} onChange={(e) => setEmparejamiento(e.target.value)}>
+              <option value="posiciones">Respetar posiciones (1º vs último, 2º vs penúltimo…)</option>
+              <option value="sorteo">Sortear al azar</option>
+            </select>
+          </label>
+          <label>
+            Tipo de eliminación
+            <select value={tipoEliminacion} onChange={(e) => setTipoEliminacion(e.target.value)}>
+              <option value="directa">Eliminación directa</option>
+              <option value="doble">Doble eliminación</option>
+            </select>
+          </label>
+          <button type="submit" disabled={creando || clasificacion.length < 2}>
+            {creando ? "Creando…" : "Crear cuadrante final"}
+          </button>
+          {error && <p className="admin-msg admin-msg-error">{error}</p>}
+        </form>
+      </div>
+    );
+  }
+
+  const porRama = {};
+  for (const p of cuadrante.partidos) {
+    if (!porRama[p.rama]) porRama[p.rama] = {};
+    if (!porRama[p.rama][p.ronda]) porRama[p.rama][p.ronda] = [];
+    porRama[p.rama][p.ronda].push(p);
+  }
+  const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
+  const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
+
+  return (
+    <div className="admin-cuadrante">
+      <div className="admin-cuadrante-header">
+        <h4>{cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})</h4>
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+          <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>{abierto ? "Ocultar" : "Ver enfrentamientos"}</button>
+          <button type="button" className="admin-link-btn" onClick={reiniciarCuadrante}>Vaciar resultados</button>
+          <button type="button" className="admin-link-btn" onClick={borrarCuadrante}>Borrar cuadrante</button>
+        </div>
+      </div>
+
+      {abierto && (
+        <input
+          type="text"
+          className="admin-busqueda"
+          placeholder="Buscar participante…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      )}
+
+      {abierto && ramas.map((rama) => (
+        <div key={rama} className="admin-cuadrante-rama">
+          <h5>{RAMA_ETIQUETA[rama]}</h5>
+          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => (
+            <div key={ronda} className="admin-cuadro-maquina">
+              <h4>Ronda {ronda}</h4>
+              {porRama[rama][ronda].sort((a, b) => a.posicion - b.posicion).map((p) => (
+                <PartidoFinalRow key={p.id} p={p} onActualizar={(datos) => actualizarPartidoFinal(p.id, datos)} busqueda={busqueda} />
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PartidoFinalRow({ p, onActualizar, busqueda }) {
+  const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
+  const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
+  return (
+    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${encontrado ? "admin-cuadro-encontrado" : ""}`}>
+      <span style={{ minWidth: "140px" }}>{p.jugador1 || "—"}</span>
+      <button
+        type="button"
+        className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
+        disabled={!p.jugador1 || !p.jugador2}
+        onClick={() => onActualizar({ ganador: p.jugador1 })}
+      >
+        Ganó
+      </button>
+      <span>vs</span>
+      <span style={{ minWidth: "140px" }}>{p.jugador2 || "—"}</span>
+      <button
+        type="button"
+        className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
+        disabled={!p.jugador1 || !p.jugador2}
+        onClick={() => onActualizar({ ganador: p.jugador2 })}
+      >
+        Ganó
+      </button>
+      <input
+        defaultValue={p.resultado || ""}
+        placeholder="Resultado"
+        className="admin-cuadro-resultado"
+        onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
+      />
+      <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
+        {p.enCurso ? "★ En curso" : "Marcar en curso"}
+      </button>
+    </div>
   );
 }
