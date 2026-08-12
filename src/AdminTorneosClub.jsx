@@ -473,7 +473,10 @@ function JugadoresDelClub({ jugadores, onCrear }) {
           <ul>
             {jugadores.map((j) => (
               <li key={j.id} className="admin-list-item">
-                <span>{j.nombre}{j.apodo ? ` — "${j.apodo}"` : ""}</span>
+                <span>
+                  {j.nombre}{j.apodo ? ` — "${j.apodo}"` : ""}{" "}
+                  <em style={{ fontSize: ".8em" }}>({j.usuario ? "socio" : "invitado"})</em>
+                </span>
               </li>
             ))}
             {jugadores.length === 0 && <p className="chronicle-status">Todavía no hay nadie en el plantel del club.</p>}
@@ -546,9 +549,8 @@ function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActua
 }
 
 function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortear }) {
-  const [jugador1Id, setJugador1Id] = useState("");
-  const [jugador2Id, setJugador2Id] = useState("");
-  const [seleccionados, setSeleccionados] = useState([]);
+  const [seleccionParejaHecha, setSeleccionParejaHecha] = useState([]);
+  const [seleccionCiega, setSeleccionCiega] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
@@ -561,37 +563,51 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   const esParejasCiegas = modalidad === "parejas_ciegas";
   const esParejasHechas = modalidad === "parejas_hechas";
 
-  async function anadir(e) {
-    e.preventDefault();
-    if (!jugador1Id) return;
-    if (esParejasHechas && !jugador2Id) {
-      setMensaje({ tipo: "error", texto: "Este torneo es de parejas ya formadas: elige también el compañero." });
-      return;
-    }
+  const idsYaApuntados = new Set();
+  for (const p of participantes) {
+    idsYaApuntados.add(p.jugador1Id);
+    if (p.jugador2Id) idsYaApuntados.add(p.jugador2Id);
+  }
+  const disponibles = jugadores.filter((j) => !idsYaApuntados.has(j.id));
+
+  async function anadirIndividual(jugadorId) {
     setEnviando(true);
     setMensaje(null);
-    const error = await onCrearParticipante({ jugador1Id, jugador2Id: jugador2Id || undefined });
+    const error = await onCrearParticipante({ jugador1Id: jugadorId });
     if (error) setMensaje({ tipo: "error", texto: error });
-    else {
-      setMensaje({ tipo: "ok", texto: "Participante añadido." });
-      setJugador1Id("");
-      setJugador2Id("");
-    }
     setEnviando(false);
   }
 
-  function toggleSeleccionado(id) {
-    setSeleccionados((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function toggleParejaHecha(id) {
+    setSeleccionParejaHecha((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 2) return prev;
+      return [...prev, id];
+    });
+  }
+
+  async function anadirParejaHecha() {
+    if (seleccionParejaHecha.length !== 2) return;
+    setEnviando(true);
+    setMensaje(null);
+    const error = await onCrearParticipante({ jugador1Id: seleccionParejaHecha[0], jugador2Id: seleccionParejaHecha[1] });
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else setSeleccionParejaHecha([]);
+    setEnviando(false);
+  }
+
+  function toggleCiega(id) {
+    setSeleccionCiega((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   async function sortearParejasCiegas() {
     setEnviando(true);
     setMensaje(null);
-    const error = await onSortearParejas(seleccionados);
+    const error = await onSortearParejas(seleccionCiega);
     if (error) setMensaje({ tipo: "error", texto: error });
     else {
       setMensaje({ tipo: "ok", texto: "Parejas sorteadas." });
-      setSeleccionados([]);
+      setSeleccionCiega([]);
     }
     setEnviando(false);
   }
@@ -626,53 +642,65 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
         ))}
       </ul>
 
+      <h5 style={{ marginTop: "1rem" }}>Jugadores del club disponibles</h5>
+      {disponibles.length === 0 && jugadores.length > 0 && (
+        <p className="chronicle-status">Todos los jugadores del club ya están apuntados a este cuadrante.</p>
+      )}
       {jugadores.length === 0 && (
-        <p className="admin-hint">Añade jugadores al plantel del club arriba antes de poder apuntarlos aquí.</p>
+        <p className="admin-hint">Todavía no hay nadie en el plantel del club — añade jugadores arriba.</p>
       )}
 
-      {jugadores.length > 0 && !esParejasCiegas && (
-        <form onSubmit={anadir} className="admin-inline-form">
-          <label>
-            {esParejasHechas ? "Jugador 1 de la pareja" : "Jugador"}
-            <select value={jugador1Id} onChange={(e) => setJugador1Id(e.target.value)}>
-              <option value="">Elige un jugador…</option>
-              {jugadores.map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-            </select>
-          </label>
-          {esParejasHechas ? (
-            <label>
-              Jugador 2 de la pareja
-              <select value={jugador2Id} onChange={(e) => setJugador2Id(e.target.value)}>
-                <option value="">Elige el compañero…</option>
-                {jugadores.filter((j) => j.id !== jugador1Id).map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-              </select>
-            </label>
-          ) : (
-            <label>
-              Compañero (opcional)
-              <select value={jugador2Id} onChange={(e) => setJugador2Id(e.target.value)}>
-                <option value="">— Individual —</option>
-                {jugadores.filter((j) => j.id !== jugador1Id).map((j) => <option key={j.id} value={j.id}>{j.nombre}</option>)}
-              </select>
-            </label>
-          )}
-          <button type="submit" disabled={enviando || !jugador1Id}>Añadir</button>
-        </form>
+      {disponibles.length > 0 && !esParejasCiegas && !esParejasHechas && (
+        <ul>
+          {disponibles.map((j) => (
+            <li key={j.id} className="admin-list-item">
+              <span>{j.nombre}</span>
+              <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividual(j.id)}>
+                ＋ Añadir
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
-      {jugadores.length > 0 && esParejasCiegas && (
+      {disponibles.length > 0 && esParejasHechas && (
         <div>
-          <p className="admin-hint">Marca un número par de jugadores del club; se emparejarán al azar.</p>
+          <p className="admin-hint">Marca a los 2 jugadores que forman la pareja.</p>
+          <ul>
+            {disponibles.map((j) => (
+              <li key={j.id} className="admin-list-item">
+                <label style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: "auto" }}
+                    checked={seleccionParejaHecha.includes(j.id)}
+                    disabled={!seleccionParejaHecha.includes(j.id) && seleccionParejaHecha.length >= 2}
+                    onChange={() => toggleParejaHecha(j.id)}
+                  />
+                  {j.nombre}
+                </label>
+              </li>
+            ))}
+          </ul>
+          <button type="button" disabled={enviando || seleccionParejaHecha.length !== 2} onClick={anadirParejaHecha}>
+            Formar pareja y añadir
+          </button>
+        </div>
+      )}
+
+      {disponibles.length > 0 && esParejasCiegas && (
+        <div>
+          <p className="admin-hint">Marca un número par de jugadores; se emparejarán al azar.</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: ".6rem", marginBottom: ".6rem" }}>
-            {jugadores.map((j) => (
+            {disponibles.map((j) => (
               <label key={j.id} style={{ display: "flex", alignItems: "center", gap: ".3rem" }}>
-                <input type="checkbox" checked={seleccionados.includes(j.id)} onChange={() => toggleSeleccionado(j.id)} style={{ width: "auto" }} />
+                <input type="checkbox" checked={seleccionCiega.includes(j.id)} onChange={() => toggleCiega(j.id)} style={{ width: "auto" }} />
                 {j.nombre}
               </label>
             ))}
           </div>
-          <button type="button" disabled={enviando || seleccionados.length < 2 || seleccionados.length % 2 !== 0} onClick={sortearParejasCiegas}>
-            Sortear {seleccionados.length} jugadores en parejas
+          <button type="button" disabled={enviando || seleccionCiega.length < 2 || seleccionCiega.length % 2 !== 0} onClick={sortearParejasCiegas}>
+            Sortear {seleccionCiega.length} jugadores en parejas
           </button>
         </div>
       )}
