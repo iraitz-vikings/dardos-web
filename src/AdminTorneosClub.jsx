@@ -522,6 +522,24 @@ function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActua
           {creando ? "Generando…" : `Generar cuadrante (${torneo.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})`}
         </button>
       </form>
+      {error && <p className="admin-msg admin-msg-error">{error}</p>}
+
+      {(torneo.cuadrantes || []).length === 0 && <p className="chronicle-status">Sin cuadrantes todavía.</p>}
+
+      {(torneo.cuadrantes || []).map((c) => (
+        <CuadranteDetalle
+          key={c.id}
+          cuadrante={c}
+          numeroMaquinas={torneo.numeroMaquinas}
+          onBorrar={() => onBorrarCuadrante(c.id)}
+          onActualizarPartido={onActualizarPartido}
+          onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
+          onReiniciar={() => onReiniciar(c.id)}
+        />
+      ))}
+    </div>
+  );
+}
 
 const GRUPOS_POR_METODO = { AB: ["A", "B"], ABC: ["A", "B", "C"], ABCD: ["A", "B", "C", "D"] };
 
