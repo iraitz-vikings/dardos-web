@@ -206,6 +206,20 @@ export default function AdminTorneosClub({ token, salir }) {
     return null;
   }
 
+  async function sortearParejasGrupos(cuadranteId, entradas) {
+    const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sortear-parejas-grupos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ entradas }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo sortear las parejas.";
+    }
+    return null;
+  }
+  
   async function crearJugadorClub(nombreJugador) {
     const res = await fetch(`${API_URL}/api/jugadores`, {
       method: "POST",
@@ -236,6 +250,7 @@ export default function AdminTorneosClub({ token, salir }) {
         onCrearParticipante={crearParticipante}
         onBorrarParticipante={borrarParticipante}
         onSortearParejas={sortearParejas}
+        onSortearParejasGrupos={sortearParejasGrupos}
       />
     );
   }
@@ -362,7 +377,7 @@ export default function AdminTorneosClub({ token, salir }) {
 
 function TorneoGestion({
   torneo, jugadores, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido,
-  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortearParejasGrupos,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -412,6 +427,7 @@ function TorneoGestion({
                 onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
                 onBorrarParticipante={onBorrarParticipante}
                 onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
+                onSortearParejasGrupos={(entradas) => onSortearParejasGrupos(c.id, entradas)}
                 onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
               />
             </div>
@@ -463,15 +479,20 @@ function JugadoresDelClub({ jugadores }) {
 function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear, onReiniciar }) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
+  const [metodoSorteoParejas, setMetodoSorteoParejas] = useState("AB");
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState(null);
+
+  const esParejasCiegas = torneo.modalidad === "parejas_ciegas";
 
   async function submit(e) {
     e.preventDefault();
     if (!nombreCuadrante.trim()) return;
     setCreando(true);
     setError(null);
-    const ok = await onCrearCuadrante({ nombre: nombreCuadrante.trim(), tamano, tipoEliminacion: torneo.tipoEliminacion });
+    const datos = { nombre: nombreCuadrante.trim(), tamano, tipoEliminacion: torneo.tipoEliminacion };
+    if (esParejasCiegas) datos.metodoSorteoParejas = metodoSorteoParejas;
+    const ok = await onCrearCuadrante(datos);
     if (!ok) setError("No se pudo generar el cuadrante.");
     else setNombreCuadrante("");
     setCreando(false);
@@ -490,30 +511,21 @@ function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActua
             <option key={n} value={n}>{n} participantes</option>
           ))}
         </select>
+        {esParejasCiegas && (
+          <select value={metodoSorteoParejas} onChange={(e) => setMetodoSorteoParejas(e.target.value)}>
+            <option value="AB">Método AB (2 grupos)</option>
+            <option value="ABC">Método ABC (3 grupos)</option>
+            <option value="ABCD">Método ABCD (4 grupos)</option>
+          </select>
+        )}
         <button type="submit" disabled={creando}>
           {creando ? "Generando…" : `Generar cuadrante (${torneo.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})`}
         </button>
       </form>
-      {error && <p className="admin-msg admin-msg-error">{error}</p>}
 
-      {(torneo.cuadrantes || []).length === 0 && <p className="chronicle-status">Sin cuadrantes todavía.</p>}
+const GRUPOS_POR_METODO = { AB: ["A", "B"], ABC: ["A", "B", "C"], ABCD: ["A", "B", "C", "D"] };
 
-      {(torneo.cuadrantes || []).map((c) => (
-        <CuadranteDetalle
-          key={c.id}
-          cuadrante={c}
-          numeroMaquinas={torneo.numeroMaquinas}
-          onBorrar={() => onBorrarCuadrante(c.id)}
-          onActualizarPartido={onActualizarPartido}
-          onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
-          onReiniciar={() => onReiniciar(c.id)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortear }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -528,6 +540,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   const esParejasCiegas = modalidad === "parejas_ciegas";
   const esParejasHechas = modalidad === "parejas_hechas";
   const esParejas = esParejasCiegas || esParejasHechas;
+  const grupos = esParejasCiegas ? GRUPOS_POR_METODO[cuadrante.metodoSorteoParejas] || [] : [];
 
   const idsYaApuntados = new Set();
   for (const p of participantes) {
@@ -538,7 +551,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   const disponiblesClub = jugadores.filter((j) => !idsYaApuntados.has(j.id) && !clubEnPool.has(j.id));
 
   function anadirAlPool(jugadorId, nombre) {
-    setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre }]);
+    setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre, grupo: grupos[0] || null }]);
   }
 
   function anadirManualAlPool(e) {
@@ -554,7 +567,11 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     if (parejaSel2 === key) setParejaSel2("");
   }
 
-  // ---- individual: alta directa, sin pasar por la lista de disponibles ----
+  function cambiarGrupo(key, grupo) {
+    setPoolManual((prev) => prev.map((p) => (p.key === key ? { ...p, grupo } : p)));
+  }
+
+  // ---- individual ----
   async function anadirIndividualDirecto(jugadorId) {
     setEnviando(true);
     setMensaje(null);
@@ -573,7 +590,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     setEnviando(false);
   }
 
-  // ---- parejas ya formadas: formar pareja con 2 de la lista de disponibles ----
+  // ---- parejas ya formadas ----
   async function formarPareja() {
     const e1 = poolManual.find((p) => p.key === parejaSel1);
     const e2 = poolManual.find((p) => p.key === parejaSel2);
@@ -595,16 +612,41 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     setEnviando(false);
   }
 
-  // ---- parejas ciegas: sorteo con los del plantel que haya en la lista de disponibles ----
-  const disponiblesConJugador = poolManual.filter((p) => p.jugadorId);
-  const disponiblesSinJugador = poolManual.filter((p) => !p.jugadorId);
-  async function sortearDesdeDisponibles() {
+  // ---- parejas ciegas: sorteo por grupos de nivel ----
+  function conteoPorGrupo() {
+    const c = {};
+    for (const g of grupos) c[g] = poolManual.filter((p) => p.grupo === g).length;
+    return c;
+  }
+  function errorGrupos() {
+    if (!cuadrante.metodoSorteoParejas) return "Este cuadrante no tiene definido un método de sorteo — bórralo y créalo de nuevo eligiendo un método.";
+    const c = conteoPorGrupo();
+    const metodo = cuadrante.metodoSorteoParejas;
+    if (metodo === "AB" && c.A !== c.B) return `El grupo A (${c.A}) y el grupo B (${c.B}) deben tener el mismo número de jugadores.`;
+    if (metodo === "ABC") {
+      if (c.A !== c.C) return `El grupo A (${c.A}) y el grupo C (${c.C}) deben tener el mismo número de jugadores.`;
+      if (c.B % 2 !== 0) return `El grupo B (${c.B}) necesita un número par de jugadores.`;
+    }
+    if (metodo === "ABCD") {
+      if (c.A !== c.D) return `El grupo A (${c.A}) y el grupo D (${c.D}) deben tener el mismo número de jugadores.`;
+      if (c.B !== c.C) return `El grupo B (${c.B}) y el grupo C (${c.C}) deben tener el mismo número de jugadores.`;
+    }
+    return null;
+  }
+  const errorGruposActual = esParejasCiegas && poolManual.length > 0 ? errorGrupos() : null;
+
+  async function sortearPorGrupos() {
     setEnviando(true);
     setMensaje(null);
-    const error = await onSortearParejas(disponiblesConJugador.map((p) => p.jugadorId));
+    const entradas = poolManual.map((p) => ({
+      jugadorId: p.jugadorId || undefined,
+      nombre: p.jugadorId ? undefined : p.nombre,
+      grupo: p.grupo,
+    }));
+    const error = await onSortearParejasGrupos(entradas);
     if (error) setMensaje({ tipo: "error", texto: error });
     else {
-      setPoolManual((prev) => prev.filter((p) => !p.jugadorId));
+      setPoolManual([]);
       setMensaje({ tipo: "ok", texto: "Parejas sorteadas." });
     }
     setEnviando(false);
@@ -655,7 +697,14 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
             {poolManual.map((p) => (
               <li key={p.key} className="admin-list-item">
                 <span>{p.nombre}{!p.jugadorId && " (invitado)"}</span>
-                <button type="button" className="admin-link-btn" onClick={() => quitarDelPool(p.key)}>Quitar</button>
+                <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+                  {esParejasCiegas && grupos.length > 0 && (
+                    <select value={p.grupo || ""} onChange={(e) => cambiarGrupo(p.key, e.target.value)}>
+                      {grupos.map((g) => <option key={g} value={g}>Grupo {g}</option>)}
+                    </select>
+                  )}
+                  <button type="button" className="admin-link-btn" onClick={() => quitarDelPool(p.key)}>Quitar</button>
+                </div>
               </li>
             ))}
             {poolManual.length === 0 && <p className="chronicle-status">Nadie en la lista de disponibles todavía.</p>}
@@ -694,19 +743,19 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
 
       {esParejasCiegas && (
         <div style={{ marginTop: "1rem" }}>
-          <h5>Sorteo de parejas</h5>
-          {disponiblesSinJugador.length > 0 && (
+          <h5>Sorteo por niveles ({cuadrante.metodoSorteoParejas || "sin método"})</h5>
+          {grupos.length > 0 && (
             <p className="admin-hint">
-              Los invitados sin jugador de club en la lista de disponibles ({disponiblesSinJugador.map((p) => p.nombre).join(", ")})
-              todavía no se incluyen en el sorteo automático — lo afinamos en el siguiente paso.
+              {grupos.map((g) => `${g}: ${conteoPorGrupo()[g] || 0}`).join(" · ")}
             </p>
           )}
+          {errorGruposActual && <p className="admin-msg admin-msg-error">{errorGruposActual}</p>}
           <button
             type="button"
-            disabled={enviando || disponiblesConJugador.length < 2 || disponiblesConJugador.length % 2 !== 0}
-            onClick={sortearDesdeDisponibles}
+            disabled={enviando || poolManual.length < 2 || !!errorGruposActual}
+            onClick={sortearPorGrupos}
           >
-            Sortear {disponiblesConJugador.length} jugadores del plantel en parejas
+            Sortear {poolManual.length} jugadores en parejas niveladas
           </button>
         </div>
       )}
