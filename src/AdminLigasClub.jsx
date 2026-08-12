@@ -320,6 +320,9 @@ function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarP
         <button type="button" className={`admin-tab ${subpestana === "calendario" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("calendario")}>
           Calendario
         </button>
+        <button type="button" className={`admin-tab ${subpestana === "clasificacion" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("clasificacion")}>
+          Clasificación
+        </button>
       </nav>
 
       {subpestana === "participantes" && (
