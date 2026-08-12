@@ -515,6 +515,7 @@ function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActua
 
 function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
+  const [nombreManual2, setNombreManual2] = useState("");
   const [seleccionParejaHecha, setSeleccionParejaHecha] = useState([]);
   const [seleccionCiega, setSeleccionCiega] = useState([]);
   const [semillasTexto, setSemillasTexto] = useState("");
@@ -545,6 +546,20 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     setEnviando(false);
   }
 
+  async function anadirParejaManual(e) {
+    e.preventDefault();
+    if (!nombreManual.trim() || !nombreManual2.trim()) return;
+    setEnviando(true);
+    setMensaje(null);
+    const error = await onCrearParticipante({ nombre: `${nombreManual.trim()} / ${nombreManual2.trim()}` });
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else {
+      setNombreManual("");
+      setNombreManual2("");
+    }
+    setEnviando(false);
+  }
+  
   async function anadirIndividual(jugadorId) {
     setEnviando(true);
     setMensaje(null);
@@ -613,10 +628,24 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
       {!esParejasCiegas && !esParejasHechas && (
         <form onSubmit={anadirManual} className="admin-inline-form">
           <label>
-            Añadir participante por nombre
+            Añadir invitado por nombre
             <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
           </label>
           <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
+        </form>
+      )}
+
+      {(esParejasCiegas || esParejasHechas) && (
+        <form onSubmit={anadirParejaManual} className="admin-inline-form">
+          <label>
+            Añadir pareja de invitados (nombre 1)
+            <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
+          </label>
+          <label>
+            Nombre 2
+            <input value={nombreManual2} onChange={(e) => setNombreManual2(e.target.value)} placeholder="Nombre y apellido" />
+          </label>
+          <button type="submit" disabled={enviando || !nombreManual.trim() || !nombreManual2.trim()}>Añadir pareja</button>
         </form>
       )}
 
