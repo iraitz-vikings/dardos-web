@@ -728,9 +728,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
   }
   const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
 
-  const maquinasOpciones = numeroMaquinas
-    ? Array.from({ length: numeroMaquinas }, (_, i) => `Máquina ${i + 1}`)
-    : [];
+  const participantesApuntados = cuadrante.participantes || [];
 
   return (
     <div className="admin-cuadrante">
