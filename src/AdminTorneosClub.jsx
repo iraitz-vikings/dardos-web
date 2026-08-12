@@ -754,7 +754,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
                 .sort((a, b) => a.posicion - b.posicion)
                 .map((p) => (
                   <PartidoRow
-                    key={p.id}
+                    key={`${p.id}-${p.jugador1}-${p.jugador2}-${p.ganador}-${p.resultado}-${p.maquina}`}
                     p={p}
                     maquinasOpciones={maquinasOpciones}
                     onActualizar={(datos) => onActualizarPartido(p.id, datos)}
