@@ -419,6 +419,7 @@ function TorneoGestion({
                 onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
                 onBorrarParticipante={onBorrarParticipante}
                 onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
+                onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
               />
             </div>
           ))}
@@ -544,12 +545,17 @@ function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActua
   );
 }
 
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortear }) {
   const [jugador1Id, setJugador1Id] = useState("");
   const [jugador2Id, setJugador2Id] = useState("");
   const [seleccionados, setSeleccionados] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+
+  const [nombresTexto, setNombresTexto] = useState("");
+  const [semillasTexto, setSemillasTexto] = useState("");
+  const [sorteando, setSorteando] = useState(false);
+  const [errorSorteo, setErrorSorteo] = useState(null);
 
   const participantes = cuadrante.participantes || [];
   const esParejasCiegas = modalidad === "parejas_ciegas";
@@ -578,7 +584,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     setSeleccionados((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
-  async function sortear() {
+  async function sortearParejasCiegas() {
     setEnviando(true);
     setMensaje(null);
     const error = await onSortearParejas(seleccionados);
@@ -588,6 +594,23 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
       setSeleccionados([]);
     }
     setEnviando(false);
+  }
+
+  const nombres = nombresTexto.split("\n").map((n) => n.trim()).filter(Boolean);
+  const semillas = semillasTexto.split("\n").map((n) => n.trim()).filter(Boolean);
+  const semillasNoValidas = semillas.filter((s) => !nombres.includes(s));
+
+  async function hacerSorteo(e) {
+    e.preventDefault();
+    setSorteando(true);
+    setErrorSorteo(null);
+    const error = await onSortear(nombres, semillas);
+    if (error) setErrorSorteo(error);
+    else {
+      setNombresTexto("");
+      setSemillasTexto("");
+    }
+    setSorteando(false);
   }
 
   return (
@@ -648,73 +671,17 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
               </label>
             ))}
           </div>
-          <button type="button" disabled={enviando || seleccionados.length < 2 || seleccionados.length % 2 !== 0} onClick={sortear}>
+          <button type="button" disabled={enviando || seleccionados.length < 2 || seleccionados.length % 2 !== 0} onClick={sortearParejasCiegas}>
             Sortear {seleccionados.length} jugadores en parejas
           </button>
         </div>
       )}
 
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
-    </div>
-  );
-}
 
-function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar }) {
-  const [abierto, setAbierto] = useState(false);
-  const [nombresTexto, setNombresTexto] = useState("");
-  const [semillasTexto, setSemillasTexto] = useState("");
-  const [sorteando, setSorteando] = useState(false);
-  const [errorSorteo, setErrorSorteo] = useState(null);
-  const [busqueda, setBusqueda] = useState("");
-
-  const porRama = {};
-  for (const p of cuadrante.partidos) {
-    if (!porRama[p.rama]) porRama[p.rama] = {};
-    if (!porRama[p.rama][p.ronda]) porRama[p.rama][p.ronda] = [];
-    porRama[p.rama][p.ronda].push(p);
-  }
-  const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
-
-  const maquinasOpciones = numeroMaquinas
-    ? Array.from({ length: numeroMaquinas }, (_, i) => `Máquina ${i + 1}`)
-    : [];
-
-  const nombres = nombresTexto.split("\n").map((n) => n.trim()).filter(Boolean);
-  const semillas = semillasTexto.split("\n").map((n) => n.trim()).filter(Boolean);
-  const semillasNoValidas = semillas.filter((s) => !nombres.includes(s));
-  const participantesApuntados = cuadrante.participantes || [];
-
-  async function hacerSorteo(e) {
-    e.preventDefault();
-    setSorteando(true);
-    setErrorSorteo(null);
-    const error = await onSortear(nombres, semillas);
-    if (error) setErrorSorteo(error);
-    else {
-      setNombresTexto("");
-      setSemillasTexto("");
-    }
-    setSorteando(false);
-  }
-
-  return (
-    <div className="admin-cuadrante">
-      <div className="admin-cuadrante-header">
-        <h4>{cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})</h4>
-        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-          <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
-            {abierto ? "Ocultar" : "Ver enfrentamientos"}
-          </button>
-          <button type="button" className="admin-link-btn" onClick={onReiniciar}>Vaciar resultados</button>
-          <button type="button" className="admin-link-btn" onClick={onBorrar}>Borrar cuadrante</button>
-        </div>
-      </div>
-
-      <p className="admin-hint">{participantesApuntados.length} participante{participantesApuntados.length === 1 ? "" : "s"} del club apuntados (gestiónalos en la pestaña "Participantes").</p>
-
-      <form onSubmit={hacerSorteo} className="admin-sorteo-form">
+      <form onSubmit={hacerSorteo} className="admin-sorteo-form" style={{ marginTop: "1.2rem" }}>
         <label>
-          Lista de participantes escritos a mano — usa esto para invitados que no son del club (un nombre por línea, hasta {cuadrante.tamano}; déjalo vacío para usar solo los apuntados arriba)
+          Invitados sueltos, escritos a mano — no son del club (un nombre por línea, hasta {cuadrante.tamano}; déjalo vacío para usar solo los apuntados arriba)
           <textarea
             rows={4}
             value={nombresTexto}
@@ -736,15 +703,54 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
             </span>
           )}
         </label>
-        <button type="submit" disabled={sorteando || (nombres.length === 0 && participantesApuntados.length === 0)}>
+        <button type="submit" disabled={sorteando || (nombres.length === 0 && participantes.length === 0)}>
           {sorteando
             ? "Sorteando…"
             : nombres.length > 0
-              ? `Sortear cuadro (${nombres.length} participante${nombres.length === 1 ? "" : "s"} escritos)`
-              : `Sortear cuadro (${participantesApuntados.length} participante${participantesApuntados.length === 1 ? "" : "s"} apuntados)`}
+              ? `Sortear cuadro (${nombres.length} invitado${nombres.length === 1 ? "" : "s"} + ${participantes.length} del club)`
+              : `Sortear cuadro (${participantes.length} participante${participantes.length === 1 ? "" : "s"} apuntados)`}
         </button>
         {errorSorteo && <p className="admin-msg admin-msg-error">{errorSorteo}</p>}
       </form>
+    </div>
+  );
+}
+
+function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar }) {
+  const [abierto, setAbierto] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
+
+  const porRama = {};
+  for (const p of cuadrante.partidos) {
+    if (!porRama[p.rama]) porRama[p.rama] = {};
+    if (!porRama[p.rama][p.ronda]) porRama[p.rama][p.ronda] = [];
+    porRama[p.rama][p.ronda].push(p);
+  }
+  const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
+
+  const maquinasOpciones = numeroMaquinas
+    ? Array.from({ length: numeroMaquinas }, (_, i) => `Máquina ${i + 1}`)
+    : [];
+
+  return (
+    <div className="admin-cuadrante">
+      <div className="admin-cuadrante-header">
+        <h4>{cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})</h4>
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+          <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
+            {abierto ? "Ocultar" : "Ver enfrentamientos"}
+          </button>
+          <button type="button" className="admin-link-btn" onClick={onReiniciar}>Vaciar resultados</button>
+          <button type="button" className="admin-link-btn" onClick={onBorrar}>Borrar cuadrante</button>
+        </div>
+      </div>
+
+    <div className="admin-hint">
+      <strong>Participantes confirmados ({participantesApuntados.length}):</strong>{" "}
+      {participantesApuntados.length > 0
+        ? participantesApuntados.map((p) => p.etiqueta).join(", ")
+        : "ninguno todavía — apúntalos en la pestaña \"Participantes\"."}
+    </div>
 
       {abierto && (
         <input
