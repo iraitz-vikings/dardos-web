@@ -413,6 +413,7 @@ button {
 
 .admin-uploading { font-size: .72rem; color: var(--ember); text-transform: none; letter-spacing: normal; }
 .admin-hint { font-size: .78rem; color: var(--steel); margin-top: -.4rem; }
+.admin-hint-bloque { font-size: .78rem; color: var(--steel); margin: .5rem 0 .8rem; display: block; }
 
 .admin-inline-form { display: flex; gap: .6rem; align-items: flex-end; }
 .admin-inline-form label { flex: 1; }
