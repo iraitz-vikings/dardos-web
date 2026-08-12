@@ -340,6 +340,7 @@ function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarP
       )}
 
       {subpestana === "calendario" && <CalendarioLiga liga={liga} onActualizarPartido={onActualizarPartido} />}
+      {subpestana === "clasificacion" && <ClasificacionLiga liga={liga} />}
     </section>
   );
 }
@@ -668,5 +669,86 @@ function PartidoLigaRow({ p, onActualizar }) {
         {p.enCurso ? "★ En curso" : "Marcar en curso"}
       </button>
     </div>
+  );
+}
+
+function calcularClasificacion(liga) {
+  const stats = {};
+  function fila(nombre) {
+    if (!stats[nombre]) {
+      stats[nombre] = { nombre, jugados: 0, victorias: 0, empates: 0, derrotas: 0, partidasGanadas: 0, partidasPerdidas: 0, puntos: 0 };
+    }
+    return stats[nombre];
+  }
+  for (const p of liga.participantes || []) fila(p.etiqueta);
+
+  function parseResultado(resultado) {
+    if (!resultado) return null;
+    const m = resultado.trim().match(/^(\d+)\s*-\s*(\d+)$/);
+    if (!m) return null;
+    return [Number(m[1]), Number(m[2])];
+  }
+
+  for (const p of liga.partidos || []) {
+    const numeros = parseResultado(p.resultado);
+    if (numeros) {
+      const [a, b] = numeros;
+      const f1 = fila(p.participante1);
+      const f2 = fila(p.participante2);
+      f1.jugados++; f2.jugados++;
+      f1.partidasGanadas += a; f1.partidasPerdidas += b;
+      f2.partidasGanadas += b; f2.partidasPerdidas += a;
+      if (a > b) { f1.victorias++; f1.puntos += 2; f2.derrotas++; }
+      else if (a < b) { f2.victorias++; f2.puntos += 2; f1.derrotas++; }
+      else { f1.empates++; f2.empates++; f1.puntos += 1; f2.puntos += 1; }
+    } else if (p.ganador) {
+      const perdedor = p.ganador === p.participante1 ? p.participante2 : p.participante1;
+      const fg = fila(p.ganador);
+      const fp = fila(perdedor);
+      fg.jugados++; fp.jugados++;
+      fg.victorias++; fg.puntos += 2;
+      fp.derrotas++;
+    }
+  }
+
+  return Object.values(stats).sort(
+    (x, y) => y.puntos - x.puntos || (y.partidasGanadas - y.partidasPerdidas) - (x.partidasGanadas - x.partidasPerdidas)
+  );
+}
+
+function ClasificacionLiga({ liga }) {
+  const filas = calcularClasificacion(liga);
+  if (filas.length === 0) return <p className="chronicle-status">Todavía no hay participantes.</p>;
+  return (
+    <table className="admin-tabla-clasificacion">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Participante</th>
+          <th>PJ</th>
+          <th>V</th>
+          <th>E</th>
+          <th>D</th>
+          <th>Partidas +</th>
+          <th>Partidas −</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map((f, i) => (
+          <tr key={f.nombre}>
+            <td>{i + 1}</td>
+            <td>{f.nombre}</td>
+            <td>{f.jugados}</td>
+            <td>{f.victorias}</td>
+            <td>{f.empates}</td>
+            <td>{f.derrotas}</td>
+            <td>{f.partidasGanadas}</td>
+            <td>{f.partidasPerdidas}</td>
+            <td><strong>{f.puntos}</strong></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
