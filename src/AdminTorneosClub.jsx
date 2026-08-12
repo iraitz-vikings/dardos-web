@@ -515,9 +515,9 @@ function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActua
 
 function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
-  const [nombreManual2, setNombreManual2] = useState("");
-  const [seleccionParejaHecha, setSeleccionParejaHecha] = useState([]);
-  const [seleccionCiega, setSeleccionCiega] = useState([]);
+  const [poolManual, setPoolManual] = useState([]);
+  const [parejaSel1, setParejaSel1] = useState("");
+  const [parejaSel2, setParejaSel2] = useState("");
   const [semillasTexto, setSemillasTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [sorteando, setSorteando] = useState(false);
@@ -527,15 +527,42 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   const participantes = cuadrante.participantes || [];
   const esParejasCiegas = modalidad === "parejas_ciegas";
   const esParejasHechas = modalidad === "parejas_hechas";
+  const esParejas = esParejasCiegas || esParejasHechas;
 
   const idsYaApuntados = new Set();
   for (const p of participantes) {
     if (p.jugador1Id) idsYaApuntados.add(p.jugador1Id);
     if (p.jugador2Id) idsYaApuntados.add(p.jugador2Id);
   }
-  const disponibles = jugadores.filter((j) => !idsYaApuntados.has(j.id));
+  const clubEnPool = new Set(poolManual.filter((p) => p.jugadorId).map((p) => p.jugadorId));
+  const disponiblesClub = jugadores.filter((j) => !idsYaApuntados.has(j.id) && !clubEnPool.has(j.id));
 
-  async function anadirManual(e) {
+  function anadirAlPool(jugadorId, nombre) {
+    setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre }]);
+  }
+
+  function anadirManualAlPool(e) {
+    e.preventDefault();
+    if (!nombreManual.trim()) return;
+    anadirAlPool(null, nombreManual.trim());
+    setNombreManual("");
+  }
+
+  function quitarDelPool(key) {
+    setPoolManual((prev) => prev.filter((p) => p.key !== key));
+    if (parejaSel1 === key) setParejaSel1("");
+    if (parejaSel2 === key) setParejaSel2("");
+  }
+
+  // ---- individual: alta directa, sin pasar por la lista de disponibles ----
+  async function anadirIndividualDirecto(jugadorId) {
+    setEnviando(true);
+    setMensaje(null);
+    const error = await onCrearParticipante({ jugador1Id: jugadorId });
+    if (error) setMensaje({ tipo: "error", texto: error });
+    setEnviando(false);
+  }
+  async function anadirManualDirecto(e) {
     e.preventDefault();
     if (!nombreManual.trim()) return;
     setEnviando(true);
@@ -546,56 +573,40 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     setEnviando(false);
   }
 
-  async function anadirParejaManual(e) {
-    e.preventDefault();
-    if (!nombreManual.trim() || !nombreManual2.trim()) return;
+  // ---- parejas ya formadas: formar pareja con 2 de la lista de disponibles ----
+  async function formarPareja() {
+    const e1 = poolManual.find((p) => p.key === parejaSel1);
+    const e2 = poolManual.find((p) => p.key === parejaSel2);
+    if (!e1 || !e2 || e1.key === e2.key) return;
     setEnviando(true);
     setMensaje(null);
-    const error = await onCrearParticipante({ nombre: `${nombreManual.trim()} / ${nombreManual2.trim()}` });
+    const datos = {};
+    if (e1.jugadorId) datos.jugador1Id = e1.jugadorId;
+    else datos.nombre1 = e1.nombre;
+    if (e2.jugadorId) datos.jugador2Id = e2.jugadorId;
+    else datos.nombre2 = e2.nombre;
+    const error = await onCrearParticipante(datos);
     if (error) setMensaje({ tipo: "error", texto: error });
     else {
-      setNombreManual("");
-      setNombreManual2("");
+      setPoolManual((prev) => prev.filter((p) => p.key !== e1.key && p.key !== e2.key));
+      setParejaSel1("");
+      setParejaSel2("");
     }
     setEnviando(false);
   }
-  
-  async function anadirIndividual(jugadorId) {
+
+  // ---- parejas ciegas: sorteo con los del plantel que haya en la lista de disponibles ----
+  const disponiblesConJugador = poolManual.filter((p) => p.jugadorId);
+  const disponiblesSinJugador = poolManual.filter((p) => !p.jugadorId);
+  async function sortearDesdeDisponibles() {
     setEnviando(true);
     setMensaje(null);
-    const error = await onCrearParticipante({ jugador1Id: jugadorId });
+    const error = await onSortearParejas(disponiblesConJugador.map((p) => p.jugadorId));
     if (error) setMensaje({ tipo: "error", texto: error });
-    setEnviando(false);
-  }
-
-  function toggleParejaHecha(id) {
-    setSeleccionParejaHecha((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= 2) return prev;
-      return [...prev, id];
-    });
-  }
-
-  async function anadirParejaHecha() {
-    if (seleccionParejaHecha.length !== 2) return;
-    setEnviando(true);
-    setMensaje(null);
-    const error = await onCrearParticipante({ jugador1Id: seleccionParejaHecha[0], jugador2Id: seleccionParejaHecha[1] });
-    if (error) setMensaje({ tipo: "error", texto: error });
-    else setSeleccionParejaHecha([]);
-    setEnviando(false);
-  }
-
-  function toggleCiega(id) {
-    setSeleccionCiega((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
-
-  async function sortearParejasCiegas() {
-    setEnviando(true);
-    setMensaje(null);
-    const error = await onSortearParejas(seleccionCiega);
-    if (error) setMensaje({ tipo: "error", texto: error });
-    else setSeleccionCiega([]);
+    else {
+      setPoolManual((prev) => prev.filter((p) => !p.jugadorId));
+      setMensaje({ tipo: "ok", texto: "Parejas sorteadas." });
+    }
     setEnviando(false);
   }
 
@@ -614,7 +625,118 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
 
   return (
     <div className="admin-cuadrante-participantes" style={{ marginBottom: "1.5rem" }}>
-      <h5>Participantes ({participantes.length})</h5>
+      {esParejas && (
+        <>
+          <h5>Jugadores disponibles</h5>
+          <p className="admin-hint">Añádelos aquí uno a uno, del plantel o a mano; luego fórmalos en parejas más abajo.</p>
+
+          <form onSubmit={anadirManualAlPool} className="admin-inline-form">
+            <label>
+              Añadir invitado por nombre
+              <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
+            </label>
+            <button type="submit" disabled={!nombreManual.trim()}>＋ Añadir a disponibles</button>
+          </form>
+
+          {disponiblesClub.length > 0 && (
+            <div style={{ margin: ".6rem 0" }}>
+              <p className="admin-hint">Añadir del plantel del club:</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                {disponiblesClub.map((j) => (
+                  <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>
+                    ＋ {j.nombre}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <ul>
+            {poolManual.map((p) => (
+              <li key={p.key} className="admin-list-item">
+                <span>{p.nombre}{!p.jugadorId && " (invitado)"}</span>
+                <button type="button" className="admin-link-btn" onClick={() => quitarDelPool(p.key)}>Quitar</button>
+              </li>
+            ))}
+            {poolManual.length === 0 && <p className="chronicle-status">Nadie en la lista de disponibles todavía.</p>}
+          </ul>
+        </>
+      )}
+
+      {esParejasHechas && (
+        <div style={{ marginTop: "1rem" }}>
+          <h5>Formar pareja</h5>
+          <div className="admin-inline-form">
+            <label>
+              Jugador 1
+              <select value={parejaSel1} onChange={(e) => setParejaSel1(e.target.value)}>
+                <option value="">Elige…</option>
+                {poolManual.filter((p) => p.key !== parejaSel2).map((p) => (
+                  <option key={p.key} value={p.key}>{p.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Jugador 2
+              <select value={parejaSel2} onChange={(e) => setParejaSel2(e.target.value)}>
+                <option value="">Elige…</option>
+                {poolManual.filter((p) => p.key !== parejaSel1).map((p) => (
+                  <option key={p.key} value={p.key}>{p.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <button type="button" disabled={enviando || !parejaSel1 || !parejaSel2} onClick={formarPareja}>
+              Formar pareja
+            </button>
+          </div>
+        </div>
+      )}
+
+      {esParejasCiegas && (
+        <div style={{ marginTop: "1rem" }}>
+          <h5>Sorteo de parejas</h5>
+          {disponiblesSinJugador.length > 0 && (
+            <p className="admin-hint">
+              Los invitados sin jugador de club en la lista de disponibles ({disponiblesSinJugador.map((p) => p.nombre).join(", ")})
+              todavía no se incluyen en el sorteo automático — lo afinamos en el siguiente paso.
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={enviando || disponiblesConJugador.length < 2 || disponiblesConJugador.length % 2 !== 0}
+            onClick={sortearDesdeDisponibles}
+          >
+            Sortear {disponiblesConJugador.length} jugadores del plantel en parejas
+          </button>
+        </div>
+      )}
+
+      {!esParejas && (
+        <>
+          <h5>Añadir participante</h5>
+          <form onSubmit={anadirManualDirecto} className="admin-inline-form">
+            <label>
+              Invitado por nombre
+              <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
+            </label>
+            <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
+          </form>
+          {disponiblesClub.length > 0 && (
+            <ul>
+              {disponiblesClub.map((j) => (
+                <li key={j.id} className="admin-list-item">
+                  <span>{j.nombre}</span>
+                  <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>
+                    ＋ Añadir
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+
+      <h5 style={{ marginTop: "1.2rem" }}>Participantes ({participantes.length})</h5>
       {participantes.length === 0 && <p className="chronicle-status">Nadie apuntado todavía.</p>}
       <ul>
         {participantes.map((p) => (
@@ -624,93 +746,6 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
           </li>
         ))}
       </ul>
-
-      {!esParejasCiegas && !esParejasHechas && (
-        <form onSubmit={anadirManual} className="admin-inline-form">
-          <label>
-            Añadir invitado por nombre
-            <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
-          </label>
-          <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
-        </form>
-      )}
-
-      {(esParejasCiegas || esParejasHechas) && (
-        <form onSubmit={anadirParejaManual} className="admin-inline-form">
-          <label>
-            Añadir pareja de invitados (nombre 1)
-            <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
-          </label>
-          <label>
-            Nombre 2
-            <input value={nombreManual2} onChange={(e) => setNombreManual2(e.target.value)} placeholder="Nombre y apellido" />
-          </label>
-          <button type="submit" disabled={enviando || !nombreManual.trim() || !nombreManual2.trim()}>Añadir pareja</button>
-        </form>
-      )}
-
-      <h5 style={{ marginTop: "1rem" }}>Jugadores del club disponibles</h5>
-      {jugadores.length === 0 && (
-        <p className="admin-hint">Todavía no hay socios dados de alta en el plantel del club.</p>
-      )}
-      {jugadores.length > 0 && disponibles.length === 0 && (
-        <p className="chronicle-status">Todos los jugadores del club ya están apuntados a este cuadrante.</p>
-      )}
-
-      {disponibles.length > 0 && !esParejasCiegas && !esParejasHechas && (
-        <ul>
-          {disponibles.map((j) => (
-            <li key={j.id} className="admin-list-item">
-              <span>{j.nombre}</span>
-              <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividual(j.id)}>
-                ＋ Añadir
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {disponibles.length > 0 && esParejasHechas && (
-        <div>
-          <p className="admin-hint">Marca a los 2 jugadores que forman la pareja.</p>
-          <ul>
-            {disponibles.map((j) => (
-              <li key={j.id} className="admin-list-item">
-                <label style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
-                  <input
-                    type="checkbox"
-                    style={{ width: "auto" }}
-                    checked={seleccionParejaHecha.includes(j.id)}
-                    disabled={!seleccionParejaHecha.includes(j.id) && seleccionParejaHecha.length >= 2}
-                    onChange={() => toggleParejaHecha(j.id)}
-                  />
-                  {j.nombre}
-                </label>
-              </li>
-            ))}
-          </ul>
-          <button type="button" disabled={enviando || seleccionParejaHecha.length !== 2} onClick={anadirParejaHecha}>
-            Formar pareja y añadir
-          </button>
-        </div>
-      )}
-
-      {disponibles.length > 0 && esParejasCiegas && (
-        <div>
-          <p className="admin-hint">Marca un número par de jugadores; se emparejarán al azar.</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: ".6rem", marginBottom: ".6rem" }}>
-            {disponibles.map((j) => (
-              <label key={j.id} style={{ display: "flex", alignItems: "center", gap: ".3rem" }}>
-                <input type="checkbox" checked={seleccionCiega.includes(j.id)} onChange={() => toggleCiega(j.id)} style={{ width: "auto" }} />
-                {j.nombre}
-              </label>
-            ))}
-          </div>
-          <button type="button" disabled={enviando || seleccionCiega.length < 2 || seleccionCiega.length % 2 !== 0} onClick={sortearParejasCiegas}>
-            Sortear {seleccionCiega.length} jugadores en parejas
-          </button>
-        </div>
-      )}
 
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
 
