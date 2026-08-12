@@ -40,6 +40,7 @@ export default function AdminTorneosClub({ token, salir }) {
   const [modalidad, setModalidad] = useState("individual");
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
   const cargarTorneos = () => {
     fetch(`${API_URL}/api/torneos-club/todos`, { headers: { "x-admin-token": token } })
@@ -90,6 +91,7 @@ export default function AdminTorneosClub({ token, salir }) {
       setModalidad("individual");
       setInsigniaUrl("");
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
+      setMostrarFormulario(false);
       cargarTorneos();
     } catch {
       setMensaje({ tipo: "error", texto: "Error de conexión." });
@@ -247,7 +249,13 @@ export default function AdminTorneosClub({ token, salir }) {
         Marca "Público" para que aparezca en la web en "Torneos en directo"; "Privado" para que solo se vea en la
         sección de socios (su página con QR sigue siendo accesible por enlace directo en ambos casos).
       </p>
-
+      {!mostrarFormulario && (
+        <button type="button" onClick={() => setMostrarFormulario(true)} style={{ marginBottom: "1.5rem" }}>
+          ＋ Añadir torneo
+        </button>
+      )}
+      
+      {mostrarFormulario && (
       <form onSubmit={crearTorneo} className="admin-form" style={{ marginBottom: "1.5rem" }}>
         <label>
           Nombre
@@ -305,9 +313,13 @@ export default function AdminTorneosClub({ token, salir }) {
             <option value="publico">Público (visible en la web)</option>
           </select>
         </label>
-        <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear torneo"}</button>
+        <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
+          <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear torneo"}</button>
+          <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
+        </div>
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
       </form>
+      )}
 
       {torneos.length === 0 && <p className="chronicle-status">Todavía no hay torneos del club.</p>}
 
