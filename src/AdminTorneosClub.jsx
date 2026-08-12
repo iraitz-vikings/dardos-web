@@ -628,7 +628,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
       {esParejas && (
         <>
           <h5>Jugadores disponibles</h5>
-          <p className="admin-hint">Añádelos aquí uno a uno, del plantel o a mano; luego fórmalos en parejas más abajo.</p>
+          <p className="admin-hint-bloque">Añádelos aquí uno a uno, del plantel o a mano; luego fórmalos en parejas más abajo.</p>
 
           <form onSubmit={anadirManualAlPool} className="admin-inline-form">
             <label>
