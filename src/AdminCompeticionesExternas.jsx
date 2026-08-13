@@ -303,3 +303,16 @@ function EquipoBloque({ equipo, jugadores, maquinas, onAsignarCapitan, onBorrarE
                 defaultValue={p.resultado || ""}
                 placeholder="Resultado"
                 onBlur={(e) => onActualizarPartido(p.id, { resultado: e.target.value })}
+                style={{ width: "90px" }}
+              />
+              <button className="admin-link-btn" onClick={() => onActualizarPartido(p.id, { fijado: !p.fijado })}>
+                {p.fijado ? "Desconfirmar" : "Confirmar"}
+              </button>
+              <button className="admin-link-btn" onClick={() => onBorrarPartido(p.id)}>Borrar</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
