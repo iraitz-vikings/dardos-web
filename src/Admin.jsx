@@ -10,6 +10,7 @@ import AdminLigasClub from "./AdminLigasClub.jsx";
 import AdminTrofeos from "./AdminTrofeos.jsx";
 import AdminEquiposClub from "./AdminEquiposClub.jsx";
 import AdminMaquinas from "./AdminMaquinas.jsx";
+import AdminFabricantes from "./AdminFabricantes.jsx";
 import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
@@ -449,6 +450,7 @@ function cancelarEdicionNoticia() {
     { id: "trofeos", etiqueta: "Trofeos" },
     { id: "equipos-club", etiqueta: "Equipos" },
     { id: "maquinas", etiqueta: "Máquinas" },
+    { id: "fabricantes", etiqueta: "Fabricantes" },
     { id: "competiciones-externas", etiqueta: "Comp. externas" },
   ];
 
@@ -639,6 +641,7 @@ function cancelarEdicionNoticia() {
       {pestana === "trofeos" && <AdminTrofeos token={token} salir={salir} />}
       {pestana === "equipos-club" && <AdminEquiposClub token={token} salir={salir} />}
       {pestana === "maquinas" && <AdminMaquinas token={token} salir={salir} />}
+      {pestana === "fabricantes" && <AdminFabricantes token={token} salir={salir} />}
       {pestana === "competiciones-externas" && <AdminCompeticionesExternas token={token} salir={salir} />}
     </div>
   );

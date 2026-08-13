@@ -4,14 +4,30 @@ const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-pro
 
 export default function SocioPerfil() {
   const [perfil, setPerfil] = useState(null);
+  const [fabricantes, setFabricantes] = useState([]);
+  const [editando, setEditando] = useState(false);
+
   const [apodo, setApodo] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [idsFabricantes, setIdsFabricantes] = useState({}); // { [fabricanteId]: idExterno }
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
   const token = () => localStorage.getItem("socioToken");
+
+  function restaurarDesdePerfil(p) {
+    if (!p) return;
+    setApodo(p.apodo || "");
+    setBio(p.bio || "");
+    setAvatarUrl(p.avatarUrl || "");
+    const mapa = {};
+    (p.idsFabricantes || []).forEach((i) => {
+      mapa[i.fabricanteId] = i.idExterno || "";
+    });
+    setIdsFabricantes(mapa);
+  }
 
   useEffect(() => {
     fetch(`${API_URL}/api/perfil`, { headers: { Authorization: `Bearer ${token()}` } })
@@ -19,10 +35,13 @@ export default function SocioPerfil() {
       .then((p) => {
         if (!p) return;
         setPerfil(p);
-        setApodo(p.apodo || "");
-        setBio(p.bio || "");
-        setAvatarUrl(p.avatarUrl || "");
+        restaurarDesdePerfil(p);
       })
+      .catch(() => {});
+
+    fetch(`${API_URL}/api/fabricantes`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setFabricantes)
       .catch(() => {});
   }, []);
 
@@ -54,6 +73,10 @@ export default function SocioPerfil() {
     }
   }
 
+  function cambiarIdFabricante(fabricanteId, valor) {
+    setIdsFabricantes((prev) => ({ ...prev, [fabricanteId]: valor }));
+  }
+
   async function guardar(e) {
     e.preventDefault();
     setGuardando(true);
@@ -62,13 +85,36 @@ export default function SocioPerfil() {
       const res = await fetch(`${API_URL}/api/perfil`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ apodo, bio, avatarUrl }),
+        body: JSON.stringify({
+          apodo,
+          bio,
+          avatarUrl,
+          idsFabricantes: fabricantes.map((f) => ({
+            fabricanteId: f.id,
+            idExterno: idsFabricantes[f.id] || "",
+          })),
+        }),
       });
       if (!res.ok) {
         setMensaje({ tipo: "error", texto: "No se pudo guardar el perfil." });
         return;
       }
       setMensaje({ tipo: "ok", texto: "Perfil actualizado." });
+      setPerfil((p) => ({
+        ...p,
+        apodo,
+        bio,
+        avatarUrl,
+        idsFabricantes: fabricantes
+          .filter((f) => (idsFabricantes[f.id] || "").trim())
+          .map((f) => ({
+            fabricanteId: f.id,
+            nombreFabricante: f.nombre,
+            urlPerfilPlantilla: f.urlPerfilPlantilla,
+            idExterno: idsFabricantes[f.id],
+          })),
+      }));
+      setEditando(false);
     } catch {
       setMensaje({ tipo: "error", texto: "Error de conexión." });
     } finally {
@@ -77,6 +123,43 @@ export default function SocioPerfil() {
   }
 
   if (!perfil) return <p className="chronicle-status">Cargando tu perfil…</p>;
+
+  if (!editando) {
+    return (
+      <div className="perfil-resumen" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt="Tu foto de perfil"
+            style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover" }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 96,
+              height: 96,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.6rem",
+            }}
+            aria-hidden="true"
+          >
+            🎯
+          </div>
+        )}
+        <div style={{ flex: 1 }}>
+          <strong style={{ display: "block", fontSize: "1.1rem" }}>{perfil.nombre}</strong>
+          {apodo && <span style={{ display: "block", opacity: 0.85 }}>"{apodo}"</span>}
+          <button type="button" className="admin-link-btn" style={{ marginTop: ".6rem" }} onClick={() => setEditando(true)}>
+            Editar perfil
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -113,10 +196,44 @@ export default function SocioPerfil() {
         Sobre ti (opcional)
         <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Una frase, tu récord favorito, lo que quieras..." />
       </label>
-      <button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar perfil"}</button>      
+
+      {fabricantes.length > 0 && (
+        <fieldset style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1rem" }}>
+          <legend style={{ padding: "0 .4rem" }}>ID de fabricante</legend>
+          <p className="admin-hint" style={{ marginTop: 0 }}>
+            Si juegas en dianas de estos fabricantes, indica tu ID de jugador en cada una para poder
+            consultar más adelante tu media en su web.
+          </p>
+          {fabricantes.map((f) => (
+            <label key={f.id}>
+              {f.nombre}
+              <input
+                value={idsFabricantes[f.id] || ""}
+                onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}
+                placeholder={`Tu ID en ${f.nombre}`}
+              />
+            </label>
+          ))}
+        </fieldset>
+      )}
+
+      <div style={{ display: "flex", gap: ".6rem" }}>
+        <button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar perfil"}</button>
+        <button
+          type="button"
+          className="admin-link-btn"
+          onClick={() => {
+            restaurarDesdePerfil(perfil);
+            setMensaje(null);
+            setEditando(false);
+          }}
+        >
+          Cancelar
+        </button>
+      </div>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
       </form>
-  
+
       <CambioPasswordVoluntario />
       </>
     );

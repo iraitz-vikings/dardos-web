@@ -11,12 +11,12 @@ import Competiciones from "./Competiciones.jsx";
 import CalendarioSocio from "./CalendarioSocio.jsx";
 
 const SECCIONES = [
+  { id: "tablon", etiqueta: "Tablón de anuncios", lista: true },
   { id: "perfil", etiqueta: "Mi perfil", lista: true },
   { id: "historial", etiqueta: "Mi historial", lista: true },
   { id: "historico-privado", etiqueta: "Histórico privado", lista: true },
   { id: "competiciones", etiqueta: "Competiciones", lista: true },
   { id: "calendario", etiqueta: "Calendario", lista: true },
-  { id: "tablon", etiqueta: "Tablón de anuncios", lista: true },
   { id: "galeria-privada", etiqueta: "Galería privada", lista: true },
   { id: "trofeos", etiqueta: "Sala de trofeos", lista: true },
   { id: "equipos", etiqueta: "Equipos del club", lista: true },
@@ -24,7 +24,7 @@ const SECCIONES = [
 ];
 
 export default function ZonaSocio({ usuario, salir }) {
-  const [seccion, setSeccion] = useState("perfil");
+  const [seccion, setSeccion] = useState("tablon");
 
   return (
     <div className="admin-form" style={{ maxWidth: 640, margin: "0 auto" }}>
