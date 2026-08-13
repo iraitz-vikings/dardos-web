@@ -740,45 +740,6 @@ function CalendarioPartido({ p, maquinas, onProgramar }) {
   );
 }
 
-function PartidoLigaRow({ p, onActualizar }) {
-  return (
-    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
-      <span style={{ minWidth: "140px" }}>{p.participante1}</span>
-      <button
-        type="button"
-        className={`admin-link-btn ${p.ganador === p.participante1 ? "admin-ganador-activo" : ""}`}
-        onClick={() => onActualizar({ ganador: p.participante1 })}
-      >
-        Ganó
-      </button>
-      <span>vs</span>
-      <span style={{ minWidth: "140px" }}>{p.participante2}</span>
-      <button
-        type="button"
-        className={`admin-link-btn ${p.ganador === p.participante2 ? "admin-ganador-activo" : ""}`}
-        onClick={() => onActualizar({ ganador: p.participante2 })}
-      >
-        Ganó
-      </button>
-      <input
-        defaultValue={p.resultado || ""}
-        placeholder="Resultado"
-        className="admin-cuadro-resultado"
-        onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
-      />
-      <input
-        defaultValue={p.maquina || ""}
-        placeholder="Máquina"
-        className="admin-cuadro-maquina-input"
-        onBlur={(e) => e.target.value !== (p.maquina || "") && onActualizar({ maquina: e.target.value })}
-      />
-      <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
-        {p.enCurso ? "★ En curso" : "Marcar en curso"}
-      </button>
-    </div>
-  );
-}
-
 function calcularClasificacion(liga) {
   const stats = {};
   function fila(nombre) {
