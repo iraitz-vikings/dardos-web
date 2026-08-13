@@ -1,9 +1,10 @@
 import { useState } from "react";
 import SocioPerfil from "./SocioPerfil.jsx";
+import TablonAnuncios from "./TablonAnuncios.jsx";
 
 const SECCIONES = [
   { id: "perfil", etiqueta: "Mi perfil", lista: true },
-  { id: "tablon", etiqueta: "Tablón de anuncios" },
+  { id: "tablon", etiqueta: "Tablón de anuncios", lista: true },
   { id: "galeria-privada", etiqueta: "Galería privada" },
   { id: "trofeos", etiqueta: "Sala de trofeos" },
   { id: "equipos", etiqueta: "Equipos del club" },
@@ -36,6 +37,7 @@ export default function ZonaSocio({ usuario, salir }) {
       </nav>
 
       {seccion === "perfil" && <SocioPerfil usuario={usuario} />}
+      {seccion === "tablon" && <TablonAnuncios usuario={usuario} />}
     </div>
   );
 }
