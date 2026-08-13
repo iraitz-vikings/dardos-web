@@ -7,6 +7,7 @@ import AdminMensajeAnclado from "./AdminMensajeAnclado.jsx";
 import SelectorImagen from "./SelectorImagen.jsx";
 import AdminJugadores from "./AdminJugadores.jsx";
 import AdminLigasClub from "./AdminLigasClub.jsx";
+import AdminTrofeos from "./AdminTrofeos.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -442,6 +443,7 @@ function cancelarEdicionNoticia() {
     { id: "socios", etiqueta: "Socios" },
     { id: "mensaje", etiqueta: "Mensaje" },
     { id: "ligas-club", etiqueta: "Ligas del club" },
+    { id: "trofeos", etiqueta: "Trofeos" },
   ];
 
   return (
@@ -627,7 +629,8 @@ function cancelarEdicionNoticia() {
       {pestana === "ligas-club" && <AdminLigasClub token={token} salir={salir} />}
       {pestana === "patrocinadores" && <AdminPatrocinadores token={token} salir={salir} />}
       {pestana === "socios" && <AdminSocios token={token} salir={salir} />}
-      {pestana === "mensaje" && <AdminMensajeAnclado token={token} salir={salir} />}      
+      {pestana === "mensaje" && <AdminMensajeAnclado token={token} salir={salir} />}   
+      {pestana === "trofeos" && <AdminTrofeos token={token} salir={salir} />}
     </div>
   );
 }
