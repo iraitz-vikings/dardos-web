@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+  import { useEffect, useState } from "react";
 const ADMIN_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png";
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
 import AdminPatrocinadores from "./AdminPatrocinadores.jsx";
@@ -9,6 +9,8 @@ import AdminJugadores from "./AdminJugadores.jsx";
 import AdminLigasClub from "./AdminLigasClub.jsx";
 import AdminTrofeos from "./AdminTrofeos.jsx";
 import AdminEquiposClub from "./AdminEquiposClub.jsx";
+import AdminMaquinas from "./AdminMaquinas.jsx";
+import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -446,6 +448,8 @@ function cancelarEdicionNoticia() {
     { id: "ligas-club", etiqueta: "Ligas del club" },
     { id: "trofeos", etiqueta: "Trofeos" },
     { id: "equipos-club", etiqueta: "Equipos" },
+    { id: "maquinas", etiqueta: "Máquinas" },
+    { id: "competiciones-externas", etiqueta: "Comp. externas" },
   ];
 
   return (
@@ -634,6 +638,8 @@ function cancelarEdicionNoticia() {
       {pestana === "mensaje" && <AdminMensajeAnclado token={token} salir={salir} />}   
       {pestana === "trofeos" && <AdminTrofeos token={token} salir={salir} />}
       {pestana === "equipos-club" && <AdminEquiposClub token={token} salir={salir} />}
+      {pestana === "maquinas" && <AdminMaquinas token={token} salir={salir} />}
+      {pestana === "competiciones-externas" && <AdminCompeticionesExternas token={token} salir={salir} />}
     </div>
   );
 }
