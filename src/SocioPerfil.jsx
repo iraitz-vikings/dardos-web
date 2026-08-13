@@ -114,6 +114,63 @@ export default function SocioPerfil() {
       </label>
       <button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar perfil"}</button>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
-    </form>
+      </form>
+      
+      <CambioPasswordVoluntario />
+  );
+}
+function CambioPasswordVoluntario() {
+  const [abierto, setAbierto] = useState(false);
+  const [passwordActual, setPasswordActual] = useState("");
+  const [passwordNueva, setPasswordNueva] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  async function guardar(e) {
+    e.preventDefault();
+    setEnviando(true);
+    setMensaje(null);
+    try {
+      const token = localStorage.getItem("socioToken");
+      const res = await fetch(`${API_URL}/api/auth/cambiar-password`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ passwordActual, passwordNueva }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo cambiar la contraseña." });
+        return;
+      }
+      setMensaje({ tipo: "ok", texto: "Contraseña actualizada." });
+      setPasswordActual("");
+      setPasswordNueva("");
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "1.5rem" }}>
+      <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
+        {abierto ? "Ocultar" : "Cambiar mi contraseña"}
+      </button>
+      {abierto && (
+        <form onSubmit={guardar} style={{ marginTop: ".8rem" }}>
+          <label>
+            Contraseña actual
+            <input type="password" value={passwordActual} onChange={(e) => setPasswordActual(e.target.value)} required />
+          </label>
+          <label>
+            Contraseña nueva
+            <input type="password" value={passwordNueva} onChange={(e) => setPasswordNueva(e.target.value)} required minLength={6} />
+          </label>
+          <button type="submit" disabled={enviando}>{enviando ? "Guardando…" : "Cambiar contraseña"}</button>
+          {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+        </form>
+      )}
+    </div>
   );
 }
