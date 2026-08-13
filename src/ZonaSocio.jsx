@@ -4,13 +4,14 @@ import TablonAnuncios from "./TablonAnuncios.jsx";
 import JugadoresClub from "./JugadoresClub.jsx";
 import GaleriaPrivada from "./GaleriaPrivada.jsx";
 import SalaTrofeos from "./SalaTrofeos.jsx";
+import EquiposClub from "./EquiposClub.jsx";
 
 const SECCIONES = [
   { id: "perfil", etiqueta: "Mi perfil", lista: true },
   { id: "tablon", etiqueta: "Tablón de anuncios", lista: true },
   { id: "galeria-privada", etiqueta: "Galería privada", lista: true },
   { id: "trofeos", etiqueta: "Sala de trofeos", lista: true },
-  { id: "equipos", etiqueta: "Equipos del club" },
+  { id: "equipos", etiqueta: "Equipos del club", lista: true },
   { id: "jugadores", etiqueta: "Jugadores del club", lista: true },
 ];
 
@@ -44,6 +45,7 @@ export default function ZonaSocio({ usuario, salir }) {
       {seccion === "jugadores" && <JugadoresClub />}
       {seccion === "galeria-privada" && <GaleriaPrivada usuario={usuario} />}
       {seccion === "trofeos" && <SalaTrofeos />}
+      {seccion === "equipos" && <EquiposClub />}
     </div>
   );
 }
