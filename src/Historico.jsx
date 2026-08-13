@@ -12,14 +12,20 @@ function formatFecha(iso) {
 
 export default function Historico() {
   const { t } = useLang();
-  const [torneos, setTorneos] = useState([]);
+  const [items, setItems] = useState([]);
   const [estado, setEstado] = useState("cargando");
 
   useEffect(() => {
-    fetch(`${API_URL}/api/torneos-club`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        setTorneos(data.filter((tc) => tc.finalizado));
+    Promise.all([
+      fetch(`${API_URL}/api/torneos-club`).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_URL}/api/ligas-club`).then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([torneos, ligas]) => {
+        const combinados = [
+          ...torneos.filter((tc) => tc.finalizado).map((tc) => ({ ...tc, tipo: "torneo" })),
+          ...ligas.filter((l) => l.finalizado).map((l) => ({ ...l, tipo: "liga" })),
+        ].sort((a, b) => new Date(b.fechaInicio) - new Date(a.fechaInicio));
+        setItems(combinados);
         setEstado("ok");
       })
       .catch(() => setEstado("error"));
@@ -34,16 +40,17 @@ export default function Historico() {
           <h2 className="chronicle-title">{t("historico.title")}</h2>
 
           {estado === "cargando" && <p className="chronicle-status">{t("historico.loading")}</p>}
-          {estado === "ok" && torneos.length === 0 && (
-            <p className="chronicle-status">{t("historico.none")}</p>
-          )}
-          {estado === "ok" && torneos.length > 0 && (
+          {estado === "ok" && items.length === 0 && <p className="chronicle-status">{t("historico.none")}</p>}
+          {estado === "ok" && items.length > 0 && (
             <ul className="historico-lista">
-              {torneos.map((tc) => (
-                <li key={tc.id} className="historico-item">
-                  <a href={`/torneo/${tc.id}`}>
-                    <strong>{tc.nombre}</strong>
-                    <time>{formatFecha(tc.fechaInicio)} – {formatFecha(tc.fechaFin)}</time>
+              {items.map((item) => (
+                <li key={`${item.tipo}-${item.id}`} className="historico-item">
+                  <a href={`/${item.tipo === "liga" ? "liga" : "torneo"}/${item.id}`}>
+                    <strong>{item.nombre}</strong>
+                    <time>
+                      {formatFecha(item.fechaInicio)} – {formatFecha(item.fechaFin)}
+                      {item.tipo === "liga" ? " · Liga" : ""}
+                    </time>
                   </a>
                 </li>
               ))}
