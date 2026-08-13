@@ -19,6 +19,7 @@ function formatFecha(iso) {
 export default function AdminLigasClub({ token, salir }) {
   const [ligas, setLigas] = useState([]);
   const [jugadores, setJugadores] = useState([]);
+  const [maquinas, setMaquinas] = useState([]);
   const [gestionandoId, setGestionandoId] = useState(null);
   const [mensaje, setMensaje] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -33,6 +34,7 @@ export default function AdminLigasClub({ token, salir }) {
   const [numeroParticipantes, setNumeroParticipantes] = useState(8);
   const [metodoSorteoParejas, setMetodoSorteoParejas] = useState("AB");
   const [insigniaUrl, setInsigniaUrl] = useState("");
+  const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
   const cargarLigas = () => {
@@ -47,10 +49,18 @@ export default function AdminLigasClub({ token, salir }) {
       .then(setJugadores)
       .catch(() => {});
   };
-
+  
+  const cargarMaquinas = () => {
+    fetch(`${API_URL}/api/maquinas`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setMaquinas)
+      .catch(() => {});
+  };
+  
   useEffect(() => {
     cargarLigas();
     cargarJugadores();
+    cargarMaquinas();
   }, []);
 
   async function crearLiga(e) {
@@ -64,7 +74,7 @@ export default function AdminLigasClub({ token, salir }) {
         body: JSON.stringify({
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, modalidad, vueltas, numeroParticipantes,
           metodoSorteoParejas: modalidad === "parejas_ciegas" ? metodoSorteoParejas : undefined,
-          insigniaUrl,
+          insigniaUrl, afectaCalendario,
         }),
       });
       if (res.status === 401) {
@@ -80,6 +90,7 @@ export default function AdminLigasClub({ token, salir }) {
       setNombre(""); setDescripcion(""); setFechaInicio(""); setFechaFin("");
       setVisibilidad("privado"); setModalidad("individual"); setVueltas(1);
       setNumeroParticipantes(8); setMetodoSorteoParejas("AB"); setInsigniaUrl("");
+      setAfectaCalendario(true);
       setMensaje({ tipo: "ok", texto: "Liga creada." });
       setMostrarFormulario(false);
       cargarLigas();
@@ -163,6 +174,15 @@ export default function AdminLigasClub({ token, salir }) {
     });
     cargarLigas();
   }
+  
+  async function programarCalendario(partidoId, datos) {
+    await fetch(`${API_URL}/api/ligas-club/partidos/${partidoId}/calendario`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    cargarLigas();
+  }
 
   const ligaEnGestion = ligas.find((l) => l.id === gestionandoId);
 
@@ -171,12 +191,14 @@ export default function AdminLigasClub({ token, salir }) {
       <LigaGestion
         liga={ligaEnGestion}
         jugadores={jugadores}
+        maquinas={maquinas}
         onVolver={() => setGestionandoId(null)}
         onCrearParticipante={(datos) => crearParticipante(ligaEnGestion.id, datos)}
         onBorrarParticipante={borrarParticipante}
         onSortearParejasGrupos={(entradas) => sortearParejasGrupos(ligaEnGestion.id, entradas)}
         onGenerarCalendario={() => generarCalendario(ligaEnGestion.id)}
         onActualizarPartido={actualizarPartido}
+        onProgramarCalendario={programarCalendario}
         token={token}
         onRecargar={cargarLigas}
       />
@@ -259,6 +281,10 @@ export default function AdminLigasClub({ token, salir }) {
               <option value="publico">Público</option>
             </select>
           </label>
+          <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+            <input type="checkbox" checked={afectaCalendario} onChange={(e) => setAfectaCalendario(e.target.checked)} style={{ width: "auto" }} />
+            Afecta al calendario general del club
+          </label>
           <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
             <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear liga"}</button>
             <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
@@ -299,7 +325,7 @@ export default function AdminLigasClub({ token, salir }) {
   );
 }
 
-function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onGenerarCalendario, onActualizarPartido, token, onRecargar }) {
+function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onGenerarCalendario, onActualizarPartido, onProgramarCalendario, token, onRecargar }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
   return (
@@ -344,9 +370,9 @@ function LigaGestion({ liga, jugadores, onVolver, onCrearParticipante, onBorrarP
         </div>
       )}
 
-      {subpestana === "calendario" && <CalendarioLiga liga={liga} onActualizarPartido={onActualizarPartido} />}
+      {subpestana === "calendario" && <CalendarioLiga liga={liga} maquinas={maquinas} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />}
       {subpestana === "clasificacion" && <ClasificacionLiga liga={liga} />}
-      {subpestana === "final" && <CuadranteFinalLiga liga={liga} token={token} onRecargar={onRecargar} />}
+      {subpestana === "final" && <CuadranteFinalLiga liga={liga} token={token} maquinas={maquinas} onRecargar={onRecargar} />}
     </section>
   );
 }
@@ -612,7 +638,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
   );
 }
 
-function CalendarioLiga({ liga, onActualizarPartido }) {
+function CalendarioLiga({ liga, maquinas, onActualizarPartido, onProgramarCalendario }) {
   const partidos = liga.partidos || [];
   const porJornada = {};
   for (const p of partidos) {
@@ -631,10 +657,85 @@ function CalendarioLiga({ liga, onActualizarPartido }) {
         <div key={j} className="admin-cuadro-maquina">
           <h4>Jornada {j}</h4>
           {porJornada[j].sort((a, b) => a.posicion - b.posicion).map((p) => (
-            <PartidoLigaRow key={p.id} p={p} onActualizar={(datos) => onActualizarPartido(p.id, datos)} />
+            <PartidoLigaRow
+              key={p.id}
+              p={p}
+              maquinas={maquinas}
+              onActualizar={(datos) => onActualizarPartido(p.id, datos)}
+              onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
+            />
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+function PartidoLigaRow({ p, maquinas, onActualizar, onProgramar }) {
+  return (
+    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
+      <span style={{ minWidth: "140px" }}>{p.participante1}</span>
+      <button
+        type="button"
+        className={`admin-link-btn ${p.ganador === p.participante1 ? "admin-ganador-activo" : ""}`}
+        onClick={() => onActualizar({ ganador: p.participante1 })}
+      >
+        Ganó
+      </button>
+      <span>vs</span>
+      <span style={{ minWidth: "140px" }}>{p.participante2}</span>
+      <button
+        type="button"
+        className={`admin-link-btn ${p.ganador === p.participante2 ? "admin-ganador-activo" : ""}`}
+        onClick={() => onActualizar({ ganador: p.participante2 })}
+      >
+        Ganó
+      </button>
+      <input
+        defaultValue={p.resultado || ""}
+        placeholder="Resultado"
+        className="admin-cuadro-resultado"
+        onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
+      />
+      <input
+        defaultValue={p.maquina || ""}
+        placeholder="Máquina"
+        className="admin-cuadro-maquina-input"
+        onBlur={(e) => e.target.value !== (p.maquina || "") && onActualizar({ maquina: e.target.value })}
+      />
+      <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
+        {p.enCurso ? "★ En curso" : "Marcar en curso"}
+      </button>
+      <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />
+    </div>
+  );
+}
+
+function CalendarioPartido({ p, maquinas, onProgramar }) {
+  const [fecha, setFecha] = useState(p.fechaCalendario ? new Date(p.fechaCalendario).toISOString().slice(0, 16) : "");
+  const [maquinaId, setMaquinaId] = useState(p.maquinaCalendarioId || "");
+
+  return (
+    <div style={{ display: "flex", gap: ".4rem", alignItems: "center", marginTop: ".3rem", flexWrap: "wrap" }}>
+      <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ fontSize: ".8em" }} />
+      <select value={maquinaId} onChange={(e) => setMaquinaId(e.target.value)} style={{ fontSize: ".8em" }}>
+        <option value="">Máquina del calendario…</option>
+        {maquinas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+      </select>
+      {p.confirmadoCalendario ? (
+        <button type="button" className="admin-link-btn" onClick={() => onProgramar({ confirmado: false })}>
+          ✓ En calendario — quitar
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="admin-link-btn"
+          disabled={!fecha || !maquinaId}
+          onClick={() => onProgramar({ fecha: new Date(fecha).toISOString(), maquinaId, confirmado: true })}
+        >
+          Confirmar en calendario
+        </button>
+      )}
     </div>
   );
 }
@@ -763,7 +864,7 @@ function siguienteTamanoValido(n) {
   return tamanos.find((t) => t >= n) || 128;
 }
 
-function CuadranteFinalLiga({ liga, token, onRecargar }) {
+function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
   const cuadrante = (liga.cuadrantes || [])[0];
   const clasificacion = calcularClasificacion(liga);
 
@@ -835,6 +936,14 @@ function CuadranteFinalLiga({ liga, token, onRecargar }) {
   }
   async function actualizarPartidoFinal(partidoId, datos) {
     await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    onRecargar();
+  }
+  async function programarCalendarioFinal(partidoId, datos) {
+    await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}/calendario`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify(datos),
@@ -919,7 +1028,14 @@ function CuadranteFinalLiga({ liga, token, onRecargar }) {
             <div key={ronda} className="admin-cuadro-maquina">
               <h4>Ronda {ronda}</h4>
               {porRama[rama][ronda].sort((a, b) => a.posicion - b.posicion).map((p) => (
-                <PartidoFinalRow key={p.id} p={p} onActualizar={(datos) => actualizarPartidoFinal(p.id, datos)} busqueda={busqueda} />
+                <PartidoFinalRow
+                  key={p.id}
+                  p={p}
+                  maquinas={maquinas}
+                  onActualizar={(datos) => actualizarPartidoFinal(p.id, datos)}
+                  onProgramar={(datos) => programarCalendarioFinal(p.id, datos)}
+                  busqueda={busqueda}
+                />
               ))}
             </div>
           ))}
@@ -929,7 +1045,7 @@ function CuadranteFinalLiga({ liga, token, onRecargar }) {
   );
 }
 
-function PartidoFinalRow({ p, onActualizar, busqueda }) {
+function PartidoFinalRow({ p, maquinas, onActualizar, onProgramar, busqueda }) {
   const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
   const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
   return (
@@ -962,6 +1078,7 @@ function PartidoFinalRow({ p, onActualizar, busqueda }) {
       <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
         {p.enCurso ? "★ En curso" : "Marcar en curso"}
       </button>
+      {p.jugador1 && p.jugador2 && <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />}
     </div>
   );
 }
