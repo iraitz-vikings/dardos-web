@@ -402,7 +402,7 @@ async function programarCalendario(partidoId, datos) {
 }
 
 function TorneoGestion({
-  torneo, jugadores, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido,
+  torneo, jugadores, maquinas, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortearParejasGrupos,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
@@ -464,9 +464,11 @@ function TorneoGestion({
       {subpestana === "cuadrantes" && (
         <TorneoCuadrantes
           torneo={torneo}
+          maquinas={maquinas}
           onCrearCuadrante={onCrearCuadrante}
           onBorrarCuadrante={onBorrarCuadrante}
           onActualizarPartido={onActualizarPartido}
+          onProgramarCalendario={onProgramarCalendario}
           onSortear={onSortear}
           onReiniciar={onReiniciar}
         />
@@ -502,7 +504,7 @@ function JugadoresDelClub({ jugadores }) {
   );
 }
 
-function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onSortear, onReiniciar }) {
+function TorneoCuadrantes({ torneo, maquinas, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar }) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
   const [metodoSorteoParejas, setMetodoSorteoParejas] = useState("AB");
@@ -557,8 +559,10 @@ function TorneoCuadrantes({ torneo, onCrearCuadrante, onBorrarCuadrante, onActua
           key={c.id}
           cuadrante={c}
           numeroMaquinas={torneo.numeroMaquinas}
+          maquinas={maquinas}
           onBorrar={() => onBorrarCuadrante(c.id)}
           onActualizarPartido={onActualizarPartido}
+          onProgramarCalendario={onProgramarCalendario}
           onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
           onReiniciar={() => onReiniciar(c.id)}
         />
@@ -866,7 +870,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   );
 }
 
-function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPartido, onSortear, onReiniciar }) {
+function CuadranteDetalle({ cuadrante, numeroMaquinas, maquinas, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar }) {
   const [abierto, setAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
 
@@ -924,10 +928,12 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
                 .sort((a, b) => a.posicion - b.posicion)
                 .map((p) => (
                   <PartidoRow
-                    key={`${p.id}-${p.jugador1}-${p.jugador2}-${p.ganador}-${p.resultado}-${p.maquina}`}
+                    key={`${p.id}-${p.jugador1}-${p.jugador2}-${p.ganador}-${p.resultado}-${p.maquina}-${p.confirmadoCalendario}-${p.fechaCalendario}`}
                     p={p}
                     maquinasOpciones={maquinasOpciones}
+                    maquinas={maquinas}
                     onActualizar={(datos) => onActualizarPartido(p.id, datos)}
+                    onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
                     busqueda={busqueda}
                     bloqueado={!rondaAbierta(cuadrante, p) && !p.enCurso}
                   />
@@ -940,7 +946,7 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, onBorrar, onActualizarPar
   );
 }
 
-function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda, bloqueado }) {
+function PartidoRow({ p, maquinasOpciones, maquinas, onActualizar, onProgramar, busqueda, bloqueado }) {
   const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
   const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
   return (
@@ -999,8 +1005,38 @@ function PartidoRow({ p, maquinasOpciones, onActualizar, busqueda, bloqueado }) 
         />
       )}
       <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
-        {p.enCurso ? "★ En curso" : "Marcar en curso"}
-      </button>
+  {p.enCurso ? "★ En curso" : "Marcar en curso"}
+</button>
+{p.jugador1 && p.jugador2 && <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />}
+</div>
+);
+}
+
+function CalendarioPartido({ p, maquinas, onProgramar }) {
+  const [fecha, setFecha] = useState(p.fechaCalendario ? new Date(p.fechaCalendario).toISOString().slice(0, 16) : "");
+  const [maquinaId, setMaquinaId] = useState(p.maquinaCalendarioId || "");
+
+  return (
+    <div style={{ display: "flex", gap: ".4rem", alignItems: "center", marginTop: ".3rem", flexWrap: "wrap" }}>
+      <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ fontSize: ".8em" }} />
+      <select value={maquinaId} onChange={(e) => setMaquinaId(e.target.value)} style={{ fontSize: ".8em" }}>
+        <option value="">Máquina del calendario…</option>
+        {maquinas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+      </select>
+      {p.confirmadoCalendario ? (
+        <button type="button" className="admin-link-btn" onClick={() => onProgramar({ confirmado: false })}>
+          ✓ En calendario — quitar
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="admin-link-btn"
+          disabled={!fecha || !maquinaId}
+          onClick={() => onProgramar({ fecha: new Date(fecha).toISOString(), maquinaId, confirmado: true })}
+        >
+          Confirmar en calendario
+        </button>
+      )}
     </div>
   );
 }
