@@ -93,7 +93,17 @@ export default function Socios() {
           <h2 className="chronicle-title">{t("socios.title")}</h2>
 
           {usuario ? (
-            <ZonaSocio usuario={usuario} salir={salir} />
+            usuario.debeCambiarPassword ? (
+              <CambioPasswordObligatorio
+                onCambiado={(nuevoUsuario) => {
+                  localStorage.setItem("socioUsuario", JSON.stringify(nuevoUsuario));
+                  setUsuario(nuevoUsuario);
+                }}
+                salir={salir}
+              />
+            ) : (
+              <ZonaSocio usuario={usuario} salir={salir} />
+            )
           ) : (
             <div className="admin-form" style={{ maxWidth: 420, margin: "0 auto" }}>
               <div className="admin-tabs" style={{ marginBottom: "1.2rem" }}>
@@ -154,5 +164,68 @@ export default function Socios() {
       </main>
       <Footer simple />
     </>
+  );
+}
+
+function CambioPasswordObligatorio({ onCambiado, salir }) {
+  const [passwordActual, setPasswordActual] = useState("");
+  const [passwordNueva, setPasswordNueva] = useState("");
+  const [passwordRepetida, setPasswordRepetida] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  async function guardar(e) {
+    e.preventDefault();
+    if (passwordNueva !== passwordRepetida) {
+      setMensaje({ tipo: "error", texto: "Las dos contraseñas nuevas no coinciden." });
+      return;
+    }
+    setEnviando(true);
+    setMensaje(null);
+    try {
+      const token = localStorage.getItem("socioToken");
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app"}/api/auth/cambiar-password`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ passwordActual, passwordNueva }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo cambiar la contraseña." });
+        return;
+      }
+      const usuarioGuardado = JSON.parse(localStorage.getItem("socioUsuario"));
+      onCambiado({ ...usuarioGuardado, debeCambiarPassword: false });
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form" style={{ maxWidth: 420, margin: "0 auto" }}>
+      <h2>Cambia tu contraseña</h2>
+      <p className="admin-hint-bloque">
+        Se te ha asignado una contraseña provisional. Por seguridad, tienes que cambiarla antes de continuar.
+      </p>
+      <form onSubmit={guardar}>
+        <label>
+          Contraseña provisional (la que te han dado)
+          <input type="password" value={passwordActual} onChange={(e) => setPasswordActual(e.target.value)} required />
+        </label>
+        <label>
+          Contraseña nueva
+          <input type="password" value={passwordNueva} onChange={(e) => setPasswordNueva(e.target.value)} required minLength={6} />
+        </label>
+        <label>
+          Repite la contraseña nueva
+          <input type="password" value={passwordRepetida} onChange={(e) => setPasswordRepetida(e.target.value)} required minLength={6} />
+        </label>
+        <button type="submit" disabled={enviando}>{enviando ? "Guardando…" : "Cambiar contraseña"}</button>
+        {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+      </form>
+      <button type="button" className="admin-link-btn" onClick={salir} style={{ marginTop: ".8rem" }}>Salir</button>
+    </div>
   );
 }
