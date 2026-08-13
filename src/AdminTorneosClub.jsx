@@ -27,6 +27,7 @@ function rondaAbierta(cuadrante, partido) {
 export default function AdminTorneosClub({ token, salir }) {
   const [torneos, setTorneos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
+  const [maquinas, setMaquinas] = useState([]);
   const [gestionandoId, setGestionandoId] = useState(null);
   const [mensaje, setMensaje] = useState(null);
 
@@ -39,6 +40,7 @@ export default function AdminTorneosClub({ token, salir }) {
   const [tipoEliminacion, setTipoEliminacion] = useState("directa");
   const [modalidad, setModalidad] = useState("individual");
   const [insigniaUrl, setInsigniaUrl] = useState("");
+  const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
@@ -55,11 +57,19 @@ export default function AdminTorneosClub({ token, salir }) {
       .then(setJugadores)
       .catch(() => {});
   };
+  
+  const cargarMaquinas = () => {
+    fetch(`${API_URL}/api/maquinas`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setMaquinas)
+      .catch(() => {});
+  };
 
-  useEffect(() => {
-    cargarTorneos();
-    cargarJugadores();
-  }, []);
+useEffect(() => {
+  cargarTorneos();
+  cargarJugadores();
+  cargarMaquinas();
+}, []);
 
   async function crearTorneo(e) {
     e.preventDefault();
@@ -69,7 +79,7 @@ export default function AdminTorneosClub({ token, salir }) {
       const res = await fetch(`${API_URL}/api/torneos-club`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl }),
+        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl, afectaCalendario }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -90,6 +100,7 @@ export default function AdminTorneosClub({ token, salir }) {
       setTipoEliminacion("directa");
       setModalidad("individual");
       setInsigniaUrl("");
+      setAfectaCalendario(true);
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
       setMostrarFormulario(false);
       cargarTorneos();
@@ -165,13 +176,22 @@ export default function AdminTorneosClub({ token, salir }) {
   }
 
   async function actualizarPartido(partidoId, datos) {
-    await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify(datos),
-    });
-    cargarTorneos();
-  }
+  await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-admin-token": token },
+    body: JSON.stringify(datos),
+  });
+  cargarTorneos();
+}
+
+async function programarCalendario(partidoId, datos) {
+  await fetch(`${API_URL}/api/torneos-club/partidos/${partidoId}/calendario`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-admin-token": token },
+    body: JSON.stringify(datos),
+  });
+  cargarTorneos();
+}
 
   async function crearParticipante(cuadranteId, datos) {
     const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/participantes`, {
@@ -241,10 +261,12 @@ export default function AdminTorneosClub({ token, salir }) {
       <TorneoGestion
         torneo={torneoEnGestion}
         jugadores={jugadores}
+        maquinas={maquinas}
         onVolver={() => setGestionandoId(null)}
         onCrearCuadrante={(datos) => crearCuadrante(torneoEnGestion.id, datos)}
         onBorrarCuadrante={borrarCuadrante}
         onActualizarPartido={actualizarPartido}
+        onProgramarCalendario={programarCalendario}
         onSortear={sortearCuadrante}
         onReiniciar={reiniciarCuadrante}
         onCrearParticipante={crearParticipante}
@@ -326,6 +348,10 @@ export default function AdminTorneosClub({ token, salir }) {
             <option value="privado">Privado (solo socios)</option>
             <option value="publico">Público (visible en la web)</option>
           </select>
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+          <input type="checkbox" checked={afectaCalendario} onChange={(e) => setAfectaCalendario(e.target.checked)} style={{ width: "auto" }} />
+          Afecta al calendario general del club
         </label>
         <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
           <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear torneo"}</button>
