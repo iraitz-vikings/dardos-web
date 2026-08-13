@@ -68,6 +68,20 @@ export default function AdminSocios({ token, salir }) {
     cargarPendientes();
   }
 
+  async function resetearPassword(id, nombre) {
+    if (!confirm(`¿Generar una contraseña provisional para ${nombre}? Tendrá que cambiarla en su próximo acceso.`)) return;
+    const res = await fetch(`${API_URL}/api/auth/${id}/resetear-password`, {
+      method: "POST",
+      headers: { "x-admin-token": token },
+    });
+    if (manejarAuthError(res)) return;
+    const data = await res.json();
+    setMensaje({
+      tipo: "ok",
+      texto: `Contraseña provisional para ${data.email}: "${data.passwordProvisional}" — pásasela por un canal privado. Se le pedirá cambiarla al entrar.`,
+    });
+  }
+  
   async function cambiarRol(id, rol) {
     const res = await fetch(`${API_URL}/api/auth/${id}/rol`, {
       method: "PATCH",
