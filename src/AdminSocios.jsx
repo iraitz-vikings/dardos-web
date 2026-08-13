@@ -175,6 +175,7 @@ export default function AdminSocios({ token, salir }) {
               <select value={s.rol} onChange={(e) => cambiarRol(s.id, e.target.value)}>
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
+              <button className="admin-link-btn" onClick={() => resetearPassword(s.id, s.nombre)}>Resetear contraseña</button>
               <button className="admin-link-btn" onClick={() => eliminarSocio(s.id)}>Eliminar</button>
             </div>
           </li>
