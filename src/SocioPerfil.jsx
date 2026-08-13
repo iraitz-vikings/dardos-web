@@ -79,6 +79,7 @@ export default function SocioPerfil() {
   if (!perfil) return <p className="chronicle-status">Cargando tu perfil…</p>;
 
   return (
+    <>
     <form onSubmit={guardar}>
       {avatarUrl && (
         <img
@@ -112,13 +113,14 @@ export default function SocioPerfil() {
         Sobre ti (opcional)
         <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Una frase, tu récord favorito, lo que quieras..." />
       </label>
-      <button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar perfil"}</button>
+      <button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar perfil"}</button>      
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
       </form>
-      
+  
       <CambioPasswordVoluntario />
-  );
-}
+      </>
+    );
+  }
 function CambioPasswordVoluntario() {
   const [abierto, setAbierto] = useState(false);
   const [passwordActual, setPasswordActual] = useState("");
