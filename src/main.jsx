@@ -4,6 +4,7 @@ import App from "./App.jsx";
 import Admin from "./Admin.jsx";
 import Galeria from "./Galeria.jsx";
 import TorneoPage from "./TorneoPage.jsx";
+import LigaPage from "./LigaPage.jsx";
 import Historico from "./Historico.jsx";
 import Socios from "./Socios.jsx";
 import { LanguageProvider } from "./i18n.jsx";
@@ -15,6 +16,7 @@ const isGaleria = path.startsWith("/galeria");
 const isHistorico = path.startsWith("/historico");
 const isSocios = path.startsWith("/socios");
 const matchTorneo = path.match(/^\/torneo\/([^/]+)/);
+const matchLiga = path.match(/^\/liga\/([^/]+)/);
 
 function Pagina() {
   if (isAdmin) return <Admin />;
@@ -22,6 +24,7 @@ function Pagina() {
   if (isHistorico) return <Historico />;
   if (isSocios) return <Socios />;
   if (matchTorneo) return <TorneoPage id={matchTorneo[1]} />;
+  if (matchLiga) return <LigaPage id={matchLiga[1]} />;
   return <App />;
 }
 
