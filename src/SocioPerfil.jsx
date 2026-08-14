@@ -204,16 +204,38 @@ export default function SocioPerfil() {
             Si juegas en dianas de estos fabricantes, indica tu alias de jugador en cada una para poder
             consultar más adelante tu media en su web.
           </p>
-          {fabricantes.map((f) => (
-            <label key={f.id}>
-              {f.nombre}
-              <input
-                value={idsFabricantes[f.id] || ""}
-                onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}
-                placeholder={`Tu alias en ${f.nombre}`}
-              />
-            </label>
-          ))}
+          {fabricantes.map((f) => {
+            const guardado = (perfil.idsFabricantes || []).find((i) => i.fabricanteId === f.id);
+            const alias = idsFabricantes[f.id] || "";
+            const enlace =
+              f.urlPerfilPlantilla && alias.trim()
+                ? f.urlPerfilPlantilla.replace("{alias}", encodeURIComponent(alias.trim()))
+                : null;
+            return (
+              <label key={f.id}>
+                {f.nombre}
+                <input
+                  value={alias}
+                  onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}
+                  placeholder={`Tu alias en ${f.nombre}`}
+                />
+                {guardado && (guardado.mpr != null || guardado.ppd != null) && (
+                  <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
+                    {guardado.mpr != null && `MPR ${guardado.mpr} `}
+                    {guardado.ppd != null && `PPD ${guardado.ppd}`}
+                  </span>
+                )}
+                {guardado?.statsError && (
+                  <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>{guardado.statsError}</span>
+                )}
+                {enlace && (
+                  <a href={enlace} target="_blank" rel="noreferrer" style={{ fontSize: ".85em" }}>
+                    Ver mi media en {f.nombre} ↗
+                  </a>
+                )}
+              </label>
+            );
+          })}
         </fieldset>
       )}
 

@@ -186,7 +186,20 @@ export default function AdminSocios({ token, salir }) {
               <strong>{s.nombre}</strong> — {s.email}
               {s.idsFabricantes?.length > 0 && (
                 <em style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
-                  {s.idsFabricantes.map((i) => `${i.nombreFabricante}: ${i.idExterno}`).join(" · ")}
+                  {s.idsFabricantes
+                    .map((i) => {
+                      let texto = `${i.nombreFabricante}: ${i.idExterno}`;
+                      if (i.mpr != null || i.ppd != null) {
+                        const partes = [];
+                        if (i.mpr != null) partes.push(`MPR ${i.mpr}`);
+                        if (i.ppd != null) partes.push(`PPD ${i.ppd}`);
+                        texto += ` (${partes.join(" / ")})`;
+                      } else if (i.statsError) {
+                        texto += ` (${i.statsError})`;
+                      }
+                      return texto;
+                    })
+                    .join(" · ")}
                 </em>
               )}
             </div>
