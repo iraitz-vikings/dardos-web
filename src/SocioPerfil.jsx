@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import MediasFabricante from "./MediasFabricante.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -126,37 +127,40 @@ export default function SocioPerfil() {
 
   if (!editando) {
     return (
-      <div className="perfil-resumen" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt="Tu foto de perfil"
-            style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover" }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,.08)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "1.6rem",
-            }}
-            aria-hidden="true"
-          >
-            🎯
+      <div className="perfil-resumen">
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Tu foto de perfil"
+              style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.6rem",
+              }}
+              aria-hidden="true"
+            >
+              🎯
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <strong style={{ display: "block", fontSize: "1.1rem" }}>{perfil.nombre}</strong>
+            {apodo && <span style={{ display: "block", opacity: 0.85 }}>"{apodo}"</span>}
+            <button type="button" className="admin-link-btn" style={{ marginTop: ".6rem" }} onClick={() => setEditando(true)}>
+              Editar perfil
+            </button>
           </div>
-        )}
-        <div style={{ flex: 1 }}>
-          <strong style={{ display: "block", fontSize: "1.1rem" }}>{perfil.nombre}</strong>
-          {apodo && <span style={{ display: "block", opacity: 0.85 }}>"{apodo}"</span>}
-          <button type="button" className="admin-link-btn" style={{ marginTop: ".6rem" }} onClick={() => setEditando(true)}>
-            Editar perfil
-          </button>
         </div>
+        <MediasFabricante idsFabricantes={perfil.idsFabricantes} />
       </div>
     );
   }
@@ -207,6 +211,7 @@ export default function SocioPerfil() {
           {fabricantes.map((f) => {
             const guardado = (perfil.idsFabricantes || []).find((i) => i.fabricanteId === f.id);
             const alias = idsFabricantes[f.id] || "";
+            const esBullshooter = f.nombre.toLowerCase().includes("bullshooter");
             const enlace =
               f.urlPerfilPlantilla && alias.trim()
                 ? f.urlPerfilPlantilla.replace("{alias}", encodeURIComponent(alias.trim()))
@@ -219,14 +224,12 @@ export default function SocioPerfil() {
                   onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}
                   placeholder={`Tu alias en ${f.nombre}`}
                 />
-                {guardado && (guardado.mpr != null || guardado.ppd != null) && (
+                {/* Bullshooter no tiene scraping automático: aquí solo tiene sentido el
+                    enlace de salida, no un MPR/PPD que nunca se va a rellenar solo. */}
+                {guardado && !esBullshooter && (
                   <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
-                    {guardado.mpr != null && `MPR ${guardado.mpr} `}
-                    {guardado.ppd != null && `PPD ${guardado.ppd}`}
+                    MPR {Number(guardado.mpr ?? 0).toFixed(2)} · PPD {Number(guardado.ppd ?? 0).toFixed(2)}
                   </span>
-                )}
-                {guardado?.statsError && (
-                  <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>{guardado.statsError}</span>
                 )}
                 {enlace && (
                   <a href={enlace} target="_blank" rel="noreferrer" style={{ fontSize: ".85em" }}>
