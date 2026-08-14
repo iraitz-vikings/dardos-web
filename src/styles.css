@@ -360,6 +360,59 @@ button {
       gap: .5rem;
       margin-bottom: 2rem;
 }
+
+/* Menú de la Zona de Socios: en móvil se colapsa en un desplegable
+   compacto (barra con la sección actual + lista oculta hasta abrirla),
+   para no tapar el contenido con 10 botones apilados. En escritorio
+   se comporta igual que antes (fila de pestañas siempre visible). */
+.socio-menu-actual { display: none; }
+.socio-menu-chevron {
+      width: 8px; height: 8px;
+      border-right: 1px solid var(--bone-dim);
+      border-bottom: 1px solid var(--bone-dim);
+      transform: rotate(45deg);
+      transition: transform .2s ease;
+      flex-shrink: 0;
+}
+.socio-menu-actual-open .socio-menu-chevron { transform: rotate(-135deg); }
+
+@media (max-width: 640px) {
+      .socio-menu-actual {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            background: none;
+            border: 1px solid var(--line);
+            color: var(--ember);
+            padding: .7rem 1rem;
+            font-size: .78rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-family: 'Cinzel', serif;
+            cursor: pointer;
+      }
+      .socio-menu-lista {
+            max-height: 0;
+            overflow: hidden;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            border-left: 1px solid var(--line);
+            border-right: 1px solid var(--line);
+            transition: max-height .25s ease;
+      }
+      .socio-menu-lista-open {
+            max-height: 520px;
+            margin-bottom: 1.2rem !important;
+      }
+      .socio-menu-lista .admin-tab {
+            width: 100%;
+            border-left: none;
+            border-right: none;
+            border-top: none;
+            text-align: left;
+      }
+}
 .admin-tab {
       background: none;
       border: 1px solid var(--line);
