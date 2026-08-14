@@ -197,10 +197,13 @@ export default function AdminSocios({ token, salir }) {
                       if (i.ppdVirtual != null) partes.push(`Virtual PPD ${i.ppdVirtual}`);
                       if (i.mprPresencial != null) partes.push(`Presencial MPR ${i.mprPresencial}`);
                       if (i.ppdPresencial != null) partes.push(`Presencial PPD ${i.ppdPresencial}`);
+                      // statsError se añade siempre que exista, aparte de las
+                      // demás partes (torneo, medias) en vez de como
+                      // alternativa exclusiva — si no, guardar un torneo (que
+                      // ya rellena "partes") ocultaba el error real de scraping.
+                      if (i.statsError) partes.push(`error: ${i.statsError}`);
                       if (partes.length > 0) {
                         texto += ` (${partes.join(" / ")})`;
-                      } else if (i.statsError) {
-                        texto += ` (${i.statsError})`;
                       }
                       return texto;
                     })
