@@ -199,9 +199,9 @@ export default function SocioPerfil() {
 
       {fabricantes.length > 0 && (
         <fieldset style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1rem" }}>
-          <legend style={{ padding: "0 .4rem" }}>ID de fabricante</legend>
+          <legend style={{ padding: "0 .4rem" }}>Alias de fabricante</legend>
           <p className="admin-hint" style={{ marginTop: 0 }}>
-            Si juegas en dianas de estos fabricantes, indica tu ID de jugador en cada una para poder
+            Si juegas en dianas de estos fabricantes, indica tu alias de jugador en cada una para poder
             consultar más adelante tu media en su web.
           </p>
           {fabricantes.map((f) => (
@@ -210,7 +210,7 @@ export default function SocioPerfil() {
               <input
                 value={idsFabricantes[f.id] || ""}
                 onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}
-                placeholder={`Tu ID en ${f.nombre}`}
+                placeholder={`Tu alias en ${f.nombre}`}
               />
             </label>
           ))}

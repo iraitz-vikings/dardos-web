@@ -52,7 +52,7 @@ export default function AdminFabricantes({ token, salir }) {
   }
 
   async function borrar(id) {
-    if (!confirm("¿Borrar este fabricante? También se borrarán los IDs que los jugadores tengan guardados para él.")) return;
+    if (!confirm("¿Borrar este fabricante? También se borrarán los alias que los jugadores tengan guardados para él.")) return;
     await fetch(`${API_URL}/api/fabricantes/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     cargar();
   }
@@ -61,9 +61,9 @@ export default function AdminFabricantes({ token, salir }) {
     <section className="admin-form">
       <h2>Fabricantes</h2>
       <p className="admin-hint">
-        Dianas electrónicas u otros fabricantes en cuya web cada jugador tiene su propio ID (para
+        Dianas electrónicas u otros fabricantes en cuya web cada jugador tiene su propio alias (para
         consultar sus medias/estadísticas). Los que des de alta aquí aparecerán en "Mi perfil" para
-        que cada socio introduzca su ID.
+        que cada socio introduzca su alias.
       </p>
       <form onSubmit={crear} className="admin-inline-form">
         <label>
@@ -71,11 +71,11 @@ export default function AdminFabricantes({ token, salir }) {
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: DARTSLIVE" />
         </label>
         <label>
-          URL de perfil (opcional, usa {"{id}"} donde iría el ID del jugador)
+          URL de perfil (opcional, usa {"{alias}"} donde iría el alias del jugador)
           <input
             value={urlPerfilPlantilla}
             onChange={(e) => setUrlPerfilPlantilla(e.target.value)}
-            placeholder="Ej: https://www.dartslive.com/es/rank/?id={id}"
+            placeholder="Ej: https://www.dartslive.com/es/rank/?id={alias}"
           />
         </label>
         <button type="submit" disabled={creando || !nombre.trim()}>{creando ? "Creando…" : "Añadir"}</button>
