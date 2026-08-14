@@ -181,9 +181,14 @@ export default function AdminSocios({ token, salir }) {
       {socios.length === 0 && <p className="chronicle-status">Todavía no hay socios aprobados.</p>}
       <ul>
         {socios.map((s) => (
-          <li key={s.id} className="admin-list-item">
+          <li key={s.id} className="admin-list-item" style={{ alignItems: "flex-start" }}>
             <div>
               <strong>{s.nombre}</strong> — {s.email}
+              {s.idsFabricantes?.length > 0 && (
+                <em style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
+                  {s.idsFabricantes.map((i) => `${i.nombreFabricante}: ${i.idExterno}`).join(" · ")}
+                </em>
+              )}
             </div>
             <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
               <select value={s.rol} onChange={(e) => cambiarRol(s.id, e.target.value)}>
