@@ -146,11 +146,9 @@ export default function AdminFabricantes({ token, salir }) {
           Consulta automáticamente la media (MPR/PPD) de cada socio que tenga alias guardado en estos tres
           fabricantes. Se ejecuta también sola cada noche. Bullshooter no se consulta aquí (se enlaza
           directamente desde el perfil). Radikal Darts no tiene buscador general de jugadores, así que
-          además del alias hace falta que el socio indique en su perfil el nombre de un torneo o
-          campeonato en el que haya jugado: se busca su media en la clasificación de esa competición.
-          Ojo: tiene que ser un Torneo o Campeonato, no una Liga — las Ligas de Radikal Darts solo dan un
-          HCP (hándicap) en su clasificación individual, no un PPD/MPR, así que nunca podrían rellenar la
-          media aunque el nombre esté bien escrito.
+          además del alias hace falta que el socio indique en su perfil el nombre de un torneo, liga o
+          campeonato en el que haya jugado (vale cualquiera de los tres tipos): se busca su alias en la
+          clasificación de esa competición y se entra en su ficha de jugador para leer su PPD/MPR real.
         </p>
         <button type="button" onClick={actualizarMedias} disabled={actualizando}>
           {actualizando ? "Actualizando…" : "Actualizar medias ahora"}

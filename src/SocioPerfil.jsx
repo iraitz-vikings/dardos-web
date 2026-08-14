@@ -248,22 +248,16 @@ export default function SocioPerfil() {
                   placeholder={`Tu alias en ${f.nombre}`}
                 />
                 {/* Radikal Darts no tiene buscador general de jugadores: hace falta
-                    además el nombre de un torneo/campeonato en el que hayas participado,
-                    para poder localizarte en su clasificación (ver notaBusqueda). Tiene
-                    que ser un Torneo o Campeonato, no una Liga: las Ligas de Radikal solo
-                    dan un HCP en su clasificación individual, no un PPD/MPR. */}
+                    además el nombre de un torneo/liga/campeonato en el que hayas
+                    participado, para poder localizarte en su clasificación (ver
+                    notaBusqueda) y entrar en tu ficha de jugador a leer tu media real. */}
                 {esRadikal && (
-                  <>
-                    <input
-                      value={notasFabricantes[f.id] || ""}
-                      onChange={(e) => cambiarNotaFabricante(f.id, e.target.value)}
-                      placeholder='Nombre de un TORNEO o CAMPEONATO en el que hayas jugado (ej: "EL-033 Julio")'
-                      style={{ marginTop: ".3rem" }}
-                    />
-                    <span style={{ display: "block", fontSize: ".75em", opacity: 0.7, marginTop: ".2rem" }}>
-                      Tiene que ser un Torneo o Campeonato, no una Liga (las Ligas no dan media).
-                    </span>
-                  </>
+                  <input
+                    value={notasFabricantes[f.id] || ""}
+                    onChange={(e) => cambiarNotaFabricante(f.id, e.target.value)}
+                    placeholder='Nombre de un torneo, liga o campeonato en el que hayas jugado (ej: "EL-033 Julio")'
+                    style={{ marginTop: ".3rem" }}
+                  />
                 )}
                 {/* Bullshooter no tiene scraping automático: aquí solo tiene sentido el
                     enlace de salida, no un MPR/PPD que nunca se va a rellenar solo. */}
