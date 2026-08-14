@@ -29,7 +29,14 @@ export default function MediasFabricante({ idsFabricantes }) {
             : null;
         return (
           <div key={i.fabricanteId} className="medias-fabricante-item">
-            <strong>{i.nombreFabricante}</strong>
+            <div className="medias-fabricante-cabecera">
+              {i.logoUrl ? (
+                <img src={i.logoUrl} alt={i.nombreFabricante} className="medias-fabricante-logo" />
+              ) : (
+                <span className="medias-fabricante-logo medias-fabricante-logo-vacio" aria-hidden="true">🎯</span>
+              )}
+              <strong>{i.nombreFabricante}</strong>
+            </div>
             <span className="medias-fabricante-alias">{i.idExterno}</span>
             {esBullshooter ? (
               enlace && (

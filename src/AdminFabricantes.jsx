@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SelectorImagen from "./SelectorImagen.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -6,12 +7,14 @@ export default function AdminFabricantes({ token, salir }) {
   const [fabricantes, setFabricantes] = useState([]);
   const [nombre, setNombre] = useState("");
   const [urlPerfilPlantilla, setUrlPerfilPlantilla] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
   const [creando, setCreando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
   const [actualizando, setActualizando] = useState(false);
   const [resumenActualizacion, setResumenActualizacion] = useState(null);
   const [editandoId, setEditandoId] = useState(null);
   const [urlEditada, setUrlEditada] = useState("");
+  const [logoEditado, setLogoEditado] = useState("");
   const [guardandoUrl, setGuardandoUrl] = useState(false);
 
   const cargar = () => {
@@ -34,7 +37,11 @@ export default function AdminFabricantes({ token, salir }) {
       const res = await fetch(`${API_URL}/api/fabricantes`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre: nombre.trim(), urlPerfilPlantilla: urlPerfilPlantilla.trim() || undefined }),
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          urlPerfilPlantilla: urlPerfilPlantilla.trim() || undefined,
+          logoUrl: logoUrl || undefined,
+        }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -48,6 +55,7 @@ export default function AdminFabricantes({ token, salir }) {
       }
       setNombre("");
       setUrlPerfilPlantilla("");
+      setLogoUrl("");
       cargar();
     } catch {
       setMensaje({ tipo: "error", texto: "Error de conexión." });
@@ -65,6 +73,7 @@ export default function AdminFabricantes({ token, salir }) {
   function empezarEdicionUrl(f) {
     setEditandoId(f.id);
     setUrlEditada(f.urlPerfilPlantilla || "");
+    setLogoEditado(f.logoUrl || "");
     setMensaje(null);
   }
 
@@ -75,7 +84,7 @@ export default function AdminFabricantes({ token, salir }) {
       const res = await fetch(`${API_URL}/api/fabricantes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ urlPerfilPlantilla: urlEditada.trim() || undefined }),
+        body: JSON.stringify({ urlPerfilPlantilla: urlEditada.trim() || undefined, logoUrl: logoEditado }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -169,6 +178,16 @@ export default function AdminFabricantes({ token, salir }) {
             placeholder="Ej: https://www.dartslive.com/es/rank/?id={alias}"
           />
         </label>
+        <label>
+          Logo (opcional)
+          <SelectorImagen
+            token={token}
+            valor={logoUrl}
+            onCambiar={setLogoUrl}
+            onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+            etiqueta="Logo"
+          />
+        </label>
         <button type="submit" disabled={creando || !nombre.trim()}>{creando ? "Creando…" : "Añadir"}</button>
       </form>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
@@ -177,28 +196,45 @@ export default function AdminFabricantes({ token, salir }) {
       <ul>
         {fabricantes.map((f) => (
           <li key={f.id} className="admin-list-item" style={{ alignItems: editandoId === f.id ? "flex-start" : "center" }}>
-            <div style={{ flex: 1 }}>
-              <strong>{f.nombre}</strong>
-              {editandoId === f.id ? (
-                <div style={{ display: "flex", gap: ".5rem", marginTop: ".4rem", alignItems: "center" }}>
-                  <input
-                    value={urlEditada}
-                    onChange={(e) => setUrlEditada(e.target.value)}
-                    placeholder="Ej: https://www.dartslive.com/es/rank/?id={alias}"
-                    style={{ flex: 1 }}
-                  />
-                  <button className="admin-link-btn" disabled={guardandoUrl} onClick={() => guardarUrl(f.id)}>
-                    {guardandoUrl ? "Guardando…" : "Guardar"}
-                  </button>
-                  <button className="admin-link-btn" onClick={() => setEditandoId(null)}>Cancelar</button>
-                </div>
-              ) : (
-                f.urlPerfilPlantilla && <em style={{ display: "block", fontSize: ".8em" }}>{f.urlPerfilPlantilla}</em>
+            <div style={{ display: "flex", alignItems: editandoId === f.id ? "flex-start" : "center", gap: ".8rem", flex: 1 }}>
+              {f.logoUrl && (
+                <img
+                  src={f.logoUrl}
+                  alt={f.nombre}
+                  style={{ width: 40, height: 40, objectFit: "contain", background: "#fff", padding: 2, borderRadius: 4, flexShrink: 0 }}
+                />
               )}
+              <div style={{ flex: 1 }}>
+                <strong>{f.nombre}</strong>
+                {editandoId === f.id ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: ".6rem", marginTop: ".4rem" }}>
+                    <input
+                      value={urlEditada}
+                      onChange={(e) => setUrlEditada(e.target.value)}
+                      placeholder="Ej: https://www.dartslive.com/es/rank/?id={alias}"
+                    />
+                    <SelectorImagen
+                      token={token}
+                      valor={logoEditado}
+                      onCambiar={setLogoEditado}
+                      onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+                      etiqueta="Logo"
+                    />
+                    <div style={{ display: "flex", gap: ".5rem" }}>
+                      <button className="admin-link-btn" disabled={guardandoUrl} onClick={() => guardarUrl(f.id)}>
+                        {guardandoUrl ? "Guardando…" : "Guardar"}
+                      </button>
+                      <button className="admin-link-btn" onClick={() => setEditandoId(null)}>Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  f.urlPerfilPlantilla && <em style={{ display: "block", fontSize: ".8em" }}>{f.urlPerfilPlantilla}</em>
+                )}
+              </div>
             </div>
             {editandoId !== f.id && (
               <div style={{ display: "flex", gap: ".5rem" }}>
-                <button className="admin-link-btn" onClick={() => empezarEdicionUrl(f)}>Editar URL</button>
+                <button className="admin-link-btn" onClick={() => empezarEdicionUrl(f)}>Editar</button>
                 <button className="admin-link-btn" onClick={() => borrar(f.id)}>Borrar</button>
               </div>
             )}

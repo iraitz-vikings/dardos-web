@@ -220,7 +220,16 @@ export default function SocioPerfil() {
                 : null;
             return (
               <label key={f.id}>
-                {f.nombre}
+                <span style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
+                  {f.logoUrl && (
+                    <img
+                      src={f.logoUrl}
+                      alt=""
+                      style={{ width: 20, height: 20, objectFit: "contain", background: "#fff", borderRadius: 3 }}
+                    />
+                  )}
+                  {f.nombre}
+                </span>
                 <input
                   value={alias}
                   onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}

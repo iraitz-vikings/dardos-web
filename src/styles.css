@@ -962,3 +962,20 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .medias-fabricante-alias { opacity: .75; font-size: .85em; }
 .medias-fabricante-stats { margin-left: auto; font-family: 'IBM Plex Mono', monospace; opacity: .9; }
 .medias-fabricante-stats-doble { display: flex; flex-direction: column; align-items: flex-end; gap: .15rem; font-size: .92em; }
+.medias-fabricante-cabecera { display: flex; align-items: center; gap: .5rem; }
+.medias-fabricante-logo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 5px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+.medias-fabricante-logo-vacio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .85rem;
+  background: rgba(255,255,255,.08);
+}
