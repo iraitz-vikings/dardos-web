@@ -211,7 +211,9 @@ export default function SocioPerfil() {
           {fabricantes.map((f) => {
             const guardado = (perfil.idsFabricantes || []).find((i) => i.fabricanteId === f.id);
             const alias = idsFabricantes[f.id] || "";
-            const esBullshooter = f.nombre.toLowerCase().includes("bullshooter");
+            const nombreFab = f.nombre.toLowerCase();
+            const esBullshooter = nombreFab.includes("bullshooter");
+            const esConnection = nombreFab.includes("connection");
             const enlace =
               f.urlPerfilPlantilla && alias.trim()
                 ? f.urlPerfilPlantilla.replace("{alias}", encodeURIComponent(alias.trim()))
@@ -226,9 +228,18 @@ export default function SocioPerfil() {
                 />
                 {/* Bullshooter no tiene scraping automático: aquí solo tiene sentido el
                     enlace de salida, no un MPR/PPD que nunca se va a rellenar solo. */}
-                {guardado && !esBullshooter && (
+                {guardado && !esBullshooter && !esConnection && (
                   <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
                     MPR {Number(guardado.mpr ?? 0).toFixed(2)} · PPD {Number(guardado.ppd ?? 0).toFixed(2)}
+                  </span>
+                )}
+                {/* Connection distingue media Virtual y Presencial, cada una con su
+                    propio MPR/PPD. */}
+                {guardado && esConnection && (
+                  <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
+                    Virtual: MPR {Number(guardado.mprVirtual ?? 0).toFixed(2)} · PPD {Number(guardado.ppdVirtual ?? 0).toFixed(2)}
+                    <br />
+                    Presencial: MPR {Number(guardado.mprPresencial ?? 0).toFixed(2)} · PPD {Number(guardado.ppdPresencial ?? 0).toFixed(2)}
                   </span>
                 )}
                 {enlace && (
