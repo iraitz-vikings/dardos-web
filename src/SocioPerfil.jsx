@@ -12,6 +12,7 @@ export default function SocioPerfil() {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [idsFabricantes, setIdsFabricantes] = useState({}); // { [fabricanteId]: idExterno }
+  const [notasFabricantes, setNotasFabricantes] = useState({}); // { [fabricanteId]: notaBusqueda }
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
@@ -24,10 +25,13 @@ export default function SocioPerfil() {
     setBio(p.bio || "");
     setAvatarUrl(p.avatarUrl || "");
     const mapa = {};
+    const notas = {};
     (p.idsFabricantes || []).forEach((i) => {
       mapa[i.fabricanteId] = i.idExterno || "";
+      notas[i.fabricanteId] = i.notaBusqueda || "";
     });
     setIdsFabricantes(mapa);
+    setNotasFabricantes(notas);
   }
 
   useEffect(() => {
@@ -78,6 +82,10 @@ export default function SocioPerfil() {
     setIdsFabricantes((prev) => ({ ...prev, [fabricanteId]: valor }));
   }
 
+  function cambiarNotaFabricante(fabricanteId, valor) {
+    setNotasFabricantes((prev) => ({ ...prev, [fabricanteId]: valor }));
+  }
+
   async function guardar(e) {
     e.preventDefault();
     setGuardando(true);
@@ -93,6 +101,7 @@ export default function SocioPerfil() {
           idsFabricantes: fabricantes.map((f) => ({
             fabricanteId: f.id,
             idExterno: idsFabricantes[f.id] || "",
+            notaBusqueda: notasFabricantes[f.id] || "",
           })),
         }),
       });
@@ -112,7 +121,9 @@ export default function SocioPerfil() {
             fabricanteId: f.id,
             nombreFabricante: f.nombre,
             urlPerfilPlantilla: f.urlPerfilPlantilla,
+            logoUrl: f.logoUrl,
             idExterno: idsFabricantes[f.id],
+            notaBusqueda: notasFabricantes[f.id] || "",
           })),
       }));
       setEditando(false);
@@ -214,6 +225,7 @@ export default function SocioPerfil() {
             const nombreFab = f.nombre.toLowerCase();
             const esBullshooter = nombreFab.includes("bullshooter");
             const esConnection = nombreFab.includes("connection");
+            const esRadikal = nombreFab.includes("radikal");
             const enlace =
               f.urlPerfilPlantilla && alias.trim()
                 ? f.urlPerfilPlantilla.replace("{alias}", encodeURIComponent(alias.trim()))
@@ -235,6 +247,17 @@ export default function SocioPerfil() {
                   onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}
                   placeholder={`Tu alias en ${f.nombre}`}
                 />
+                {/* Radikal Darts no tiene buscador general de jugadores: hace falta
+                    además el nombre de un torneo en el que hayas participado, para
+                    poder localizarte en su clasificación (ver notaBusqueda). */}
+                {esRadikal && (
+                  <input
+                    value={notasFabricantes[f.id] || ""}
+                    onChange={(e) => cambiarNotaFabricante(f.id, e.target.value)}
+                    placeholder='Nombre de un torneo en el que hayas jugado (ej: "EL-033 Julio")'
+                    style={{ marginTop: ".3rem" }}
+                  />
+                )}
                 {/* Bullshooter no tiene scraping automático: aquí solo tiene sentido el
                     enlace de salida, no un MPR/PPD que nunca se va a rellenar solo. */}
                 {guardado && !esBullshooter && !esConnection && (

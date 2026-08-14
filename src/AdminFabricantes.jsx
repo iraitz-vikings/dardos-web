@@ -141,12 +141,13 @@ export default function AdminFabricantes({ token, salir }) {
       </p>
 
       <section style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1.2rem" }}>
-        <h3 style={{ marginTop: 0 }}>Medias de Connection Darts y Phoenix Darts</h3>
+        <h3 style={{ marginTop: 0 }}>Medias de Connection, Phoenix y Radikal Darts</h3>
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          Consulta automáticamente, con la cuenta del club guardada en el servidor, la media (MPR/PPD) de
-          cada socio que tenga alias guardado en estos dos fabricantes. Se ejecuta también sola cada
-          noche. Bullshooter no se consulta aquí (se enlaza directamente desde el perfil) y Radikal Darts
-          no tiene forma de consultarse por alias.
+          Consulta automáticamente la media (MPR/PPD) de cada socio que tenga alias guardado en estos tres
+          fabricantes. Se ejecuta también sola cada noche. Bullshooter no se consulta aquí (se enlaza
+          directamente desde el perfil). Radikal Darts no tiene buscador general de jugadores, así que
+          además del alias hace falta que el socio indique en su perfil el nombre de un torneo en el que
+          haya jugado: se busca su media en la clasificación de ese torneo.
         </p>
         <button type="button" onClick={actualizarMedias} disabled={actualizando}>
           {actualizando ? "Actualizando…" : "Actualizar medias ahora"}
