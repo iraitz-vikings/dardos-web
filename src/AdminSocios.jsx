@@ -189,10 +189,14 @@ export default function AdminSocios({ token, salir }) {
                   {s.idsFabricantes
                     .map((i) => {
                       let texto = `${i.nombreFabricante}: ${i.idExterno}`;
-                      if (i.mpr != null || i.ppd != null) {
-                        const partes = [];
-                        if (i.mpr != null) partes.push(`MPR ${i.mpr}`);
-                        if (i.ppd != null) partes.push(`PPD ${i.ppd}`);
+                      const partes = [];
+                      if (i.mpr != null) partes.push(`MPR ${i.mpr}`);
+                      if (i.ppd != null) partes.push(`PPD ${i.ppd}`);
+                      if (i.mprVirtual != null) partes.push(`Virtual MPR ${i.mprVirtual}`);
+                      if (i.ppdVirtual != null) partes.push(`Virtual PPD ${i.ppdVirtual}`);
+                      if (i.mprPresencial != null) partes.push(`Presencial MPR ${i.mprPresencial}`);
+                      if (i.ppdPresencial != null) partes.push(`Presencial PPD ${i.ppdPresencial}`);
+                      if (partes.length > 0) {
                         texto += ` (${partes.join(" / ")})`;
                       } else if (i.statsError) {
                         texto += ` (${i.statsError})`;
