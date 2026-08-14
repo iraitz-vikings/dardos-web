@@ -445,7 +445,6 @@ function cancelarEdicionNoticia() {
     { id: "torneo-destacado", etiqueta: "Torneo destacado" },
     { id: "patrocinadores", etiqueta: "Patrocinadores" },
     { id: "socios", etiqueta: "Socios" },
-    { id: "jugadores", etiqueta: "Jugadores" },
     { id: "mensaje", etiqueta: "Mensaje" },
     { id: "ligas-club", etiqueta: "Ligas del club" },
     { id: "trofeos", etiqueta: "Trofeos" },
@@ -643,7 +642,6 @@ function cancelarEdicionNoticia() {
       {pestana === "equipos-club" && <AdminEquiposClub token={token} salir={salir} />}
       {pestana === "maquinas" && <AdminMaquinas token={token} salir={salir} />}
       {pestana === "fabricantes" && <AdminFabricantes token={token} salir={salir} />}
-      {pestana === "jugadores" && <AdminJugadores token={token} salir={salir} />}
       {pestana === "competiciones-externas" && <AdminCompeticionesExternas token={token} salir={salir} />}
     </div>
   );
