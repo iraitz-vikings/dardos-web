@@ -25,6 +25,14 @@ const SECCIONES = [
 
 export default function ZonaSocio({ usuario, salir }) {
   const [seccion, setSeccion] = useState("tablon");
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const actual = SECCIONES.find((s) => s.id === seccion);
+
+  function elegirSeccion(s) {
+    if (!s.lista) return;
+    setSeccion(s.id);
+    setMenuAbierto(false);
+  }
 
   return (
     <div className="admin-form" style={{ maxWidth: 640, margin: "0 auto" }}>
@@ -33,20 +41,32 @@ export default function ZonaSocio({ usuario, salir }) {
         <button className="admin-link-btn" onClick={salir}>Salir</button>
       </div>
 
-      <nav className="admin-tabs" style={{ marginBottom: "1.2rem" }}>
-        {SECCIONES.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`admin-tab ${seccion === s.id ? "admin-tab-active" : ""}`}
-            disabled={!s.lista}
-            onClick={() => s.lista && setSeccion(s.id)}
-            title={s.lista ? "" : "Próximamente"}
-          >
-            {s.etiqueta}{!s.lista && " 🔒"}
-          </button>
-        ))}
-      </nav>
+      <div className="socio-menu">
+        <button
+          type="button"
+          className={`socio-menu-actual ${menuAbierto ? "socio-menu-actual-open" : ""}`}
+          onClick={() => setMenuAbierto((o) => !o)}
+          aria-expanded={menuAbierto}
+        >
+          <span>{actual?.etiqueta}</span>
+          <em className="socio-menu-chevron" aria-hidden="true" />
+        </button>
+
+        <nav className={`admin-tabs socio-menu-lista ${menuAbierto ? "socio-menu-lista-open" : ""}`} style={{ marginBottom: "1.2rem" }}>
+          {SECCIONES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`admin-tab ${seccion === s.id ? "admin-tab-active" : ""}`}
+              disabled={!s.lista}
+              onClick={() => elegirSeccion(s)}
+              title={s.lista ? "" : "Próximamente"}
+            >
+              {s.etiqueta}{!s.lista && " 🔒"}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {seccion === "perfil" && <SocioPerfil usuario={usuario} />}
       {seccion === "historial" && <HistorialTorneos />}
