@@ -90,10 +90,11 @@ export default function Competiciones({ usuario }) {
               <strong>{t.nombre}</strong>
               {t.nivel && <span style={{ color: "var(--steel)" }}> — {t.nivel}</span>}
               {t.temporada && <span style={{ display: "block", fontSize: ".8em" }}>{t.temporada}</span>}
-              <TablaClasificacion filas={t.clasificacion} />
+              {t.clasificacion?.length > 0 && <TablaClasificacion filas={t.clasificacion} />}
               {t.equipos.map((eq) => (
                 <div key={eq.id} style={{ marginTop: ".6rem" }}>
                   <em>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}{eq.capitan ? ` — Capitán: ${eq.capitan.nombre}` : ""}</em>
+                  {eq.clasificacion?.length > 0 && <TablaClasificacion filas={eq.clasificacion} />}
                   <ul>
                     {eq.partidos.map((p) => (
                       <li key={p.id} style={{ fontSize: ".85em" }}>
