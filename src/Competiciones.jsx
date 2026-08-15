@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -89,6 +90,7 @@ export default function Competiciones({ usuario }) {
               <strong>{t.nombre}</strong>
               {t.nivel && <span style={{ color: "var(--steel)" }}> — {t.nivel}</span>}
               {t.temporada && <span style={{ display: "block", fontSize: ".8em" }}>{t.temporada}</span>}
+              <TablaClasificacion filas={t.clasificacion} />
               {t.equipos.map((eq) => (
                 <div key={eq.id} style={{ marginTop: ".6rem" }}>
                   <em>{eq.nombreEquipo || "Vikings"}{eq.capitan ? ` — Capitán: ${eq.capitan.nombre}` : ""}</em>
