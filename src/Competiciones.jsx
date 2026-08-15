@@ -93,7 +93,7 @@ export default function Competiciones({ usuario }) {
               <TablaClasificacion filas={t.clasificacion} />
               {t.equipos.map((eq) => (
                 <div key={eq.id} style={{ marginTop: ".6rem" }}>
-                  <em>{eq.nombreEquipo || "Vikings"}{eq.capitan ? ` — Capitán: ${eq.capitan.nombre}` : ""}</em>
+                  <em>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}{eq.capitan ? ` — Capitán: ${eq.capitan.nombre}` : ""}</em>
                   <ul>
                     {eq.partidos.map((p) => (
                       <li key={p.id} style={{ fontSize: ".85em" }}>
