@@ -3,16 +3,17 @@ import { useEffect, useState } from "react";
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // El significado de "Id externo" depende de la plataforma: en Radikal Darts
-// es el nombre de la COMPETICIÓN, pero en Phoenix Darts la búsqueda pública
-// parte del EQUIPO (no hay forma de buscar una liga por su nombre), así que
-// ahí hay que poner el nombre exacto del equipo tal como está registrado en
-// Phoenix — el propio nombre que le hemos puesto a este Torneo se usa
-// automáticamente para desambiguar si ese equipo compite en varias
-// competiciones de Phoenix a la vez.
+// es el nombre de la COMPETICIÓN (una única tabla compartida por todo el
+// torneo/liga). En Phoenix Darts, en cambio, la búsqueda pública parte del
+// EQUIPO, y un mismo torneo/liga puede tener VARIOS equipos del club
+// inscritos a la vez (cada uno en su propio grupo) — así que ahí el nombre
+// de cada equipo ya no se pone aquí, se pone en su propia inscripción,
+// desde la pestaña "Equipos". Este campo se deja solo como último recurso
+// (se usa si una inscripción de Phoenix no tiene su propio nombre puesto).
 function hintIdExterno(nombrePlataforma) {
   const p = (nombrePlataforma || "").toLowerCase();
   if (p.includes("phoenix")) {
-    return 'Nombre EXACTO del EQUIPO tal como está registrado en Phoenix Darts (no el de la liga). Si ese equipo compite en varias competiciones de Phoenix a la vez, se elige la que mejor coincida con el "Nombre" de este torneo.';
+    return 'Para Phoenix Darts ya no hace falta rellenar esto: el nombre de cada equipo se indica por separado en su inscripción, en la pestaña "Equipos" (necesario porque varios equipos del club pueden competir a la vez en este mismo torneo/liga). Este campo solo se usaría como último recurso.';
   }
   if (p.includes("radikal")) {
     return "Nombre EXACTO de la competición tal como aparece en la web de Radikal Darts.";
@@ -115,7 +116,11 @@ export default function AdminCompeticionesExternas({ token, salir }) {
         setMensajeClasificacion((m) => ({ ...m, [id]: { tipo: "error", texto: data.error || "No se pudo actualizar." } }));
         return;
       }
-      setMensajeClasificacion((m) => ({ ...m, [id]: { tipo: "ok", texto: "Clasificación actualizada." } }));
+      const texto =
+        data.avisosClasificacion?.length > 0
+          ? `Clasificación actualizada, pero con avisos — ${data.avisosClasificacion.join(" · ")}`
+          : "Clasificación actualizada.";
+      setMensajeClasificacion((m) => ({ ...m, [id]: { tipo: "ok", texto } }));
       cargarTodo();
     } catch {
       setMensajeClasificacion((m) => ({ ...m, [id]: { tipo: "error", texto: "Error de conexión." } }));
@@ -222,7 +227,22 @@ export default function AdminCompeticionesExternas({ token, salir }) {
                 <p className={`admin-msg admin-msg-${mensajeClasificacion[t.id].tipo}`}>{mensajeClasificacion[t.id].texto}</p>
               )}
 
+              {/* Tabla compartida por todo el torneo/liga (Radikal). En
+                  plataformas por equipo (Phoenix) esto queda vacío — cada
+                  equipo tiene su propia tabla, ver debajo. */}
               <TablaClasificacion filas={t.clasificacion} />
+
+              {t.equipos?.map((eq) => (
+                eq.clasificacion?.length > 0 && (
+                  <div key={eq.id} style={{ marginTop: ".8rem" }}>
+                    <p className="admin-hint" style={{ marginBottom: 0 }}>
+                      <strong>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}</strong>
+                      {eq.idExternoEquipo ? ` (${eq.idExternoEquipo} en ${t.plataforma?.nombre})` : ""}
+                    </p>
+                    <TablaClasificacion filas={eq.clasificacion} />
+                  </div>
+                )
+              ))}
 
               <p className="admin-hint" style={{ marginTop: ".8rem" }}>
                 {t.equipos?.length > 0
