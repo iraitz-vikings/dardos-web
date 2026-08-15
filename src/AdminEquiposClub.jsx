@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
+import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 export default function AdminEquiposClub({ token, salir }) {
   const [equipos, setEquipos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
+  const [torneos, setTorneos] = useState([]);
+  const [maquinas, setMaquinas] = useState([]);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [escudoUrl, setEscudoUrl] = useState("");
@@ -25,10 +28,24 @@ export default function AdminEquiposClub({ token, salir }) {
       .then(setJugadores)
       .catch(() => {});
   };
+  const cargarTorneos = () => {
+    fetch(`${API_URL}/api/competiciones-externas/torneos/admin`, { headers: { "x-admin-token": token } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setTorneos)
+      .catch(() => {});
+  };
+  const cargarMaquinas = () => {
+    fetch(`${API_URL}/api/maquinas`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setMaquinas)
+      .catch(() => {});
+  };
 
   useEffect(() => {
     cargarEquipos();
     cargarJugadores();
+    cargarTorneos();
+    cargarMaquinas();
   }, []);
 
   async function crear(e) {
@@ -62,7 +79,7 @@ export default function AdminEquiposClub({ token, salir }) {
   }
 
   async function borrarEquipo(id) {
-    if (!confirm("¿Borrar este equipo?")) return;
+    if (!confirm("¿Borrar este equipo, su plantilla y sus inscripciones en competiciones?")) return;
     await fetch(`${API_URL}/api/equipos-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     if (abiertoId === id) setAbiertoId(null);
     cargarEquipos();
@@ -89,6 +106,75 @@ export default function AdminEquiposClub({ token, salir }) {
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({ capitanId }),
     });
+    cargarEquipos();
+  }
+
+  // ---------- Inscripciones en competiciones externas ----------
+  async function inscribir(equipoId, torneoId) {
+    if (!torneoId) return;
+    const res = await fetch(`${API_URL}/api/equipos-club/${equipoId}/inscripciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ torneoId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMensaje({ tipo: "error", texto: data.error || "No se pudo inscribir en la competición." });
+      return;
+    }
+    cargarEquipos();
+  }
+  async function quitarInscripcion(equipoId, inscripcionId) {
+    if (!confirm("¿Quitar este equipo de la competición? Se borran también sus partidos.")) return;
+    await fetch(`${API_URL}/api/equipos-club/${equipoId}/inscripciones/${inscripcionId}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": token },
+    });
+    cargarEquipos();
+  }
+  async function asignarCapitanInscripcion(inscripcionId, capitanId) {
+    await fetch(`${API_URL}/api/competiciones-externas/equipos/${inscripcionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ capitanId: capitanId || null }),
+    });
+    cargarEquipos();
+  }
+  async function anadirJugadorInscripcion(inscripcionId, jugadorId) {
+    await fetch(`${API_URL}/api/competiciones-externas/equipos/${inscripcionId}/jugadores`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ jugadorId }),
+    });
+    cargarEquipos();
+  }
+  async function quitarJugadorInscripcion(inscripcionId, jugadorId) {
+    await fetch(`${API_URL}/api/competiciones-externas/equipos/${inscripcionId}/jugadores/${jugadorId}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": token },
+    });
+    cargarEquipos();
+  }
+  async function crearPartido(inscripcionId, fecha, rival) {
+    if (!fecha) return;
+    await fetch(`${API_URL}/api/competiciones-externas/equipos/${inscripcionId}/partidos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ fecha, rival }),
+    });
+    cargarEquipos();
+  }
+  async function actualizarPartido(id, datos) {
+    await fetch(`${API_URL}/api/competiciones-externas/partidos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    cargarEquipos();
+  }
+  async function borrarPartido(id) {
+    if (!confirm("¿Borrar este partido?")) return;
+    await fetch(`${API_URL}/api/competiciones-externas/partidos/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     cargarEquipos();
   }
 
@@ -125,13 +211,15 @@ export default function AdminEquiposClub({ token, salir }) {
         {equipos.map((eq) => {
           const idsEnEquipo = new Set(eq.miembros.map((m) => m.jugadorId));
           const disponibles = jugadores.filter((j) => !idsEnEquipo.has(j.id));
+          const torneosInscritosIds = new Set(eq.inscripciones.map((i) => i.torneoId));
+          const torneosDisponibles = torneos.filter((t) => !torneosInscritosIds.has(t.id));
           return (
             <li key={eq.id} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
               <div className="admin-list-item">
                 <strong>{eq.nombre}</strong>
                 <div style={{ display: "flex", gap: ".5rem" }}>
                   <button className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === eq.id ? null : eq.id)}>
-                    {abiertoId === eq.id ? "Cerrar" : "Gestionar plantilla"}
+                    {abiertoId === eq.id ? "Cerrar" : "Gestionar"}
                   </button>
                   <button className="admin-link-btn" onClick={() => borrarEquipo(eq.id)}>Borrar</button>
                 </div>
@@ -166,6 +254,33 @@ export default function AdminEquiposClub({ token, salir }) {
                       </div>
                     </div>
                   )}
+
+                  <h5 style={{ marginTop: "1.2rem" }}>Competiciones en las que compite</h5>
+                  {eq.inscripciones.length === 0 && (
+                    <p className="chronicle-status">Todavía no está inscrito en ninguna competición externa.</p>
+                  )}
+                  {eq.inscripciones.map((inscripcion) => (
+                    <InscripcionBloque
+                      key={inscripcion.id}
+                      inscripcion={inscripcion}
+                      miembrosClub={eq.miembros}
+                      maquinas={maquinas}
+                      onQuitarInscripcion={() => quitarInscripcion(eq.id, inscripcion.id)}
+                      onAsignarCapitan={(capitanId) => asignarCapitanInscripcion(inscripcion.id, capitanId)}
+                      onAnadirJugador={(jugadorId) => anadirJugadorInscripcion(inscripcion.id, jugadorId)}
+                      onQuitarJugador={(jugadorId) => quitarJugadorInscripcion(inscripcion.id, jugadorId)}
+                      onCrearPartido={(fecha, rival) => crearPartido(inscripcion.id, fecha, rival)}
+                      onActualizarPartido={actualizarPartido}
+                      onBorrarPartido={borrarPartido}
+                    />
+                  ))}
+
+                  {torneosDisponibles.length > 0 && (
+                    <InscribirEnCompeticion
+                      opciones={torneosDisponibles}
+                      onInscribir={(torneoId) => inscribir(eq.id, torneoId)}
+                    />
+                  )}
                 </div>
               )}
             </li>
@@ -173,5 +288,124 @@ export default function AdminEquiposClub({ token, salir }) {
         })}
       </ul>
     </section>
+  );
+}
+
+function InscribirEnCompeticion({ opciones, onInscribir }) {
+  const [torneoId, setTorneoId] = useState("");
+  return (
+    <div className="admin-inline-form" style={{ marginTop: ".8rem" }}>
+      <label>
+        Inscribir en una competición
+        <select value={torneoId} onChange={(e) => setTorneoId(e.target.value)}>
+          <option value="">Elige un torneo/liga…</option>
+          {opciones.map((t) => (
+            <option key={t.id} value={t.id}>{t.plataforma?.nombre} — {t.nombre}</option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        disabled={!torneoId}
+        onClick={() => { onInscribir(torneoId); setTorneoId(""); }}
+      >
+        Inscribir
+      </button>
+    </div>
+  );
+}
+
+function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscripcion, onAsignarCapitan, onAnadirJugador, onQuitarJugador, onCrearPartido, onActualizarPartido, onBorrarPartido }) {
+  const [fechaPartido, setFechaPartido] = useState("");
+  const [rivalPartido, setRivalPartido] = useState("");
+  const idsEnInscripcion = new Set(inscripcion.jugadores.map((j) => j.jugadorId));
+  const disponiblesParaEsta = miembrosClub.filter((m) => !idsEnInscripcion.has(m.jugadorId));
+
+  return (
+    <div className="admin-cuadrante-participantes" style={{ marginTop: "1rem" }}>
+      <div className="admin-list-item">
+        <strong>{inscripcion.torneo.plataforma?.nombre} — {inscripcion.torneo.nombre}</strong>
+        <button className="admin-link-btn" onClick={onQuitarInscripcion}>Quitar de esta competición</button>
+      </div>
+
+      <label>
+        Capitán en esta competición
+        <select value={inscripcion.capitanId || ""} onChange={(e) => onAsignarCapitan(e.target.value)}>
+          <option value="">Sin asignar</option>
+          {inscripcion.jugadores.map((j) => <option key={j.jugadorId} value={j.jugadorId}>{j.jugador.nombre}</option>)}
+        </select>
+      </label>
+
+      <h5 style={{ marginTop: ".8rem" }}>Plantilla en esta competición ({inscripcion.jugadores.length})</h5>
+      <p className="admin-hint">Se copió la plantilla del club al inscribirse; ajústala aquí si en esta competición concreta juega gente distinta.</p>
+      <ul>
+        {inscripcion.jugadores.map((j) => (
+          <li key={j.jugadorId} className="admin-list-item">
+            <span>{j.jugador.nombre}{inscripcion.capitanId === j.jugadorId ? " — Capitán" : ""}</span>
+            <button className="admin-link-btn" onClick={() => onQuitarJugador(j.jugadorId)}>Quitar</button>
+          </li>
+        ))}
+      </ul>
+      {disponiblesParaEsta.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem", marginBottom: ".8rem" }}>
+          {disponiblesParaEsta.map((m) => (
+            <button key={m.jugadorId} type="button" className="admin-link-btn" onClick={() => onAnadirJugador(m.jugadorId)}>
+              ＋ {m.jugador.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <TablaClasificacion filas={inscripcion.torneo.clasificacion} />
+
+      <h5 style={{ marginTop: ".8rem" }}>Partidos</h5>
+      <div className="admin-inline-form">
+        <label>
+          Fecha y hora
+          <input type="datetime-local" value={fechaPartido} onChange={(e) => setFechaPartido(e.target.value)} />
+        </label>
+        <label>
+          Rival (opcional)
+          <input value={rivalPartido} onChange={(e) => setRivalPartido(e.target.value)} />
+        </label>
+        <button
+          type="button"
+          disabled={!fechaPartido}
+          onClick={() => { onCrearPartido(new Date(fechaPartido).toISOString(), rivalPartido); setFechaPartido(""); setRivalPartido(""); }}
+        >
+          Añadir partido
+        </button>
+      </div>
+
+      <ul>
+        {inscripcion.partidos.map((p) => (
+          <li key={p.id} className="admin-list-item" style={{ flexWrap: "wrap" }}>
+            <div>
+              <strong>{new Date(p.fecha).toLocaleString("es-ES")}</strong> — vs {p.rival || "?"}
+              {p.fijado ? " · confirmado" : " · sin confirmar"}
+              {p.maquina ? ` · ${p.maquina.nombre}` : ""}
+              {p.resultado ? ` · ${p.resultado}` : ""}
+            </div>
+            <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+              <select defaultValue={p.maquinaId || ""} onChange={(e) => onActualizarPartido(p.id, { maquinaId: e.target.value || null })}>
+                <option value="">Sin máquina</option>
+                {maquinas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              </select>
+              <input
+                defaultValue={p.resultado || ""}
+                placeholder="Resultado"
+                onBlur={(e) => onActualizarPartido(p.id, { resultado: e.target.value })}
+                style={{ width: "90px" }}
+              />
+              <button className="admin-link-btn" onClick={() => onActualizarPartido(p.id, { fijado: !p.fijado })}>
+                {p.fijado ? "Desconfirmar" : "Confirmar"}
+              </button>
+              <button className="admin-link-btn" onClick={() => onBorrarPartido(p.id)}>Borrar</button>
+            </div>
+          </li>
+        ))}
+        {inscripcion.partidos.length === 0 && <li className="chronicle-status">Sin partidos todavía.</li>}
+      </ul>
+    </div>
   );
 }
