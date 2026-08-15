@@ -13,6 +13,13 @@ export default function SocioPerfil() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [idsFabricantes, setIdsFabricantes] = useState({}); // { [fabricanteId]: idExterno }
   const [notasFabricantes, setNotasFabricantes] = useState({}); // { [fabricanteId]: notaBusqueda }
+  // Media manual (hoy solo la usa Radikal Darts: su scraper automático no
+  // puede iniciar sesión porque la propia web bloquea en silencio los
+  // intentos de login desde un navegador automatizado — ver el error que
+  // muestra el panel de admin. Mientras eso no se resuelva, cada socio
+  // puede escribir aquí su MPR/PPD tal como aparece en su perfil de
+  // radikalplayers.com).
+  const [mediasFabricantes, setMediasFabricantes] = useState({}); // { [fabricanteId]: { mpr, ppd } }
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
@@ -26,12 +33,18 @@ export default function SocioPerfil() {
     setAvatarUrl(p.avatarUrl || "");
     const mapa = {};
     const notas = {};
+    const medias = {};
     (p.idsFabricantes || []).forEach((i) => {
       mapa[i.fabricanteId] = i.idExterno || "";
       notas[i.fabricanteId] = i.notaBusqueda || "";
+      medias[i.fabricanteId] = {
+        mpr: i.mpr != null ? String(i.mpr) : "",
+        ppd: i.ppd != null ? String(i.ppd) : "",
+      };
     });
     setIdsFabricantes(mapa);
     setNotasFabricantes(notas);
+    setMediasFabricantes(medias);
   }
 
   useEffect(() => {
@@ -86,6 +99,13 @@ export default function SocioPerfil() {
     setNotasFabricantes((prev) => ({ ...prev, [fabricanteId]: valor }));
   }
 
+  function cambiarMediaFabricante(fabricanteId, campo, valor) {
+    setMediasFabricantes((prev) => ({
+      ...prev,
+      [fabricanteId]: { ...prev[fabricanteId], [campo]: valor },
+    }));
+  }
+
   async function guardar(e) {
     e.preventDefault();
     setGuardando(true);
@@ -98,11 +118,23 @@ export default function SocioPerfil() {
           apodo,
           bio,
           avatarUrl,
-          idsFabricantes: fabricantes.map((f) => ({
-            fabricanteId: f.id,
-            idExterno: idsFabricantes[f.id] || "",
-            notaBusqueda: notasFabricantes[f.id] || "",
-          })),
+          idsFabricantes: fabricantes.map((f) => {
+            const item = {
+              fabricanteId: f.id,
+              idExterno: idsFabricantes[f.id] || "",
+              notaBusqueda: notasFabricantes[f.id] || "",
+            };
+            // mpr/ppd solo se mandan para Radikal (entrada manual, ver más
+            // abajo): para el resto de fabricantes no se incluyen esas
+            // claves, para no pisar con null la media que ya haya puesto su
+            // scraper automático.
+            if (f.nombre.toLowerCase().includes("radikal")) {
+              const media = mediasFabricantes[f.id] || {};
+              item.mpr = media.mpr === "" || media.mpr == null ? null : Number(media.mpr);
+              item.ppd = media.ppd === "" || media.ppd == null ? null : Number(media.ppd);
+            }
+            return item;
+          }),
         }),
       });
       if (!res.ok) {
@@ -117,14 +149,20 @@ export default function SocioPerfil() {
         avatarUrl,
         idsFabricantes: fabricantes
           .filter((f) => (idsFabricantes[f.id] || "").trim())
-          .map((f) => ({
-            fabricanteId: f.id,
-            nombreFabricante: f.nombre,
-            urlPerfilPlantilla: f.urlPerfilPlantilla,
-            logoUrl: f.logoUrl,
-            idExterno: idsFabricantes[f.id],
-            notaBusqueda: notasFabricantes[f.id] || "",
-          })),
+          .map((f) => {
+            const esRadikal = f.nombre.toLowerCase().includes("radikal");
+            const media = mediasFabricantes[f.id] || {};
+            return {
+              fabricanteId: f.id,
+              nombreFabricante: f.nombre,
+              urlPerfilPlantilla: f.urlPerfilPlantilla,
+              logoUrl: f.logoUrl,
+              idExterno: idsFabricantes[f.id],
+              notaBusqueda: notasFabricantes[f.id] || "",
+              mpr: esRadikal && media.mpr !== "" ? Number(media.mpr) : null,
+              ppd: esRadikal && media.ppd !== "" ? Number(media.ppd) : null,
+            };
+          }),
       }));
       setEditando(false);
     } catch {
@@ -259,9 +297,42 @@ export default function SocioPerfil() {
                     style={{ marginTop: ".3rem" }}
                   />
                 )}
+                {/* La web de Radikal Darts bloquea en silencio los intentos de login
+                    automático (ver el error en el panel de admin), así que de
+                    momento su media no se puede consultar sola: se escribe a mano
+                    aquí, tal como aparece en tu perfil de radikalplayers.com. */}
+                {esRadikal && (
+                  <span style={{ display: "flex", gap: ".5rem", marginTop: ".3rem" }}>
+                    <input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={mediasFabricantes[f.id]?.mpr ?? ""}
+                      onChange={(e) => cambiarMediaFabricante(f.id, "mpr", e.target.value)}
+                      placeholder="Tu MPR en Radikal Darts"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={mediasFabricantes[f.id]?.ppd ?? ""}
+                      onChange={(e) => cambiarMediaFabricante(f.id, "ppd", e.target.value)}
+                      placeholder="Tu PPD en Radikal Darts"
+                    />
+                  </span>
+                )}
+                {esRadikal && (
+                  <span style={{ display: "block", fontSize: ".75em", opacity: 0.7, marginTop: ".2rem" }}>
+                    De momento Radikal Darts no se actualiza sola (su web bloquea el
+                    login automático): escribe aquí tu MPR/PPD tal como aparece en tu
+                    perfil de radikalplayers.com.
+                  </span>
+                )}
                 {/* Bullshooter no tiene scraping automático: aquí solo tiene sentido el
-                    enlace de salida, no un MPR/PPD que nunca se va a rellenar solo. */}
-                {guardado && !esBullshooter && !esConnection && (
+                    enlace de salida, no un MPR/PPD que nunca se va a rellenar solo.
+                    Radikal ya tiene sus propios inputs editables arriba, así que este
+                    resumen de solo lectura sería redundante para él. */}
+                {guardado && !esBullshooter && !esConnection && !esRadikal && (
                   <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
                     MPR {Number(guardado.mpr ?? 0).toFixed(2)} · PPD {Number(guardado.ppd ?? 0).toFixed(2)}
                   </span>
