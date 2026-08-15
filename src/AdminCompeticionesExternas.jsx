@@ -18,9 +18,12 @@ export default function AdminCompeticionesExternas({ token, salir }) {
   const [nivel, setNivel] = useState("");
   const [temporada, setTemporada] = useState("");
   const [plataformaSel, setPlataformaSel] = useState("");
+  const [idExternoTorneo, setIdExternoTorneo] = useState("");
 
   const [abiertoId, setAbiertoId] = useState(null);
   const [mensaje, setMensaje] = useState(null);
+  const [clasificando, setClasificando] = useState(null);
+  const [mensajeClasificacion, setMensajeClasificacion] = useState({});
 
   const cargarTodo = () => {
     fetch(`${API_URL}/api/competiciones-externas/plataformas`).then((r) => r.json()).then(setPlataformas).catch(() => {});
@@ -56,16 +59,51 @@ export default function AdminCompeticionesExternas({ token, salir }) {
     const res = await fetch(`${API_URL}/api/competiciones-externas/torneos`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ nombre: nombreTorneo.trim(), nivel, temporada, plataformaId: plataformaSel }),
+      body: JSON.stringify({
+        nombre: nombreTorneo.trim(),
+        nivel,
+        temporada,
+        plataformaId: plataformaSel,
+        idExterno: idExternoTorneo.trim(),
+      }),
     });
     if (res.status === 401) { setMensaje({ tipo: "error", texto: "Contraseña incorrecta." }); salir(); return; }
-    setNombreTorneo(""); setNivel(""); setTemporada(""); setPlataformaSel("");
+    setNombreTorneo(""); setNivel(""); setTemporada(""); setPlataformaSel(""); setIdExternoTorneo("");
     cargarTodo();
   }
   async function borrarTorneo(id) {
     if (!confirm("¿Borrar este torneo externo, sus equipos y partidos?")) return;
     await fetch(`${API_URL}/api/competiciones-externas/torneos/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     cargarTodo();
+  }
+  async function guardarIdExterno(id, idExterno) {
+    await fetch(`${API_URL}/api/competiciones-externas/torneos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ idExterno }),
+    });
+    cargarTodo();
+  }
+  async function actualizarClasificacion(id) {
+    setClasificando(id);
+    setMensajeClasificacion((m) => ({ ...m, [id]: null }));
+    try {
+      const res = await fetch(`${API_URL}/api/competiciones-externas/torneos/${id}/actualizar-clasificacion`, {
+        method: "POST",
+        headers: { "x-admin-token": token },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMensajeClasificacion((m) => ({ ...m, [id]: { tipo: "error", texto: data.error || "No se pudo actualizar." } }));
+        return;
+      }
+      setMensajeClasificacion((m) => ({ ...m, [id]: { tipo: "ok", texto: "Clasificación actualizada." } }));
+      cargarTodo();
+    } catch {
+      setMensajeClasificacion((m) => ({ ...m, [id]: { tipo: "error", texto: "Error de conexión." } }));
+    } finally {
+      setClasificando(null);
+    }
   }
 
   async function crearEquipo(torneoId, nombreEquipo) {
@@ -169,6 +207,18 @@ export default function AdminCompeticionesExternas({ token, salir }) {
             {plataformas.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
         </label>
+        <label>
+          Id externo (opcional)
+          <input
+            value={idExternoTorneo}
+            onChange={(e) => setIdExternoTorneo(e.target.value)}
+            placeholder="Ej: 13 Vegas 2026"
+          />
+          <span className="admin-hint">
+            Nombre EXACTO de la competición tal como aparece en la web de la plataforma. Hace falta para poder
+            actualizar la clasificación automáticamente (por ahora solo Radikal Darts).
+          </span>
+        </label>
         <button type="submit">Crear torneo</button>
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
       </form>
@@ -187,6 +237,31 @@ export default function AdminCompeticionesExternas({ token, salir }) {
 
           {abiertoId === t.id && (
             <div>
+              <label style={{ display: "block", marginTop: ".8rem" }}>
+                Id externo (nombre exacto en la plataforma)
+                <input
+                  defaultValue={t.idExterno || ""}
+                  placeholder="Ej: 13 Vegas 2026"
+                  onBlur={(e) => guardarIdExterno(t.id, e.target.value.trim())}
+                />
+              </label>
+
+              <div style={{ marginTop: ".6rem", display: "flex", gap: ".5rem", alignItems: "center" }}>
+                <button type="button" disabled={clasificando === t.id} onClick={() => actualizarClasificacion(t.id)}>
+                  {clasificando === t.id ? "Actualizando…" : "Actualizar clasificación"}
+                </button>
+                {t.clasificacion?.length > 0 && (
+                  <span className="admin-hint">
+                    Última actualización: {new Date(t.clasificacion[0].actualizadoEn).toLocaleString("es-ES")}
+                  </span>
+                )}
+              </div>
+              {mensajeClasificacion[t.id] && (
+                <p className={`admin-msg admin-msg-${mensajeClasificacion[t.id].tipo}`}>{mensajeClasificacion[t.id].texto}</p>
+              )}
+
+              <TablaClasificacion filas={t.clasificacion} />
+
               <NuevoEquipo onCrear={(nombre) => crearEquipo(t.id, nombre)} />
               {t.equipos.map((eq) => (
                 <EquipoBloque
@@ -208,6 +283,48 @@ export default function AdminCompeticionesExternas({ token, salir }) {
         </div>
       ))}
     </section>
+  );
+}
+
+// Tabla de clasificación general (todos los equipos de la competición, no
+// solo los del club), de solo lectura — se rellena vía "Actualizar
+// clasificación". Se usa tanto en el panel de admin como en la vista de
+// socios (Competiciones.jsx).
+export function TablaClasificacion({ filas }) {
+  if (!filas || filas.length === 0) return null;
+  return (
+    <div style={{ overflowX: "auto", marginTop: ".8rem" }}>
+      <table className="admin-tabla-clasificacion">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Equipo</th>
+            <th>Puntos</th>
+            <th>PJ</th>
+            <th>PG</th>
+            <th>PP</th>
+            <th>PE</th>
+            <th>JG</th>
+            <th>JP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => (
+            <tr key={f.id}>
+              <td>{f.posicion}</td>
+              <td>{f.nombreEquipo}</td>
+              <td>{f.puntos ?? "—"}</td>
+              <td>{f.partidosJugados ?? "—"}</td>
+              <td>{f.partidosGanados ?? "—"}</td>
+              <td>{f.partidosPerdidos ?? "—"}</td>
+              <td>{f.partidosEmpatados ?? "—"}</td>
+              <td>{f.juegosGanados ?? "—"}</td>
+              <td>{f.juegosPerdidos ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
