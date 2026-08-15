@@ -2,6 +2,31 @@ import { useEffect, useState } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
+// El significado de "Id externo" depende de la plataforma: en Radikal Darts
+// es el nombre de la COMPETICIÓN, pero en Phoenix Darts la búsqueda pública
+// parte del EQUIPO (no hay forma de buscar una liga por su nombre), así que
+// ahí hay que poner el nombre exacto del equipo tal como está registrado en
+// Phoenix — el propio nombre que le hemos puesto a este Torneo se usa
+// automáticamente para desambiguar si ese equipo compite en varias
+// competiciones de Phoenix a la vez.
+function hintIdExterno(nombrePlataforma) {
+  const p = (nombrePlataforma || "").toLowerCase();
+  if (p.includes("phoenix")) {
+    return 'Nombre EXACTO del EQUIPO tal como está registrado en Phoenix Darts (no el de la liga). Si ese equipo compite en varias competiciones de Phoenix a la vez, se elige la que mejor coincida con el "Nombre" de este torneo.';
+  }
+  if (p.includes("radikal")) {
+    return "Nombre EXACTO de la competición tal como aparece en la web de Radikal Darts.";
+  }
+  return 'Nombre EXACTO tal como aparece en la web de la plataforma. Hace falta para poder actualizar la clasificación automáticamente (por ahora solo Radikal Darts y Phoenix Darts).';
+}
+
+function placeholderIdExterno(nombrePlataforma) {
+  const p = (nombrePlataforma || "").toLowerCase();
+  if (p.includes("phoenix")) return "Ej: VDC Gentlemen";
+  if (p.includes("radikal")) return "Ej: 13 Vegas 2026";
+  return "";
+}
+
 export default function AdminCompeticionesExternas({ token, salir }) {
   const [plataformas, setPlataformas] = useState([]);
   const [torneos, setTorneos] = useState([]);
@@ -17,6 +42,8 @@ export default function AdminCompeticionesExternas({ token, salir }) {
   const [mensaje, setMensaje] = useState(null);
   const [clasificando, setClasificando] = useState(null);
   const [mensajeClasificacion, setMensajeClasificacion] = useState({});
+
+  const nombrePlataformaPorId = (id) => plataformas.find((p) => p.id === id)?.nombre || "";
 
   const cargarTodo = () => {
     fetch(`${API_URL}/api/competiciones-externas/plataformas`).then((r) => r.json()).then(setPlataformas).catch(() => {});
@@ -149,12 +176,9 @@ export default function AdminCompeticionesExternas({ token, salir }) {
           <input
             value={idExternoTorneo}
             onChange={(e) => setIdExternoTorneo(e.target.value)}
-            placeholder="Ej: 13 Vegas 2026"
+            placeholder={placeholderIdExterno(nombrePlataformaPorId(plataformaSel))}
           />
-          <span className="admin-hint">
-            Nombre EXACTO de la competición tal como aparece en la web de la plataforma. Hace falta para poder
-            actualizar la clasificación automáticamente (por ahora solo Radikal Darts).
-          </span>
+          <span className="admin-hint">{hintIdExterno(nombrePlataformaPorId(plataformaSel))}</span>
         </label>
         <button type="submit">Crear torneo/liga</button>
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
@@ -175,12 +199,13 @@ export default function AdminCompeticionesExternas({ token, salir }) {
           {abiertoId === t.id && (
             <div>
               <label style={{ display: "block", marginTop: ".8rem" }}>
-                Id externo (nombre exacto en la plataforma)
+                Id externo
                 <input
                   defaultValue={t.idExterno || ""}
-                  placeholder="Ej: 13 Vegas 2026"
+                  placeholder={placeholderIdExterno(t.plataforma?.nombre)}
                   onBlur={(e) => guardarIdExterno(t.id, e.target.value.trim())}
                 />
+                <span className="admin-hint">{hintIdExterno(t.plataforma?.nombre)}</span>
               </label>
 
               <div style={{ marginTop: ".6rem", display: "flex", gap: ".5rem", alignItems: "center" }}>
