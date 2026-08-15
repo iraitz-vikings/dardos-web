@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /socios
+
+Sitemap: https://www.vikingsdartsclub.es/sitemap.xml
