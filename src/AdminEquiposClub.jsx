@@ -140,6 +140,14 @@ export default function AdminEquiposClub({ token, salir }) {
     });
     cargarEquipos();
   }
+  async function guardarIdExternoEquipo(inscripcionId, idExternoEquipo) {
+    await fetch(`${API_URL}/api/competiciones-externas/equipos/${inscripcionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ idExternoEquipo }),
+    });
+    cargarEquipos();
+  }
   async function anadirJugadorInscripcion(inscripcionId, jugadorId) {
     await fetch(`${API_URL}/api/competiciones-externas/equipos/${inscripcionId}/jugadores`, {
       method: "POST",
@@ -267,6 +275,7 @@ export default function AdminEquiposClub({ token, salir }) {
                       maquinas={maquinas}
                       onQuitarInscripcion={() => quitarInscripcion(eq.id, inscripcion.id)}
                       onAsignarCapitan={(capitanId) => asignarCapitanInscripcion(inscripcion.id, capitanId)}
+                      onGuardarIdExterno={(idExternoEquipo) => guardarIdExternoEquipo(inscripcion.id, idExternoEquipo)}
                       onAnadirJugador={(jugadorId) => anadirJugadorInscripcion(inscripcion.id, jugadorId)}
                       onQuitarJugador={(jugadorId) => quitarJugadorInscripcion(inscripcion.id, jugadorId)}
                       onCrearPartido={(fecha, rival) => crearPartido(inscripcion.id, fecha, rival)}
@@ -315,11 +324,16 @@ function InscribirEnCompeticion({ opciones, onInscribir }) {
   );
 }
 
-function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscripcion, onAsignarCapitan, onAnadirJugador, onQuitarJugador, onCrearPartido, onActualizarPartido, onBorrarPartido }) {
+function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscripcion, onAsignarCapitan, onGuardarIdExterno, onAnadirJugador, onQuitarJugador, onCrearPartido, onActualizarPartido, onBorrarPartido }) {
   const [fechaPartido, setFechaPartido] = useState("");
   const [rivalPartido, setRivalPartido] = useState("");
   const idsEnInscripcion = new Set(inscripcion.jugadores.map((j) => j.jugadorId));
   const disponiblesParaEsta = miembrosClub.filter((m) => !idsEnInscripcion.has(m.jugadorId));
+  const esPhoenix = (inscripcion.torneo.plataforma?.nombre || "").toLowerCase().includes("phoenix");
+  // Si esta inscripción tiene su propia clasificación (plataformas por
+  // equipo, como Phoenix), se muestra esa; si no, la del torneo entero
+  // (Radikal, tabla compartida por todos los equipos).
+  const filasClasificacion = inscripcion.clasificacion?.length > 0 ? inscripcion.clasificacion : inscripcion.torneo.clasificacion;
 
   return (
     <div className="admin-cuadrante-participantes" style={{ marginTop: "1rem" }}>
@@ -335,6 +349,22 @@ function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscri
           {inscripcion.jugadores.map((j) => <option key={j.jugadorId} value={j.jugadorId}>{j.jugador.nombre}</option>)}
         </select>
       </label>
+
+      {esPhoenix && (
+        <label style={{ display: "block", marginTop: ".6rem" }}>
+          Nombre de este equipo en Phoenix Darts
+          <input
+            defaultValue={inscripcion.idExternoEquipo || ""}
+            placeholder="Ej: VDC Gentlemen"
+            onBlur={(e) => onGuardarIdExterno(e.target.value.trim())}
+          />
+          <span className="admin-hint">
+            Nombre EXACTO tal como está registrado en Phoenix Darts (puede ser distinto al nombre de este equipo aquí en
+            la web del club). Hace falta para poder actualizar su clasificación, sobre todo si otros equipos del club
+            compiten a la vez en este mismo torneo/liga.
+          </span>
+        </label>
+      )}
 
       <h5 style={{ marginTop: ".8rem" }}>Plantilla en esta competición ({inscripcion.jugadores.length})</h5>
       <p className="admin-hint">Se copió la plantilla del club al inscribirse; ajústala aquí si en esta competición concreta juega gente distinta.</p>
@@ -356,7 +386,7 @@ function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscri
         </div>
       )}
 
-      <TablaClasificacion filas={inscripcion.torneo.clasificacion} />
+      <TablaClasificacion filas={filasClasificacion} />
 
       <h5 style={{ marginTop: ".8rem" }}>Partidos</h5>
       <div className="admin-inline-form">
