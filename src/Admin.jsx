@@ -242,9 +242,80 @@ export default function Admin() {
     }
   }
 
+  // Sube varias fotos a la vez a la galería, una detrás de otra (no en paralelo, para
+  // no saturar Cloudinary ni el servidor). Si alguna falla, las demás siguen
+  // subiéndose igualmente y al final se informa de cuántas se subieron y cuáles no.
+  async function subirVariasFotosAGaleria(archivos) {
+    setSubiendoGaleriaFoto({ actual: 0, total: archivos.length });
+    setMensajeGaleria(null);
+    let subidas = 0;
+    const errores = [];
+
+    for (let i = 0; i < archivos.length; i++) {
+      setSubiendoGaleriaFoto({ actual: i + 1, total: archivos.length });
+      try {
+        const formData = new FormData();
+        formData.append("imagen", archivos[i]);
+
+        const resUpload = await fetch(`${API_URL}/api/upload`, {
+          method: "POST",
+          headers: { "x-admin-token": token },
+          body: formData,
+        });
+
+        if (resUpload.status === 401) {
+          setSubiendoGaleriaFoto(false);
+          setMensajeGaleria({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+          salir();
+          return;
+        }
+        if (resUpload.status === 413) {
+          errores.push(`${archivos[i].name} (pesa demasiado, máximo 100 MB)`);
+          continue;
+        }
+        if (!resUpload.ok) {
+          const data = await resUpload.json().catch(() => ({}));
+          errores.push(`${archivos[i].name} (${data.error || "no se pudo subir"})`);
+          continue;
+        }
+
+        const { url } = await resUpload.json();
+
+        const resGaleria = await fetch(`${API_URL}/api/galeria`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-token": token },
+          body: JSON.stringify({ url, tipo: "image" }),
+        });
+
+        if (!resGaleria.ok) {
+          errores.push(`${archivos[i].name} (no se pudo añadir a la galería)`);
+          continue;
+        }
+
+        subidas++;
+      } catch {
+        errores.push(`${archivos[i].name} (error de conexión)`);
+      }
+    }
+
+    setSubiendoGaleriaFoto(false);
+    if (errores.length === 0) {
+      setMensajeGaleria({
+        tipo: "ok",
+        texto: subidas === 1 ? "Foto añadida a la galería." : `${subidas} fotos añadidas a la galería.`,
+      });
+    } else {
+      setMensajeGaleria({
+        tipo: subidas > 0 ? "ok" : "error",
+        texto: `${subidas} de ${archivos.length} fotos añadidas. No se pudieron subir: ${errores.join(", ")}`,
+      });
+    }
+    cargarGaleria();
+  }
+
   function subirGaleriaFoto(e) {
-    const archivo = e.target.files?.[0];
-    if (archivo) subirAGaleria(archivo, "image");
+    const archivos = Array.from(e.target.files || []);
+    if (archivos.length > 0) subirVariasFotosAGaleria(archivos);
     e.target.value = "";
   }
 
@@ -586,9 +657,19 @@ function cancelarEdicionNoticia() {
           <h2>Galería (sin noticia)</h2>
           <p className="admin-hint">Añade fotos o vídeos sueltos a la galería, sin necesidad de crear una noticia.</p>
           <label>
-            Subir una foto
-            <input type="file" accept="image/*" onChange={subirGaleriaFoto} disabled={subiendoGaleriaFoto} />
-            {subiendoGaleriaFoto && <span className="admin-uploading">Subiendo…</span>}
+            Subir una o varias fotos
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={subirGaleriaFoto}
+              disabled={!!subiendoGaleriaFoto}
+            />
+            {subiendoGaleriaFoto && (
+              <span className="admin-uploading">
+                Subiendo {subiendoGaleriaFoto.actual} de {subiendoGaleriaFoto.total}…
+              </span>
+            )}
           </label>
           <label>
             Subir un vídeo (hasta 100 MB)
