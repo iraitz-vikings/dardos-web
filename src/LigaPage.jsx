@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import BracketView from "./BracketView.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
-const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
 
 function formatFecha(iso) {
   const d = new Date(iso);
@@ -50,6 +50,8 @@ function calcularClasificacion(liga) {
 export default function LigaPage({ id }) {
   const [liga, setLiga] = useState(null);
   const [estado, setEstado] = useState("cargando");
+  const [vista, setVista] = useState("liga");
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
     let primera = true;
@@ -84,15 +86,6 @@ export default function LigaPage({ id }) {
   const jornadas = Object.keys(porJornada).map(Number).sort((a, b) => a - b);
 
   const cuadrante = liga?.cuadrantes?.[0];
-  const porRama = {};
-  if (cuadrante) {
-    for (const p of cuadrante.partidos) {
-      if (!porRama[p.rama]) porRama[p.rama] = {};
-      if (!porRama[p.rama][p.ronda]) porRama[p.rama][p.ronda] = [];
-      porRama[p.rama][p.ronda].push(p);
-    }
-  }
-  const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
 
   return (
     <>
@@ -123,66 +116,72 @@ export default function LigaPage({ id }) {
                 <p className="torneo-pagina-qr-url">{window.location.href}</p>
               </details>
 
-              {clasificacion.length > 0 && (
-                <>
-                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Clasificación</h2>
-                  <table className="admin-tabla-clasificacion">
-                    <thead>
-                      <tr><th>#</th><th>Participante</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>Pts</th></tr>
-                    </thead>
-                    <tbody>
-                      {clasificacion.map((f, i) => (
-                        <tr key={f.nombre}>
-                          <td>{i + 1}</td><td>{f.nombre}</td><td>{f.jugados}</td><td>{f.victorias}</td>
-                          <td>{f.empates}</td><td>{f.derrotas}</td><td>{f.partidasGanadas}</td>
-                          <td>{f.partidasPerdidas}</td><td><strong>{f.puntos}</strong></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              )}
-
-              {jornadas.length > 0 && (
-                <>
-                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Calendario</h2>
-                  {jornadas.map((j) => (
-                    <div key={j} style={{ marginBottom: "1rem" }}>
-                      <strong>Jornada {j}</strong>
-                      <ul>
-                        {porJornada[j].map((p) => (
-                          <li key={p.id}>
-                            {p.participante1} vs {p.participante2}
-                            {p.resultado ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </>
-              )}
-
               {cuadrante && (
+                <div className="live-tournament-toggle">
+                  <button className={vista === "liga" ? "active" : ""} onClick={() => setVista("liga")}>
+                    Liga
+                  </button>
+                  <button className={vista === "cuadrante" ? "active" : ""} onClick={() => setVista("cuadrante")}>
+                    Cuadrante final
+                  </button>
+                </div>
+              )}
+
+              {vista === "liga" && (
                 <>
-                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Cuadrante final</h2>
-                  {ramas.map((rama) => (
-                    <div key={rama} style={{ marginBottom: "1rem" }}>
-                      <strong>{RAMA_ETIQUETA[rama]}</strong>
-                      {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => (
-                        <div key={ronda}>
-                          <em>Ronda {ronda}</em>
+                  {clasificacion.length > 0 && (
+                    <>
+                      <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Clasificación</h2>
+                      <table className="admin-tabla-clasificacion">
+                        <thead>
+                          <tr><th>#</th><th>Participante</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>Pts</th></tr>
+                        </thead>
+                        <tbody>
+                          {clasificacion.map((f, i) => (
+                            <tr key={f.nombre}>
+                              <td>{i + 1}</td><td>{f.nombre}</td><td>{f.jugados}</td><td>{f.victorias}</td>
+                              <td>{f.empates}</td><td>{f.derrotas}</td><td>{f.partidasGanadas}</td>
+                              <td>{f.partidasPerdidas}</td><td><strong>{f.puntos}</strong></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+
+                  {jornadas.length > 0 && (
+                    <>
+                      <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Calendario</h2>
+                      {jornadas.map((j) => (
+                        <div key={j} style={{ marginBottom: "1rem" }}>
+                          <strong>Jornada {j}</strong>
                           <ul>
-                            {porRama[rama][ronda].sort((a, b) => a.posicion - b.posicion).map((p) => (
+                            {porJornada[j].map((p) => (
                               <li key={p.id}>
-                                {p.jugador1 || "?"} vs {p.jugador2 || "?"}
-                                {p.resultado && p.resultado !== "__BYE_DOBLE__" ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
+                                {p.participante1} vs {p.participante2}
+                                {p.resultado ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
                               </li>
                             ))}
                           </ul>
                         </div>
                       ))}
-                    </div>
-                  ))}
+                    </>
+                  )}
+                </>
+              )}
+
+              {vista === "cuadrante" && cuadrante && (
+                <>
+                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Cuadrante final</h2>
+                  <input
+                    type="text"
+                    className="bracket-busqueda"
+                    placeholder="Buscar jugador…"
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    style={{ marginBottom: "1rem" }}
+                  />
+                  <BracketView cuadrante={cuadrante} busqueda={busqueda} />
                 </>
               )}
             </>
