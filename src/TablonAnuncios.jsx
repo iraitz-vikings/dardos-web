@@ -14,6 +14,7 @@ export default function TablonAnuncios({ usuario }) {
   const [titulo, setTitulo] = useState("");
   const [contenido, setContenido] = useState("");
   const [fijado, setFijado] = useState(false);
+  const [notificar, setNotificar] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
@@ -41,7 +42,7 @@ export default function TablonAnuncios({ usuario }) {
       const res = await fetch(`${API_URL}/api/anuncios`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ titulo: titulo.trim(), contenido: contenido.trim(), fijado }),
+        body: JSON.stringify({ titulo: titulo.trim(), contenido: contenido.trim(), fijado, notificar }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -51,6 +52,7 @@ export default function TablonAnuncios({ usuario }) {
       setTitulo("");
       setContenido("");
       setFijado(false);
+      setNotificar(false);
       setMostrarFormulario(false);
       cargar();
     } catch {
@@ -92,6 +94,10 @@ export default function TablonAnuncios({ usuario }) {
           <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
             <input type="checkbox" checked={fijado} onChange={(e) => setFijado(e.target.checked)} style={{ width: "auto" }} />
             Fijar arriba del todo
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+            <input type="checkbox" checked={notificar} onChange={(e) => setNotificar(e.target.checked)} style={{ width: "auto" }} />
+            Notificar a todos los socios
           </label>
           <div style={{ display: "flex", gap: ".6rem" }}>
             <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>
