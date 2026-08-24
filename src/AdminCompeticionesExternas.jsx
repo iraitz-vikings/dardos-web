@@ -43,6 +43,8 @@ export default function AdminCompeticionesExternas({ token, salir }) {
   const [mensaje, setMensaje] = useState(null);
   const [clasificando, setClasificando] = useState(null);
   const [mensajeClasificacion, setMensajeClasificacion] = useState({});
+  const [actualizandoTodas, setActualizandoTodas] = useState(false);
+  const [resumenActualizacionTodas, setResumenActualizacionTodas] = useState(null);
 
   const nombrePlataformaPorId = (id) => plataformas.find((p) => p.id === id)?.nombre || "";
 
@@ -129,6 +131,33 @@ export default function AdminCompeticionesExternas({ token, salir }) {
     }
   }
 
+  async function actualizarTodasLasClasificaciones() {
+    setActualizandoTodas(true);
+    setResumenActualizacionTodas(null);
+    try {
+      const res = await fetch(`${API_URL}/api/competiciones-externas/actualizar-todas-clasificaciones`, {
+        method: "POST",
+        headers: { "x-admin-token": token },
+      });
+      if (res.status === 401) {
+        setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+        salir();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo actualizar las clasificaciones." });
+        return;
+      }
+      setResumenActualizacionTodas(data);
+      cargarTodo();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setActualizandoTodas(false);
+    }
+  }
+
   return (
     <section className="admin-form">
       <h2>Competiciones externas</h2>
@@ -137,6 +166,30 @@ export default function AdminCompeticionesExternas({ token, salir }) {
         participan en ellas se gestionan desde la pestaña "Equipos" — cada equipo del club se inscribe en la
         competición que le corresponda.
       </p>
+
+      <section style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1.2rem" }}>
+        <h3 style={{ marginTop: 0 }}>Clasificación de todos los torneos/ligas</h3>
+        <p className="admin-hint" style={{ marginTop: 0 }}>
+          Actualiza de golpe la clasificación de todos los torneos/ligas dados de alta (Radikal Darts y Phoenix
+          Darts; Connection Darts se omite hasta que tenga soporte). Se ejecuta también sola cada noche, media
+          hora después de las medias.
+        </p>
+        <button type="button" onClick={actualizarTodasLasClasificaciones} disabled={actualizandoTodas}>
+          {actualizandoTodas ? "Actualizando…" : "Actualizar todas las clasificaciones ahora"}
+        </button>
+        {resumenActualizacionTodas && (
+          <ul style={{ marginTop: ".8rem" }}>
+            {resumenActualizacionTodas.detalle.map((d, i) => (
+              <li key={i}>
+                <strong>{d.torneo}:</strong>{" "}
+                {d.estado === "omitido" && `omitido (${d.motivo})`}
+                {d.estado === "error" && `error: ${d.error}`}
+                {d.estado === "ok" && (d.avisos ? `actualizado, con avisos — ${d.avisos.join(" · ")}` : "actualizado")}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <h3>Plataformas</h3>
       <form onSubmit={crearPlataforma} className="admin-inline-form">
