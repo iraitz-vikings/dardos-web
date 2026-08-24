@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
+import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -8,8 +9,6 @@ const MODALIDADES = [
   { id: "parejas_hechas", etiqueta: "Parejas ya formadas" },
   { id: "parejas_ciegas", etiqueta: "Parejas ciegas (se sortean)" },
 ];
-
-const GRUPOS_POR_METODO = { AB: ["A", "B"], ABC: ["A", "B", "C"], ABCD: ["A", "B", "C", "D"] };
 
 function formatFecha(iso) {
   const d = new Date(iso);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
+import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
@@ -570,8 +571,6 @@ function TorneoCuadrantes({ torneo, maquinas, onCrearCuadrante, onBorrarCuadrant
     </div>
   );
 }
-
-const GRUPOS_POR_METODO = { AB: ["A", "B"], ABC: ["A", "B", "C"], ABCD: ["A", "B", "C", "D"] };
 
 function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
