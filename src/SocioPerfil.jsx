@@ -3,6 +3,15 @@ import MediasFabricante from "./MediasFabricante.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
+// Convierte la clave pública VAPID (base64 URL-safe, tal como la da el
+// servidor) al formato Uint8Array que pide pushManager.subscribe().
+function claveVapidABytes(base64) {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64Normalizada = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const bruto = window.atob(base64Normalizada);
+  return Uint8Array.from([...bruto].map((c) => c.charCodeAt(0)));
+}
+
 export default function SocioPerfil() {
   const [perfil, setPerfil] = useState(null);
   const [fabricantes, setFabricantes] = useState([]);
@@ -210,6 +219,7 @@ export default function SocioPerfil() {
           </div>
         </div>
         <MediasFabricante idsFabricantes={perfil.idsFabricantes} />
+        <AvisosPush />
       </div>
     );
   }
@@ -375,6 +385,7 @@ export default function SocioPerfil() {
       </form>
 
       <CambioPasswordVoluntario />
+      <AvisosPush />
       </>
     );
   }
@@ -430,6 +441,134 @@ function CambioPasswordVoluntario() {
           {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
         </form>
       )}
+    </div>
+  );
+}
+
+// Activa/desactiva los avisos por Web Push en ESTE dispositivo (móvil u
+// ordenador concreto): un socio puede tenerlos activados en varios a la
+// vez, cada uno con su propia suscripción. No hace falta ningún check-in
+// aparte: al pulsar "Activar", el dispositivo queda vinculado directamente
+// a este jugador a través de la sesión ya iniciada.
+function AvisosPush() {
+  const [soportado, setSoportado] = useState(true);
+  const [esIOSSinInstalar, setEsIOSSinInstalar] = useState(false);
+  const [activadoAqui, setActivadoAqui] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [procesando, setProcesando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setSoportado(false);
+      setCargando(false);
+      return;
+    }
+    const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const enStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+    if (esIOS && !enStandalone) {
+      setEsIOSSinInstalar(true);
+      setCargando(false);
+      return;
+    }
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then((registro) => registro.pushManager.getSubscription())
+      .then((sub) => setActivadoAqui(!!sub))
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, []);
+
+  async function activar() {
+    setProcesando(true);
+    setMensaje(null);
+    try {
+      const permiso = await Notification.requestPermission();
+      if (permiso !== "granted") {
+        setMensaje({ tipo: "error", texto: "No has dado permiso para las notificaciones en el navegador." });
+        return;
+      }
+      const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
+      if (!resClave.ok) {
+        setMensaje({ tipo: "error", texto: "Los avisos todavía no están configurados en el servidor." });
+        return;
+      }
+      const { publicKey } = await resClave.json();
+      const registro = await navigator.serviceWorker.ready;
+      const suscripcion = await registro.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: claveVapidABytes(publicKey),
+      });
+      const datos = suscripcion.toJSON();
+      const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+        body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
+      });
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: "No se pudo activar el aviso en el servidor." });
+        return;
+      }
+      setActivadoAqui(true);
+      setMensaje({ tipo: "ok", texto: "Avisos activados en este dispositivo." });
+    } catch {
+      setMensaje({ tipo: "error", texto: "No se pudieron activar los avisos." });
+    } finally {
+      setProcesando(false);
+    }
+  }
+
+  async function desactivar() {
+    setProcesando(true);
+    setMensaje(null);
+    try {
+      const registro = await navigator.serviceWorker.ready;
+      const suscripcion = await registro.pushManager.getSubscription();
+      if (suscripcion) {
+        await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+          body: JSON.stringify({ endpoint: suscripcion.endpoint }),
+        });
+        await suscripcion.unsubscribe();
+      }
+      setActivadoAqui(false);
+      setMensaje({ tipo: "ok", texto: "Avisos desactivados en este dispositivo." });
+    } catch {
+      setMensaje({ tipo: "error", texto: "No se pudieron desactivar los avisos." });
+    } finally {
+      setProcesando(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "1.5rem" }}>
+      <strong style={{ display: "block", marginBottom: ".4rem" }}>Avisos en este dispositivo</strong>
+      {!soportado && (
+        <p className="admin-hint" style={{ marginTop: 0 }}>
+          Este navegador no admite notificaciones. Prueba desde Chrome, Firefox o Safari en tu móvil u ordenador.
+        </p>
+      )}
+      {esIOSSinInstalar && (
+        <p className="admin-hint" style={{ marginTop: 0 }}>
+          En iPhone hay que instalar la web antes de poder activar los avisos: pulsa Compartir
+          <span aria-hidden="true"> ⬆️ </span>
+          y luego "Añadir a pantalla de inicio". Después vuelve aquí desde el icono que se crea.
+        </p>
+      )}
+      {soportado && !esIOSSinInstalar && !cargando && (
+        <>
+          <p className="admin-hint" style={{ marginTop: 0 }}>
+            {activadoAqui
+              ? "Recibirás aquí un aviso cuando tu capitán fije un partido, o cuando el club publique un anuncio con avisos."
+              : "Actívalos para recibir un aviso cuando tu capitán fije un partido, o cuando el club publique un anuncio con avisos."}
+          </p>
+          <button type="button" className="admin-link-btn" disabled={procesando} onClick={activadoAqui ? desactivar : activar}>
+            {procesando ? "Un momento…" : activadoAqui ? "Desactivar avisos aquí" : "Activar avisos en este dispositivo"}
+          </button>
+        </>
+      )}
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
     </div>
   );
 }
