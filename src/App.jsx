@@ -83,8 +83,20 @@ export default function App() {
         .catch(() => {});
     };
     cargar();
-    const intervalo = setInterval(cargar, 15000);
-    return () => clearInterval(intervalo);
+    // Solo repite el fetch cada 15s mientras la pestaña esté visible: si el
+    // socio la deja abierta horas en segundo plano no tiene sentido seguir
+    // pidiendo el torneo en directo cada 15s sin que nadie lo esté mirando.
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === "visible") cargar();
+    }, 15000);
+    const onVisibilidad = () => {
+      if (document.visibilityState === "visible") cargar();
+    };
+    document.addEventListener("visibilitychange", onVisibilidad);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", onVisibilidad);
+    };
   }, []);
 
   useEffect(() => {
