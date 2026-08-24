@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import useResaltadoReciente from "./useResaltadoReciente.js";
 
 const BOX_W = 176;
@@ -7,6 +8,55 @@ const UNIT = 66;
 const PAD = 16;
 const TITLE_H = 30;
 const COL_W = BOX_W + ROUND_GAP;
+
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 1;
+const ZOOM_PASO = 0.1;
+const ALTURA_MAX_VENTANA = 0.72; // fracción del alto visible de la ventana que puede ocupar el cuadrante
+
+// Calcula automáticamente el zoom que hace caber el cuadrante entero (ancho y
+// alto) dentro del contenedor visible, para que un cuadrante grande se vea
+// entero de un vistazo en vez de tener que hacer scroll para verlo completo.
+// El usuario puede acercar/alejar manualmente después con los botones — en
+// ese momento se deja de reajustar solo hasta que pulse "Ajustar" otra vez.
+function useZoomAjustado(ancho, alto) {
+  const contenedorRef = useRef(null);
+  const [zoom, setZoom] = useState(1);
+  const [ajustando, setAjustando] = useState(true);
+
+  useEffect(() => {
+    if (!ajustando) return;
+    function ajustar() {
+      if (!contenedorRef.current || !ancho || !alto) return;
+      const anchoDisponible = contenedorRef.current.clientWidth || ancho;
+      const altoDisponible = window.innerHeight * ALTURA_MAX_VENTANA;
+      const escala = Math.min(ZOOM_MAX, anchoDisponible / ancho, altoDisponible / alto);
+      setZoom(Math.max(ZOOM_MIN, escala));
+    }
+    ajustar();
+    window.addEventListener("resize", ajustar);
+    return () => window.removeEventListener("resize", ajustar);
+  }, [ancho, alto, ajustando]);
+
+  return {
+    contenedorRef,
+    zoom,
+    acercar: () => { setAjustando(false); setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_PASO).toFixed(2))); },
+    alejar: () => { setAjustando(false); setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_PASO).toFixed(2))); },
+    ajustar: () => setAjustando(true),
+  };
+}
+
+function ZoomControles({ zoom, onAcercar, onAlejar, onAjustar }) {
+  return (
+    <div className="bracket-zoom-controles">
+      <button type="button" onClick={onAlejar} disabled={zoom <= ZOOM_MIN} aria-label="Alejar">−</button>
+      <span className="bracket-zoom-nivel">{Math.round(zoom * 100)}%</span>
+      <button type="button" onClick={onAcercar} disabled={zoom >= ZOOM_MAX} aria-label="Acercar">+</button>
+      <button type="button" onClick={onAjustar} className="bracket-zoom-ajustar">Ajustar</button>
+    </div>
+  );
+}
 
 const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores" };
 
@@ -132,29 +182,40 @@ function BracketRama({ titulo, partidos, busqueda, ultimaAparicion }) {
   const idPosicion = Object.fromEntries(posiciones.map((p) => [p.partido.id, p]));
   const alturaTotal = Math.max(...posiciones.map((p) => p.y)) + UNIT / 2 + PAD * 2;
   const anchoTotal = Math.max(...posiciones.map((p) => p.x + BOX_W)) + PAD * 2;
+  const { contenedorRef, zoom, acercar, alejar, ajustar } = useZoomAjustado(anchoTotal, alturaTotal);
 
   return (
     <div className="bracket-rama-visual">
-      <p className="bracket-rama-titulo">{titulo}</p>
-      <div className="bracket-scroll">
-        <svg width={anchoTotal} height={alturaTotal} className="bracket-svg">
-          {posiciones.map(({ x, y, partido }) => {
-            if (!partido.siguientePartidoGanadorId) return null;
-            const destino = idPosicion[partido.siguientePartidoGanadorId];
-            if (!destino) return null;
-            return (
-              <Linea
-                key={partido.id}
-                origen={{ x: x + PAD, y: y + PAD }}
-                destino={{ x: destino.x + PAD, y: destino.y + PAD }}
-                activa={!!partido.ganador}
-              />
-            );
-          })}
-          {posiciones.map(({ x, y, partido }) => (
-            <Caja key={partido.id} x={x + PAD} y={y + PAD} partido={partido} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
-          ))}
-        </svg>
+      <div className="bracket-rama-header">
+        <p className="bracket-rama-titulo">{titulo}</p>
+        <ZoomControles zoom={zoom} onAcercar={acercar} onAlejar={alejar} onAjustar={ajustar} />
+      </div>
+      <div className="bracket-scroll" ref={contenedorRef}>
+        <div style={{ width: anchoTotal * zoom, height: alturaTotal * zoom }}>
+          <svg
+            width={anchoTotal}
+            height={alturaTotal}
+            className="bracket-svg"
+            style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
+          >
+            {posiciones.map(({ x, y, partido }) => {
+              if (!partido.siguientePartidoGanadorId) return null;
+              const destino = idPosicion[partido.siguientePartidoGanadorId];
+              if (!destino) return null;
+              return (
+                <Linea
+                  key={partido.id}
+                  origen={{ x: x + PAD, y: y + PAD }}
+                  destino={{ x: destino.x + PAD, y: destino.y + PAD }}
+                  activa={!!partido.ganador}
+                />
+              );
+            })}
+            {posiciones.map(({ x, y, partido }) => (
+              <Caja key={partido.id} x={x + PAD} y={y + PAD} partido={partido} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
+            ))}
+          </svg>
+        </div>
       </div>
     </div>
   );
@@ -203,38 +264,50 @@ function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion }) {
   }
   const rangoGanadores = rangoLado("ganadores");
   const rangoPerdedores = rangoLado("perdedores");
+  const { contenedorRef, zoom, acercar, alejar, ajustar } = useZoomAjustado(anchoTotal, alturaTotal);
 
   return (
     <div className="bracket-rama-visual">
-      <div className="bracket-scroll">
-        <svg width={anchoTotal} height={alturaTotal} className="bracket-svg">
-          {rangoPerdedores && (
-            <foreignObject x={rangoPerdedores.x1} y={0} width={rangoPerdedores.x2 - rangoPerdedores.x1} height={TITLE_H}>
-              <p className="bracket-rama-titulo" style={{ textAlign: "center", margin: 0 }}>{RAMA_ETIQUETA.perdedores}</p>
-            </foreignObject>
-          )}
-          {rangoGanadores && (
-            <foreignObject x={rangoGanadores.x1} y={0} width={rangoGanadores.x2 - rangoGanadores.x1} height={TITLE_H}>
-              <p className="bracket-rama-titulo" style={{ textAlign: "center", margin: 0 }}>{RAMA_ETIQUETA.ganadores}</p>
-            </foreignObject>
-          )}
-          {posiciones.map(({ x, y, partido }) => {
-            if (!partido.siguientePartidoGanadorId) return null;
-            const destino = idPosicion[partido.siguientePartidoGanadorId];
-            if (!destino) return null;
-            return (
-              <Linea
-                key={partido.id}
-                origen={{ x: x + PAD, y: y + PAD + TITLE_H }}
-                destino={{ x: destino.x + PAD, y: destino.y + PAD + TITLE_H }}
-                activa={!!partido.ganador}
-              />
-            );
-          })}
-          {posiciones.map(({ x, y, partido }) => (
-            <Caja key={partido.id} x={x + PAD} y={y + PAD + TITLE_H} partido={partido} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
-          ))}
-        </svg>
+      <div className="bracket-rama-header">
+        <span />
+        <ZoomControles zoom={zoom} onAcercar={acercar} onAlejar={alejar} onAjustar={ajustar} />
+      </div>
+      <div className="bracket-scroll" ref={contenedorRef}>
+        <div style={{ width: anchoTotal * zoom, height: alturaTotal * zoom }}>
+          <svg
+            width={anchoTotal}
+            height={alturaTotal}
+            className="bracket-svg"
+            style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
+          >
+            {rangoPerdedores && (
+              <foreignObject x={rangoPerdedores.x1} y={0} width={rangoPerdedores.x2 - rangoPerdedores.x1} height={TITLE_H}>
+                <p className="bracket-rama-titulo" style={{ textAlign: "center", margin: 0 }}>{RAMA_ETIQUETA.perdedores}</p>
+              </foreignObject>
+            )}
+            {rangoGanadores && (
+              <foreignObject x={rangoGanadores.x1} y={0} width={rangoGanadores.x2 - rangoGanadores.x1} height={TITLE_H}>
+                <p className="bracket-rama-titulo" style={{ textAlign: "center", margin: 0 }}>{RAMA_ETIQUETA.ganadores}</p>
+              </foreignObject>
+            )}
+            {posiciones.map(({ x, y, partido }) => {
+              if (!partido.siguientePartidoGanadorId) return null;
+              const destino = idPosicion[partido.siguientePartidoGanadorId];
+              if (!destino) return null;
+              return (
+                <Linea
+                  key={partido.id}
+                  origen={{ x: x + PAD, y: y + PAD + TITLE_H }}
+                  destino={{ x: destino.x + PAD, y: destino.y + PAD + TITLE_H }}
+                  activa={!!partido.ganador}
+                />
+              );
+            })}
+            {posiciones.map(({ x, y, partido }) => (
+              <Caja key={partido.id} x={x + PAD} y={y + PAD + TITLE_H} partido={partido} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
+            ))}
+          </svg>
+        </div>
       </div>
     </div>
   );

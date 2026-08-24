@@ -798,6 +798,23 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .live-tournament-cuadrante-visual h4 { font-size: .9rem; text-transform: uppercase; color: var(--ember); margin-bottom: .8rem; }
 .bracket-visual { display: flex; flex-direction: column; gap: 2rem; }
 .bracket-rama-visual { display: flex; flex-direction: column; gap: .5rem; }
+.bracket-rama-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.bracket-rama-header .bracket-rama-titulo { margin-bottom: 0; }
+.bracket-zoom-controles { display: flex; align-items: center; gap: .4rem; }
+.bracket-zoom-controles button {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--bone-dim);
+  width: 1.6rem;
+  height: 1.6rem;
+  line-height: 1;
+  font-size: .85rem;
+  cursor: pointer;
+}
+.bracket-zoom-controles button:hover:not(:disabled) { border-color: var(--ember); color: var(--ember); }
+.bracket-zoom-controles button:disabled { opacity: .35; cursor: default; }
+.bracket-zoom-nivel { font-size: .68rem; color: var(--steel); min-width: 2.4rem; text-align: center; font-family: 'IBM Plex Mono', monospace; }
+.bracket-zoom-ajustar { width: auto !important; padding: 0 .6rem; font-size: .62rem !important; text-transform: uppercase; letter-spacing: .03em; }
 .bracket-scroll { overflow-x: auto; padding-bottom: .5rem; }
 .bracket-svg { display: block; }
 .bracket-linea { stroke: var(--line); stroke-width: 1.5; }
