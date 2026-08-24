@@ -141,12 +141,28 @@ function BracketRama({ titulo, partidos, busqueda }) {
 // izquierda, como un cuadro doble "en espejo".
 function BracketMirror({ ganadores, perdedores, busqueda }) {
   const posGanadores = calcularLayout(ganadores, 1, "ganadores");
-  const posPerdedores = calcularLayout(perdedores, -1, "perdedores");
-  const todas = [...posPerdedores, ...posGanadores];
-  if (todas.length === 0) return null;
+  const posPerdedoresRaw = calcularLayout(perdedores, -1, "perdedores");
+  if (posGanadores.length === 0 && posPerdedoresRaw.length === 0) return null;
 
+  // Centra verticalmente el cuadro de perdedores a la altura de la ronda 2 de
+  // ganadores (o de la ronda 1 si ganadores no llega a tener una segunda),
+  // en vez de dejarlo siempre arrancando arriba del todo como el de
+  // ganadores — así no queda descolgado hacia arriba cuando tiene menos
+  // partidos por ronda que el cuadro de ganadores.
+  let posPerdedores = posPerdedoresRaw;
+  if (posPerdedoresRaw.length > 0 && posGanadores.length > 0) {
+    const segundaRondaGanadores = posGanadores.filter((p) => p.x === COL_W);
+    const referencia = segundaRondaGanadores.length > 0 ? segundaRondaGanadores : posGanadores.filter((p) => p.x === 0);
+    const objetivoY = referencia.reduce((s, p) => s + p.y, 0) / referencia.length;
+    const centroPerdedores = (Math.min(...posPerdedoresRaw.map((p) => p.y)) + Math.max(...posPerdedoresRaw.map((p) => p.y))) / 2;
+    const offsetY = objetivoY - centroPerdedores;
+    posPerdedores = posPerdedoresRaw.map((p) => ({ ...p, y: p.y + offsetY }));
+  }
+
+  const todas = [...posPerdedores, ...posGanadores];
   const minX = Math.min(...todas.map((p) => p.x));
-  const posiciones = todas.map((p) => ({ ...p, x: p.x - minX }));
+  const minY = Math.min(...todas.map((p) => p.y));
+  const posiciones = todas.map((p) => ({ ...p, x: p.x - minX, y: p.y - minY }));
   const idPosicion = Object.fromEntries(posiciones.map((p) => [p.partido.id, p]));
 
   const anchoTotal = Math.max(...posiciones.map((p) => p.x + BOX_W)) + PAD * 2;
