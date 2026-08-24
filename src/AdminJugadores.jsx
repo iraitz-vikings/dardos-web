@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { agruparPorSocio } from "./agruparJugadores.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -106,8 +107,10 @@ export default function AdminJugadores({ token, salir }) {
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
 
       {jugadores.length === 0 && <p className="chronicle-status">Todavía no hay jugadores dados de alta.</p>}
-      <ul>
-        {jugadores.map((j) => (
+
+      {(() => {
+        const { socios, invitados } = agruparPorSocio(jugadores);
+        const filaJugador = (j) => (
           <li key={j.id} className="admin-list-item">
             <div>
               <strong>{j.nombre}</strong>
@@ -129,8 +132,24 @@ export default function AdminJugadores({ token, salir }) {
               <button className="admin-link-btn" onClick={() => borrar(j.id)}>Borrar</button>
             </div>
           </li>
-        ))}
-      </ul>
+        );
+        return (
+          <>
+            {socios.length > 0 && (
+              <>
+                <h3 style={{ marginTop: "1rem" }}>Socios ({socios.length})</h3>
+                <ul>{socios.map(filaJugador)}</ul>
+              </>
+            )}
+            {invitados.length > 0 && (
+              <>
+                <h3 style={{ marginTop: "1rem" }}>Invitados ({invitados.length})</h3>
+                <ul>{invitados.map(filaJugador)}</ul>
+              </>
+            )}
+          </>
+        );
+      })()}
     </section>
   );
 }

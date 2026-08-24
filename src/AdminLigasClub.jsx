@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
+import { agruparPorSocio } from "./agruparJugadores.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -378,20 +379,40 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
 
 function JugadoresDelClubLiga({ jugadores }) {
   const [abierto, setAbierto] = useState(false);
+  const { socios, invitados } = agruparPorSocio(jugadores);
   return (
     <div className="admin-cuadrante-participantes">
       <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
         {abierto ? "Ocultar" : "Ver"} jugadores del club ({jugadores.length})
       </button>
       {abierto && (
-        <ul style={{ marginTop: ".6rem" }}>
-          {jugadores.map((j) => (
-            <li key={j.id} className="admin-list-item">
-              <span>{j.nombre}{j.apodo ? ` — "${j.apodo}"` : ""}</span>
-            </li>
-          ))}
+        <div style={{ marginTop: ".6rem" }}>
           {jugadores.length === 0 && <p className="chronicle-status">Todavía no hay nadie en el plantel del club.</p>}
-        </ul>
+          {socios.length > 0 && (
+            <>
+              <p className="admin-hint">Socios</p>
+              <ul>
+                {socios.map((j) => (
+                  <li key={j.id} className="admin-list-item">
+                    <span>{j.nombre}{j.apodo ? ` — "${j.apodo}"` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {invitados.length > 0 && (
+            <>
+              <p className="admin-hint">Invitados</p>
+              <ul>
+                {invitados.map((j) => (
+                  <li key={j.id} className="admin-list-item">
+                    <span>{j.nombre}{j.apodo ? ` — "${j.apodo}"` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
@@ -420,6 +441,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
   }
   const clubEnPool = new Set(poolManual.filter((p) => p.jugadorId).map((p) => p.jugadorId));
   const disponiblesClub = jugadores.filter((j) => !idsYaApuntados.has(j.id) && !clubEnPool.has(j.id));
+  const disponiblesAgrupados = agruparPorSocio(disponiblesClub);
 
   function anadirAlPool(jugadorId, nombre) {
     setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre, grupo: grupos[0] || null }]);
@@ -531,11 +553,26 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
           {disponiblesClub.length > 0 && (
             <div style={{ margin: ".6rem 0" }}>
               <p className="admin-hint">Añadir del plantel del club:</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
-                {disponiblesClub.map((j) => (
-                  <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>＋ {j.nombre}</button>
-                ))}
-              </div>
+              {disponiblesAgrupados.socios.length > 0 && (
+                <>
+                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Socios</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                    {disponiblesAgrupados.socios.map((j) => (
+                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>＋ {j.nombre}</button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {disponiblesAgrupados.invitados.length > 0 && (
+                <>
+                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Invitados</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                    {disponiblesAgrupados.invitados.map((j) => (
+                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>＋ {j.nombre}</button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
           <ul>
@@ -601,15 +638,31 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
             </label>
             <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
           </form>
-          {disponiblesClub.length > 0 && (
-            <ul>
-              {disponiblesClub.map((j) => (
-                <li key={j.id} className="admin-list-item">
-                  <span>{j.nombre}</span>
-                  <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>＋ Añadir</button>
-                </li>
-              ))}
-            </ul>
+          {disponiblesAgrupados.socios.length > 0 && (
+            <>
+              <p className="admin-hint" style={{ fontSize: ".8em" }}>Socios</p>
+              <ul>
+                {disponiblesAgrupados.socios.map((j) => (
+                  <li key={j.id} className="admin-list-item">
+                    <span>{j.nombre}</span>
+                    <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>＋ Añadir</button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {disponiblesAgrupados.invitados.length > 0 && (
+            <>
+              <p className="admin-hint" style={{ fontSize: ".8em" }}>Invitados</p>
+              <ul>
+                {disponiblesAgrupados.invitados.map((j) => (
+                  <li key={j.id} className="admin-list-item">
+                    <span>{j.nombre}</span>
+                    <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>＋ Añadir</button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </>
       )}

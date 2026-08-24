@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
+import { agruparPorSocio } from "./agruparJugadores.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -219,6 +220,7 @@ export default function AdminEquiposClub({ token, salir }) {
         {equipos.map((eq) => {
           const idsEnEquipo = new Set(eq.miembros.map((m) => m.jugadorId));
           const disponibles = jugadores.filter((j) => !idsEnEquipo.has(j.id));
+          const disponiblesAgrupados = agruparPorSocio(disponibles);
           const torneosInscritosIds = new Set(eq.inscripciones.map((i) => i.torneoId));
           const torneosDisponibles = torneos.filter((t) => !torneosInscritosIds.has(t.id));
           return (
@@ -253,13 +255,30 @@ export default function AdminEquiposClub({ token, salir }) {
                   {disponibles.length > 0 && (
                     <div style={{ marginTop: ".6rem" }}>
                       <p className="admin-hint">Añadir del plantel del club:</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
-                        {disponibles.map((j) => (
-                          <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirMiembro(eq.id, j.id)}>
-                            ＋ {j.nombre}
-                          </button>
-                        ))}
-                      </div>
+                      {disponiblesAgrupados.socios.length > 0 && (
+                        <>
+                          <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Socios</p>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                            {disponiblesAgrupados.socios.map((j) => (
+                              <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirMiembro(eq.id, j.id)}>
+                                ＋ {j.nombre}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {disponiblesAgrupados.invitados.length > 0 && (
+                        <>
+                          <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Invitados</p>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                            {disponiblesAgrupados.invitados.map((j) => (
+                              <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirMiembro(eq.id, j.id)}>
+                                ＋ {j.nombre}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
