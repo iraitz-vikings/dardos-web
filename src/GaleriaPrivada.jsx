@@ -29,41 +29,59 @@ export default function GaleriaPrivada({ usuario }) {
     cargar();
   }, []);
 
+  // Sube varias fotos a la vez, una detrás de otra (no en paralelo, para no saturar
+  // Cloudinary ni el servidor). Si alguna falla, las demás siguen subiéndose igual y
+  // al final se informa de cuántas se subieron y cuáles no.
   async function subirFoto(e) {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
-    setSubiendo(true);
+    const archivos = Array.from(e.target.files || []);
+    if (archivos.length === 0) return;
+    setSubiendo({ actual: 0, total: archivos.length });
     setMensaje(null);
-    try {
-      const formData = new FormData();
-      formData.append("imagen", archivo);
-      const resSubida = await fetch(`${API_URL}/api/upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token()}` },
-        body: formData,
-      });
-      if (!resSubida.ok) {
-        setMensaje({ tipo: "error", texto: "No se pudo subir la foto." });
-        return;
+    let subidas = 0;
+    const errores = [];
+
+    for (let i = 0; i < archivos.length; i++) {
+      setSubiendo({ actual: i + 1, total: archivos.length });
+      try {
+        const formData = new FormData();
+        formData.append("imagen", archivos[i]);
+        const resSubida = await fetch(`${API_URL}/api/upload`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token()}` },
+          body: formData,
+        });
+        if (!resSubida.ok) {
+          errores.push(archivos[i].name);
+          continue;
+        }
+        const { url } = await resSubida.json();
+        const resGuardar = await fetch(`${API_URL}/api/galeria-privada`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+          body: JSON.stringify({ url, descripcion: descripcion.trim() || undefined }),
+        });
+        if (!resGuardar.ok) {
+          errores.push(archivos[i].name);
+          continue;
+        }
+        subidas++;
+      } catch {
+        errores.push(archivos[i].name);
       }
-      const { url } = await resSubida.json();
-      const resGuardar = await fetch(`${API_URL}/api/galeria-privada`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ url, descripcion: descripcion.trim() || undefined }),
-      });
-      if (!resGuardar.ok) {
-        setMensaje({ tipo: "error", texto: "La foto se subió pero no se pudo guardar." });
-        return;
-      }
-      setDescripcion("");
-      cargar();
-    } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión." });
-    } finally {
-      setSubiendo(false);
-      e.target.value = "";
     }
+
+    setSubiendo(false);
+    if (errores.length === 0) {
+      setMensaje(subidas > 1 ? { tipo: "ok", texto: `${subidas} fotos subidas.` } : null);
+    } else {
+      setMensaje({
+        tipo: subidas > 0 ? "ok" : "error",
+        texto: `${subidas} de ${archivos.length} fotos subidas. No se pudieron subir: ${errores.join(", ")}`,
+      });
+    }
+    setDescripcion("");
+    cargar();
+    e.target.value = "";
   }
 
   async function borrar(id) {
@@ -82,15 +100,19 @@ export default function GaleriaPrivada({ usuario }) {
 
       <div className="admin-inline-form" style={{ marginBottom: "1.2rem" }}>
         <label>
-          Descripción (opcional, para la próxima foto que subas)
+          Descripción (opcional, se aplica a la próxima foto o tanda de fotos que subas)
           <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Final del torneo de verano" />
         </label>
         <label>
-          Subir foto
-          <input type="file" accept="image/*" onChange={subirFoto} disabled={subiendo} />
+          Subir una o varias fotos
+          <input type="file" accept="image/*" multiple onChange={subirFoto} disabled={!!subiendo} />
         </label>
       </div>
-      {subiendo && <p className="admin-hint">Subiendo…</p>}
+      {subiendo && (
+        <p className="admin-hint">
+          Subiendo {subiendo.actual} de {subiendo.total}…
+        </p>
+      )}
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
 
       {cargando && <p className="chronicle-status">Cargando fotos…</p>}
