@@ -56,20 +56,45 @@ function coincide(nombre, busqueda) {
   return !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
 }
 
-function Caja({ x, y, partido, busqueda }) {
+// Un mismo nombre aparece en la caja de cada ronda que ha ido jugando (va
+// "arrastrándose" de ronda en ronda mientras avanza). Para que la búsqueda no
+// resalte todas esas apariciones a la vez, esto calcula la ronda más
+// avanzada en la que aparece cada nombre exacto — la Gran Final cuenta
+// siempre como la más avanzada de todas, sea cual sea su número de ronda.
+function construirUltimaAparicion(partidos) {
+  const mapa = {};
+  for (const p of partidos) {
+    const orden = p.rama === "final" ? Infinity : p.ronda;
+    for (const nombre of [p.jugador1, p.jugador2]) {
+      if (!nombre) continue;
+      if (mapa[nombre] === undefined || orden > mapa[nombre]) mapa[nombre] = orden;
+    }
+  }
+  return mapa;
+}
+
+function esUltimaAparicion(nombre, partido, ultimaAparicion) {
+  if (!nombre) return false;
+  const orden = partido.rama === "final" ? Infinity : partido.ronda;
+  return ultimaAparicion[nombre] === orden;
+}
+
+function Caja({ x, y, partido, busqueda, ultimaAparicion }) {
   const decidido = !!partido.ganador;
   const reciente = useResaltadoReciente(partido.enCurso, partido.actualizadoEn);
-  const encontrado = coincide(partido.jugador1, busqueda) || coincide(partido.jugador2, busqueda);
+  const coincideJ1 = coincide(partido.jugador1, busqueda) && esUltimaAparicion(partido.jugador1, partido, ultimaAparicion);
+  const coincideJ2 = coincide(partido.jugador2, busqueda) && esUltimaAparicion(partido.jugador2, partido, ultimaAparicion);
+  const encontrado = coincideJ1 || coincideJ2;
   return (
     <foreignObject x={x} y={y - BOX_H / 2} width={BOX_W} height={BOX_H}>
       <div
         className={`bracket-box ${decidido ? "bracket-box-decidido" : ""} ${partido.enCurso ? "bracket-box-en-curso" : ""} ${reciente ? "bracket-box-reciente" : ""} ${encontrado ? "bracket-box-encontrado" : ""}`}
       >
         <div className="bracket-box-ronda">{partido.ronda}{partido.maquina ? ` · ${partido.maquina}` : ""}</div>
-        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador1 ? "bracket-box-ganador" : ""} ${coincide(partido.jugador1, busqueda) ? "bracket-box-jugador-encontrado" : ""}`}>
+        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador1 ? "bracket-box-ganador" : ""} ${coincideJ1 ? "bracket-box-jugador-encontrado" : ""}`}>
           {partido.jugador1 || (partido.ganador ? "BYE" : "?")}
         </div>
-        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador2 ? "bracket-box-ganador" : ""} ${coincide(partido.jugador2, busqueda) ? "bracket-box-jugador-encontrado" : ""}`}>
+        <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador2 ? "bracket-box-ganador" : ""} ${coincideJ2 ? "bracket-box-jugador-encontrado" : ""}`}>
           {partido.jugador2 || (partido.ganador ? "BYE" : "?")}
         </div>
       </div>
@@ -101,7 +126,7 @@ function Linea({ origen, destino, activa }) {
   );
 }
 
-function BracketRama({ titulo, partidos, busqueda }) {
+function BracketRama({ titulo, partidos, busqueda, ultimaAparicion }) {
   const posiciones = calcularLayout(partidos, 1, "ganadores");
   if (posiciones.length === 0) return null;
   const idPosicion = Object.fromEntries(posiciones.map((p) => [p.partido.id, p]));
@@ -127,7 +152,7 @@ function BracketRama({ titulo, partidos, busqueda }) {
             );
           })}
           {posiciones.map(({ x, y, partido }) => (
-            <Caja key={partido.id} x={x + PAD} y={y + PAD} partido={partido} busqueda={busqueda} />
+            <Caja key={partido.id} x={x + PAD} y={y + PAD} partido={partido} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
           ))}
         </svg>
       </div>
@@ -139,7 +164,7 @@ function BracketRama({ titulo, partidos, busqueda }) {
 // una columna central compartida (la ronda 1 de ganadores, el sorteo inicial):
 // el cuadro de ganadores crece hacia la derecha y el de perdedores hacia la
 // izquierda, como un cuadro doble "en espejo".
-function BracketMirror({ ganadores, perdedores, busqueda }) {
+function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion }) {
   const posGanadores = calcularLayout(ganadores, 1, "ganadores");
   const posPerdedoresRaw = calcularLayout(perdedores, -1, "perdedores");
   if (posGanadores.length === 0 && posPerdedoresRaw.length === 0) return null;
@@ -207,7 +232,7 @@ function BracketMirror({ ganadores, perdedores, busqueda }) {
             );
           })}
           {posiciones.map(({ x, y, partido }) => (
-            <Caja key={partido.id} x={x + PAD} y={y + PAD + TITLE_H} partido={partido} busqueda={busqueda} />
+            <Caja key={partido.id} x={x + PAD} y={y + PAD + TITLE_H} partido={partido} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
           ))}
         </svg>
       </div>
@@ -219,29 +244,34 @@ export default function BracketView({ cuadrante, busqueda }) {
   const ganadores = cuadrante.partidos.filter((p) => p.rama === "ganadores");
   const perdedores = cuadrante.partidos.filter((p) => p.rama === "perdedores");
   const finales = cuadrante.partidos.filter((p) => p.rama === "final").sort((a, b) => a.posicion - b.posicion);
+  const ultimaAparicion = construirUltimaAparicion(cuadrante.partidos);
 
   return (
     <div className="bracket-visual">
       {perdedores.length > 0 ? (
-        <BracketMirror ganadores={ganadores} perdedores={perdedores} busqueda={busqueda} />
+        <BracketMirror ganadores={ganadores} perdedores={perdedores} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
       ) : (
-        <BracketRama titulo={RAMA_ETIQUETA.ganadores} partidos={ganadores} busqueda={busqueda} />
+        <BracketRama titulo={RAMA_ETIQUETA.ganadores} partidos={ganadores} busqueda={busqueda} ultimaAparicion={ultimaAparicion} />
       )}
       {finales.length > 0 && (
         <div className="bracket-rama-visual">
           <p className="bracket-rama-titulo">Gran final</p>
-          {finales.map((final, i) => (
-            <div key={final.id} className={`bracket-final-box ${coincide(final.jugador1, busqueda) || coincide(final.jugador2, busqueda) ? "bracket-box-encontrado" : ""}`}>
-              {i === 1 && <span className="bracket-final-desempate">Partido decisivo</span>}
-              <span className={final.ganador && final.ganador === final.jugador1 ? "bracket-box-ganador" : ""}>
-                {final.jugador1 || "?"}
-              </span>
-              <span className="bracket-vs">vs</span>
-              <span className={final.ganador && final.ganador === final.jugador2 ? "bracket-box-ganador" : ""}>
-                {final.jugador2 || "?"}
-              </span>
-            </div>
-          ))}
+          {finales.map((final, i) => {
+            const coincideJ1 = coincide(final.jugador1, busqueda) && esUltimaAparicion(final.jugador1, final, ultimaAparicion);
+            const coincideJ2 = coincide(final.jugador2, busqueda) && esUltimaAparicion(final.jugador2, final, ultimaAparicion);
+            return (
+              <div key={final.id} className={`bracket-final-box ${coincideJ1 || coincideJ2 ? "bracket-box-encontrado" : ""}`}>
+                {i === 1 && <span className="bracket-final-desempate">Partido decisivo</span>}
+                <span className={final.ganador && final.ganador === final.jugador1 ? "bracket-box-ganador" : ""}>
+                  {final.jugador1 || "?"}
+                </span>
+                <span className="bracket-vs">vs</span>
+                <span className={final.ganador && final.ganador === final.jugador2 ? "bracket-box-ganador" : ""}>
+                  {final.jugador2 || "?"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
