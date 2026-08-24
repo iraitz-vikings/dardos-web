@@ -7,6 +7,7 @@ import TorneoPage from "./TorneoPage.jsx";
 import LigaPage from "./LigaPage.jsx";
 import Historico from "./Historico.jsx";
 import Socios from "./Socios.jsx";
+import AvisoCheckIn from "./AvisoCheckIn.jsx";
 import { LanguageProvider } from "./i18n.jsx";
 import "./styles.css";
 
@@ -17,6 +18,7 @@ const isHistorico = path.startsWith("/historico");
 const isSocios = path.startsWith("/socios");
 const matchTorneo = path.match(/^\/torneo\/([^/]+)/);
 const matchLiga = path.match(/^\/liga\/([^/]+)/);
+const matchAviso = path.match(/^\/aviso\/([^/]+)/);
 
 function Pagina() {
   if (isAdmin) return <Admin />;
@@ -25,6 +27,7 @@ function Pagina() {
   if (isSocios) return <Socios />;
   if (matchTorneo) return <TorneoPage id={matchTorneo[1]} />;
   if (matchLiga) return <LigaPage id={matchLiga[1]} />;
+  if (matchAviso) return <AvisoCheckIn token={matchAviso[1]} />;
   return <App />;
 }
 
