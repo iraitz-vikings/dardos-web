@@ -32,6 +32,7 @@ export default function AdminTorneosClub({ token, salir }) {
   const [maquinas, setMaquinas] = useState([]);
   const [gestionandoId, setGestionandoId] = useState(null);
   const [mensaje, setMensaje] = useState(null);
+  const [filtro, setFiltro] = useState("activos");
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -257,6 +258,7 @@ async function programarCalendario(partidoId, datos) {
   }
 
   const torneoEnGestion = torneos.find((t) => t.id === gestionandoId);
+  const torneosFiltrados = torneos.filter((t) => (filtro === "terminados" ? t.finalizado : !t.finalizado));
 
   if (torneoEnGestion) {
     return (
@@ -365,8 +367,33 @@ async function programarCalendario(partidoId, datos) {
 
       {torneos.length === 0 && <p className="chronicle-status">Todavía no hay torneos del club.</p>}
 
+      {torneos.length > 0 && (
+        <nav className="admin-tabs" style={{ marginBottom: "1rem" }}>
+          <button
+            type="button"
+            className={`admin-tab ${filtro === "activos" ? "admin-tab-active" : ""}`}
+            onClick={() => setFiltro("activos")}
+          >
+            En curso ({torneos.filter((t) => !t.finalizado).length})
+          </button>
+          <button
+            type="button"
+            className={`admin-tab ${filtro === "terminados" ? "admin-tab-active" : ""}`}
+            onClick={() => setFiltro("terminados")}
+          >
+            Terminados ({torneos.filter((t) => t.finalizado).length})
+          </button>
+        </nav>
+      )}
+
+      {torneos.length > 0 && torneosFiltrados.length === 0 && (
+        <p className="chronicle-status">
+          {filtro === "terminados" ? "Todavía no hay torneos terminados." : "No hay torneos en curso — todos están marcados como terminados."}
+        </p>
+      )}
+
       <ul className="admin-torneos-club-list">
-        {torneos.map((t) => (
+        {torneosFiltrados.map((t) => (
           <li key={t.id} className="admin-list-item">
             <div>
               <strong>{t.nombre}</strong>

@@ -23,6 +23,7 @@ export default function AdminLigasClub({ token, salir }) {
   const [gestionandoId, setGestionandoId] = useState(null);
   const [mensaje, setMensaje] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [filtro, setFiltro] = useState("activos");
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -200,6 +201,7 @@ export default function AdminLigasClub({ token, salir }) {
   }
 
   const ligaEnGestion = ligas.find((l) => l.id === gestionandoId);
+  const ligasFiltradas = ligas.filter((l) => (filtro === "terminadas" ? l.finalizado : !l.finalizado));
 
   if (ligaEnGestion) {
     return (
@@ -328,8 +330,33 @@ export default function AdminLigasClub({ token, salir }) {
 
       {ligas.length === 0 && <p className="chronicle-status">Todavía no hay ligas del club.</p>}
 
+      {ligas.length > 0 && (
+        <nav className="admin-tabs" style={{ marginBottom: "1rem" }}>
+          <button
+            type="button"
+            className={`admin-tab ${filtro === "activos" ? "admin-tab-active" : ""}`}
+            onClick={() => setFiltro("activos")}
+          >
+            En curso ({ligas.filter((l) => !l.finalizado).length})
+          </button>
+          <button
+            type="button"
+            className={`admin-tab ${filtro === "terminadas" ? "admin-tab-active" : ""}`}
+            onClick={() => setFiltro("terminadas")}
+          >
+            Terminadas ({ligas.filter((l) => l.finalizado).length})
+          </button>
+        </nav>
+      )}
+
+      {ligas.length > 0 && ligasFiltradas.length === 0 && (
+        <p className="chronicle-status">
+          {filtro === "terminadas" ? "Todavía no hay ligas terminadas." : "No hay ligas en curso — todas están marcadas como terminadas."}
+        </p>
+      )}
+
       <ul className="admin-torneos-club-list">
-        {ligas.map((l) => (
+        {ligasFiltradas.map((l) => (
           <li key={l.id} className="admin-list-item">
             <div>
               <strong>{l.nombre}</strong>
