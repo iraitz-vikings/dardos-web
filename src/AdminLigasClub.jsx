@@ -32,6 +32,7 @@ export default function AdminLigasClub({ token, salir }) {
   const [modalidad, setModalidad] = useState("individual");
   const [vueltas, setVueltas] = useState(1);
   const [numeroParticipantes, setNumeroParticipantes] = useState(8);
+  const [numeroGrupos, setNumeroGrupos] = useState("");
   const [metodoSorteoParejas, setMetodoSorteoParejas] = useState("AB");
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
@@ -73,6 +74,7 @@ export default function AdminLigasClub({ token, salir }) {
         headers: { "Content-Type": "application/json", "x-admin-token": token },
         body: JSON.stringify({
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, modalidad, vueltas, numeroParticipantes,
+          numeroGrupos: numeroGrupos === "" ? undefined : Number(numeroGrupos),
           metodoSorteoParejas: modalidad === "parejas_ciegas" ? metodoSorteoParejas : undefined,
           insigniaUrl, afectaCalendario,
         }),
@@ -89,7 +91,7 @@ export default function AdminLigasClub({ token, salir }) {
       }
       setNombre(""); setDescripcion(""); setFechaInicio(""); setFechaFin("");
       setVisibilidad("privado"); setModalidad("individual"); setVueltas(1);
-      setNumeroParticipantes(8); setMetodoSorteoParejas("AB"); setInsigniaUrl("");
+      setNumeroParticipantes(8); setNumeroGrupos(""); setMetodoSorteoParejas("AB"); setInsigniaUrl("");
       setAfectaCalendario(true);
       setMensaje({ tipo: "ok", texto: "Liga creada." });
       setMostrarFormulario(false);
@@ -154,6 +156,19 @@ export default function AdminLigasClub({ token, salir }) {
     }
     return null;
   }
+  async function repartirGrupos(ligaId, datos) {
+    const res = await fetch(`${API_URL}/api/ligas-club/${ligaId}/repartir-grupos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    cargarLigas();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo repartir en grupos.";
+    }
+    return null;
+  }
   async function generarCalendario(ligaId) {
     const res = await fetch(`${API_URL}/api/ligas-club/${ligaId}/generar-calendario`, {
       method: "POST",
@@ -196,6 +211,7 @@ export default function AdminLigasClub({ token, salir }) {
         onCrearParticipante={(datos) => crearParticipante(ligaEnGestion.id, datos)}
         onBorrarParticipante={borrarParticipante}
         onSortearParejasGrupos={(entradas) => sortearParejasGrupos(ligaEnGestion.id, entradas)}
+        onRepartirGrupos={(datos) => repartirGrupos(ligaEnGestion.id, datos)}
         onGenerarCalendario={() => generarCalendario(ligaEnGestion.id)}
         onActualizarPartido={actualizarPartido}
         onProgramarCalendario={programarCalendario}
@@ -252,6 +268,23 @@ export default function AdminLigasClub({ token, salir }) {
             <input type="number" min="2" value={numeroParticipantes} onChange={(e) => setNumeroParticipantes(Number(e.target.value))} required />
           </label>
           <label>
+            Grupos
+            <select value={numeroGrupos} onChange={(e) => setNumeroGrupos(e.target.value)}>
+              <option value="">Sin grupos (todos contra todos)</option>
+              <option value="2">2 grupos</option>
+              <option value="4">4 grupos</option>
+              <option value="6">6 grupos</option>
+              <option value="8">8 grupos</option>
+            </select>
+          </label>
+          {numeroGrupos !== "" && (
+            <p className="admin-hint">
+              Cada grupo jugará su propia liguilla todos-contra-todos; después podrás crear un cuadrante final
+              cruzando los grupos (1º de un grupo contra 2º del grupo cruzado, etc.). Reparte a los participantes en
+              grupos desde la pestaña "Participantes" una vez estén todos apuntados.
+            </p>
+          )}
+          <label>
             Enfrentamientos
             <select value={vueltas} onChange={(e) => setVueltas(Number(e.target.value))}>
               <option value={1}>Un enfrentamiento por rival (ida)</option>
@@ -305,6 +338,7 @@ export default function AdminLigasClub({ token, salir }) {
                 {l.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
                 {MODALIDADES.find((m) => m.id === l.modalidad)?.etiqueta || "Individual"} ·{" "}
                 {l.vueltas === 2 ? "Ida y vuelta" : "Ida"} · {l.numeroParticipantes} participantes
+                {l.numeroGrupos ? ` · ${l.numeroGrupos} grupos` : ""}
                 {l.finalizado ? " · Finalizada" : ""}
               </time>
             </div>
@@ -325,7 +359,7 @@ export default function AdminLigasClub({ token, salir }) {
   );
 }
 
-function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onGenerarCalendario, onActualizarPartido, onProgramarCalendario, token, onRecargar }) {
+function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onRepartirGrupos, onGenerarCalendario, onActualizarPartido, onProgramarCalendario, token, onRecargar }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
   return (
@@ -337,6 +371,7 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
           <span className="admin-hint">
             {MODALIDADES.find((m) => m.id === liga.modalidad)?.etiqueta || "Individual"} ·{" "}
             {liga.vueltas === 2 ? "Ida y vuelta" : "Ida"} · {liga.numeroParticipantes} participantes
+            {liga.numeroGrupos ? ` · ${liga.numeroGrupos} grupos` : ""}
           </span>
         </div>
       </div>
@@ -365,6 +400,7 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
             onCrearParticipante={onCrearParticipante}
             onBorrarParticipante={onBorrarParticipante}
             onSortearParejasGrupos={onSortearParejasGrupos}
+            onRepartirGrupos={onRepartirGrupos}
             onGenerarCalendario={onGenerarCalendario}
           />
         </div>
@@ -418,7 +454,7 @@ function JugadoresDelClubLiga({ jugadores }) {
   );
 }
 
-function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onGenerarCalendario }) {
+function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onRepartirGrupos, onGenerarCalendario }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -672,13 +708,17 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
       <ul>
         {participantes.map((p) => (
           <li key={p.id} className="admin-list-item">
-            <span>{p.etiqueta}</span>
+            <span>{p.etiqueta}{liga.numeroGrupos ? ` — ${p.grupo ? `Grupo ${p.grupo}` : "sin grupo"}` : ""}</span>
             <button type="button" className="admin-link-btn" onClick={() => onBorrarParticipante(p.id)}>Quitar</button>
           </li>
         ))}
       </ul>
 
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+
+      {liga.numeroGrupos && participantes.length > 0 && (
+        <RepartoGruposLiga liga={liga} participantes={participantes} onRepartirGrupos={onRepartirGrupos} />
+      )}
 
       <div style={{ marginTop: "1.2rem" }}>
         <button type="button" disabled={generando || participantes.length !== liga.numeroParticipantes} onClick={generar}>
@@ -690,18 +730,105 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
   );
 }
 
+// Reparto de participantes ya apuntados en los `liga.numeroGrupos` grupos de
+// la liga (A, B, C…) — no confundir con el sorteo de parejas por nivel de
+// arriba, que reparte en grupos transitorios solo para formar las parejas
+// antes de que existan como participante. Aquí los participantes YA
+// existen; lo que se reparte es en qué liguilla (grupo) juega cada uno.
+function RepartoGruposLiga({ liga, participantes, onRepartirGrupos }) {
+  const letras = Array.from({ length: liga.numeroGrupos }, (_, i) => String.fromCharCode(65 + i));
+  const [asignaciones, setAsignaciones] = useState({});
+  const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  function grupoDe(p) {
+    return asignaciones[p.id] ?? p.grupo ?? "";
+  }
+  function cambiarGrupo(id, grupo) {
+    setAsignaciones((prev) => ({ ...prev, [id]: grupo }));
+  }
+
+  const conteo = {};
+  for (const g of letras) conteo[g] = participantes.filter((p) => grupoDe(p) === g).length;
+  const sinAsignar = participantes.filter((p) => !grupoDe(p)).length;
+
+  async function auto() {
+    setEnviando(true); setMensaje(null);
+    const error = await onRepartirGrupos({ modo: "auto" });
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else { setAsignaciones({}); setMensaje({ tipo: "ok", texto: "Grupos repartidos automáticamente." }); }
+    setEnviando(false);
+  }
+  async function guardarManual() {
+    setEnviando(true); setMensaje(null);
+    const asignacionesCompletas = participantes.map((p) => ({ participanteId: p.id, grupo: grupoDe(p) }));
+    const error = await onRepartirGrupos({ modo: "manual", asignaciones: asignacionesCompletas });
+    if (error) setMensaje({ tipo: "error", texto: error });
+    else { setAsignaciones({}); setMensaje({ tipo: "ok", texto: "Grupos guardados." }); }
+    setEnviando(false);
+  }
+
+  return (
+    <div className="admin-cuadrante-participantes" style={{ marginTop: "1.2rem" }}>
+      <h5>Reparto en grupos ({letras.join(", ")})</h5>
+      <p className="admin-hint">{letras.map((g) => `${g}: ${conteo[g]}`).join(" · ")}{sinAsignar > 0 ? ` · sin asignar: ${sinAsignar}` : ""}</p>
+      <button type="button" disabled={enviando} onClick={auto} style={{ marginBottom: ".8rem" }}>
+        Repartir automáticamente (al azar, equilibrado)
+      </button>
+      <ul>
+        {participantes.map((p) => (
+          <li key={p.id} className="admin-list-item">
+            <span>{p.etiqueta}</span>
+            <select value={grupoDe(p)} onChange={(e) => cambiarGrupo(p.id, e.target.value)}>
+              <option value="">Sin grupo</option>
+              {letras.map((g) => <option key={g} value={g}>Grupo {g}</option>)}
+            </select>
+          </li>
+        ))}
+      </ul>
+      <button type="button" disabled={enviando || sinAsignar > 0} onClick={guardarManual}>
+        Guardar reparto manual
+      </button>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
 function CalendarioLiga({ liga, maquinas, onActualizarPartido, onProgramarCalendario }) {
   const partidos = liga.partidos || [];
+
+  if (partidos.length === 0) {
+    return <p className="chronicle-status">Todavía no hay calendario — apunta a todos los participantes y pulsa "Generar calendario" en la pestaña Participantes.</p>;
+  }
+
+  if (!liga.numeroGrupos) {
+    return <CalendarioLigaGrupo partidos={partidos} maquinas={maquinas} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />;
+  }
+
+  const letras = Array.from({ length: liga.numeroGrupos }, (_, i) => String.fromCharCode(65 + i));
+  return (
+    <div>
+      {letras.map((g) => {
+        const partidosGrupo = partidos.filter((p) => p.grupo === g);
+        if (partidosGrupo.length === 0) return null;
+        return (
+          <div key={g} style={{ marginBottom: "1.5rem" }}>
+            <h3>Grupo {g}</h3>
+            <CalendarioLigaGrupo partidos={partidosGrupo} maquinas={maquinas} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CalendarioLigaGrupo({ partidos, maquinas, onActualizarPartido, onProgramarCalendario }) {
   const porJornada = {};
   for (const p of partidos) {
     if (!porJornada[p.jornada]) porJornada[p.jornada] = [];
     porJornada[p.jornada].push(p);
   }
   const jornadas = Object.keys(porJornada).map(Number).sort((a, b) => a - b);
-
-  if (jornadas.length === 0) {
-    return <p className="chronicle-status">Todavía no hay calendario — apunta a todos los participantes y pulsa "Generar calendario" en la pestaña Participantes.</p>;
-  }
 
   return (
     <div>
@@ -792,53 +919,25 @@ function CalendarioPartido({ p, maquinas, onProgramar }) {
   );
 }
 
-function calcularClasificacion(liga) {
-  const stats = {};
-  function fila(nombre) {
-    if (!stats[nombre]) {
-      stats[nombre] = { nombre, jugados: 0, victorias: 0, empates: 0, derrotas: 0, partidasGanadas: 0, partidasPerdidas: 0, puntos: 0 };
-    }
-    return stats[nombre];
-  }
-  for (const p of liga.participantes || []) fila(p.etiqueta);
-
-  function parseResultado(resultado) {
-    if (!resultado) return null;
-    const m = resultado.trim().match(/^(\d+)\s*-\s*(\d+)$/);
-    if (!m) return null;
-    return [Number(m[1]), Number(m[2])];
-  }
-
-  for (const p of liga.partidos || []) {
-    const numeros = parseResultado(p.resultado);
-    if (numeros) {
-      const [a, b] = numeros;
-      const f1 = fila(p.participante1);
-      const f2 = fila(p.participante2);
-      f1.jugados++; f2.jugados++;
-      f1.partidasGanadas += a; f1.partidasPerdidas += b;
-      f2.partidasGanadas += b; f2.partidasPerdidas += a;
-      if (a > b) { f1.victorias++; f1.puntos += 2; f2.derrotas++; }
-      else if (a < b) { f2.victorias++; f2.puntos += 2; f1.derrotas++; }
-      else { f1.empates++; f2.empates++; f1.puntos += 1; f2.puntos += 1; }
-    } else if (p.ganador) {
-      const perdedor = p.ganador === p.participante1 ? p.participante2 : p.participante1;
-      const fg = fila(p.ganador);
-      const fp = fila(perdedor);
-      fg.jugados++; fp.jugados++;
-      fg.victorias++; fg.puntos += 2;
-      fp.derrotas++;
-    }
-  }
-
-  return Object.values(stats).sort(
-    (x, y) => y.puntos - x.puntos || (y.partidasGanadas - y.partidasPerdidas) - (x.partidasGanadas - x.partidasPerdidas)
-  );
+// Trae la clasificación calculada por el backend (con la cascada de
+// desempate de lib/clasificacionLiga.js) — ver GET
+// /api/ligas-club/:id/clasificacion. Devuelve { grupos: {A:[...],...},
+// sinGrupo: [...] | null } o null mientras carga.
+function useClasificacion(liga) {
+  const [clasificacion, setClasificacion] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    fetch(`${API_URL}/api/ligas-club/${liga.id}/clasificacion`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (vivo) setClasificacion(data); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [liga.id, liga.partidos?.length, liga.participantes?.length]);
+  return clasificacion;
 }
 
-function ClasificacionLiga({ liga }) {
-  const filas = calcularClasificacion(liga);
-  if (filas.length === 0) return <p className="chronicle-status">Todavía no hay participantes.</p>;
+function TablaClasificacion({ filas }) {
+  if (!filas || filas.length === 0) return <p className="chronicle-status">Todavía no hay participantes.</p>;
   return (
     <table className="admin-tabla-clasificacion">
       <thead>
@@ -858,7 +957,7 @@ function ClasificacionLiga({ liga }) {
         {filas.map((f, i) => (
           <tr key={f.nombre}>
             <td>{i + 1}</td>
-            <td>{f.nombre}</td>
+            <td>{f.nombre}{f.empateSinResolver && <span title="Empate sin desempate objetivo posible — orden alfabético solo para que sea reproducible."> ⚠︎</span>}</td>
             <td>{f.jugados}</td>
             <td>{f.victorias}</td>
             <td>{f.empates}</td>
@@ -872,6 +971,28 @@ function ClasificacionLiga({ liga }) {
     </table>
   );
 }
+
+function ClasificacionLiga({ liga }) {
+  const clasificacion = useClasificacion(liga);
+  if (!clasificacion) return <p className="chronicle-status">Cargando…</p>;
+
+  if (!liga.numeroGrupos) {
+    return <TablaClasificacion filas={clasificacion.sinGrupo} />;
+  }
+
+  const letras = Array.from({ length: liga.numeroGrupos }, (_, i) => String.fromCharCode(65 + i));
+  return (
+    <div>
+      {letras.map((g) => (
+        <div key={g} style={{ marginBottom: "1.5rem" }}>
+          <h3>Grupo {g}</h3>
+          <TablaClasificacion filas={clasificacion.grupos[g]} />
+        </div>
+      ))}
+      <p className="admin-hint">⚠︎ = empate que ningún criterio objetivo pudo resolver (puntos, enfrentamiento directo y partidas ganadas totales iguales); el orden mostrado es solo alfabético, para que al menos sea siempre el mismo.</p>
+    </div>
+  );
+}
 function siguienteTamanoValido(n) {
   const tamanos = [4, 8, 16, 32, 64, 128];
   return tamanos.find((t) => t >= n) || 128;
@@ -879,9 +1000,11 @@ function siguienteTamanoValido(n) {
 
 function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
   const cuadrante = (liga.cuadrantes || [])[0];
-  const clasificacion = calcularClasificacion(liga);
+  const clasificacion = useClasificacion(liga);
+  const conGrupos = !!liga.numeroGrupos;
 
-  const [numClasificados, setNumClasificados] = useState(Math.min(4, clasificacion.length || 2));
+  const [numClasificados, setNumClasificados] = useState(4);
+  const [numClasificadosPorGrupo, setNumClasificadosPorGrupo] = useState(2);
   const [emparejamiento, setEmparejamiento] = useState("posiciones");
   const [tipoEliminacion, setTipoEliminacion] = useState("directa");
   const [creando, setCreando] = useState(false);
@@ -889,42 +1012,64 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
   const [busqueda, setBusqueda] = useState("");
   const [abierto, setAbierto] = useState(true);
 
+  // Ungrouped: cuántos clasifican en total, sacados de una única
+  // clasificación (comportamiento de siempre).
+  async function crearCuadranteFinalSinGrupos() {
+    const topN = (clasificacion.sinGrupo || []).slice(0, numClasificados).map((f) => f.nombre);
+    if (topN.length < 2) {
+      setError("Hacen falta al menos 2 participantes con clasificación.");
+      return;
+    }
+    const tamano = siguienteTamanoValido(topN.length);
+
+    const resCuadrante = await fetch(`${API_URL}/api/ligas-club/${liga.id}/cuadrante-final`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ nombre: "Cuadrante final", tamano, tipoEliminacion }),
+    });
+    if (!resCuadrante.ok) {
+      const data = await resCuadrante.json().catch(() => ({}));
+      setError(data.error || "No se pudo crear el cuadrante.");
+      return;
+    }
+    const nuevoCuadrante = await resCuadrante.json();
+
+    const resSorteo = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${nuevoCuadrante.id}/sorteo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({
+        participantes: topN,
+        cabezasDeSerie: emparejamiento === "posiciones" ? topN : [],
+      }),
+    });
+    if (!resSorteo.ok) {
+      const data = await resSorteo.json().catch(() => ({}));
+      setError(data.error || "El cuadrante se creó pero no se pudo sortear.");
+    }
+  }
+
+  // Con grupos: cuántos clasifican DE CADA grupo — el backend cruza los
+  // grupos "de fuera hacia dentro" (A-D, B-C…) y reparte los bye si el
+  // total no llena una potencia de dos. Ver lib/cruceGruposFinal.js.
+  async function crearCuadranteFinalConGrupos() {
+    const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}/cuadrante-final-grupos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ nombre: "Cuadrante final", tipoEliminacion, numClasificadosPorGrupo }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "No se pudo crear el cuadrante.");
+    }
+  }
+
   async function crearCuadranteFinal(e) {
     e.preventDefault();
     setCreando(true);
     setError(null);
     try {
-      const topN = clasificacion.slice(0, numClasificados).map((f) => f.nombre);
-      if (topN.length < 2) {
-        setError("Hacen falta al menos 2 participantes con clasificación.");
-        return;
-      }
-      const tamano = siguienteTamanoValido(topN.length);
-
-      const resCuadrante = await fetch(`${API_URL}/api/ligas-club/${liga.id}/cuadrante-final`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre: "Cuadrante final", tamano, tipoEliminacion }),
-      });
-      if (!resCuadrante.ok) {
-        const data = await resCuadrante.json().catch(() => ({}));
-        setError(data.error || "No se pudo crear el cuadrante.");
-        return;
-      }
-      const nuevoCuadrante = await resCuadrante.json();
-
-      const resSorteo = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${nuevoCuadrante.id}/sorteo`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({
-          participantes: topN,
-          cabezasDeSerie: emparejamiento === "posiciones" ? topN : [],
-        }),
-      });
-      if (!resSorteo.ok) {
-        const data = await resSorteo.json().catch(() => ({}));
-        setError(data.error || "El cuadrante se creó pero no se pudo sortear.");
-      }
+      if (conGrupos) await crearCuadranteFinalConGrupos();
+      else await crearCuadranteFinalSinGrupos();
       onRecargar();
     } finally {
       setCreando(false);
@@ -964,30 +1109,55 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
     onRecargar();
   }
 
+  if (!clasificacion) {
+    return <p className="chronicle-status">Cargando…</p>;
+  }
+
   if (!cuadrante) {
+    const totalSinGrupo = (clasificacion.sinGrupo || []).length;
+    const grupoConMenos = conGrupos
+      ? Math.min(...Array.from({ length: liga.numeroGrupos }, (_, i) => String.fromCharCode(65 + i)).map((g) => (clasificacion.grupos[g] || []).length))
+      : null;
     return (
       <div className="admin-cuadrante-participantes">
         <p className="admin-hint">
-          Se genera a partir de la clasificación actual. Elige cuántos clasifican y cómo se emparejan.
+          {conGrupos
+            ? "Se genera cruzando los grupos (1º de un grupo contra el último clasificado del grupo cruzado, etc.). Elige cuántos clasifican de cada grupo."
+            : "Se genera a partir de la clasificación actual. Elige cuántos clasifican y cómo se emparejan."}
         </p>
         <form onSubmit={crearCuadranteFinal} className="admin-form">
-          <label>
-            Cuántos participantes clasifican
-            <input
-              type="number"
-              min="2"
-              max={clasificacion.length}
-              value={numClasificados}
-              onChange={(e) => setNumClasificados(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            Emparejamiento
-            <select value={emparejamiento} onChange={(e) => setEmparejamiento(e.target.value)}>
-              <option value="posiciones">Respetar posiciones (1º vs último, 2º vs penúltimo…)</option>
-              <option value="sorteo">Sortear al azar</option>
-            </select>
-          </label>
+          {conGrupos ? (
+            <label>
+              Cuántos clasifican de cada grupo
+              <input
+                type="number"
+                min="1"
+                max={grupoConMenos || 1}
+                value={numClasificadosPorGrupo}
+                onChange={(e) => setNumClasificadosPorGrupo(Number(e.target.value))}
+              />
+            </label>
+          ) : (
+            <>
+              <label>
+                Cuántos participantes clasifican
+                <input
+                  type="number"
+                  min="2"
+                  max={totalSinGrupo}
+                  value={numClasificados}
+                  onChange={(e) => setNumClasificados(Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Emparejamiento
+                <select value={emparejamiento} onChange={(e) => setEmparejamiento(e.target.value)}>
+                  <option value="posiciones">Respetar posiciones (1º vs último, 2º vs penúltimo…)</option>
+                  <option value="sorteo">Sortear al azar</option>
+                </select>
+              </label>
+            </>
+          )}
           <label>
             Tipo de eliminación
             <select value={tipoEliminacion} onChange={(e) => setTipoEliminacion(e.target.value)}>
@@ -995,7 +1165,7 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
               <option value="doble">Doble eliminación</option>
             </select>
           </label>
-          <button type="submit" disabled={creando || clasificacion.length < 2}>
+          <button type="submit" disabled={creando || (conGrupos ? grupoConMenos < 1 : totalSinGrupo < 2)}>
             {creando ? "Creando…" : "Crear cuadrante final"}
           </button>
           {error && <p className="admin-msg admin-msg-error">{error}</p>}
