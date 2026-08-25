@@ -51,7 +51,13 @@ export default function AdminMaquinas({ token, salir }) {
 
   async function borrar(id) {
     if (!confirm("¿Borrar esta máquina?")) return;
-    await fetch(`${API_URL}/api/maquinas/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    setMensaje(null);
+    const res = await fetch(`${API_URL}/api/maquinas/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMensaje({ tipo: "error", texto: data.error || "No se pudo borrar la máquina." });
+      return;
+    }
     cargar();
   }
 
