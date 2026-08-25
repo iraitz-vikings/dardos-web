@@ -120,10 +120,14 @@ export default function Competiciones({ usuario }) {
               {t.temporada && <span style={{ display: "block", fontSize: ".8em" }}>{t.temporada}</span>}
               {t.clasificacion?.length > 0 && <TablaClasificacion filas={t.clasificacion} />}
               {t.equipos.map((eq) => {
-                const esCapitan = usuario && eq.capitan?.usuarioId === usuario.id;
+                // El capitán "real" es el de la plantilla del equipo del club
+                // (eq.equipoClub.capitan); el de la inscripción concreta
+                // (eq.capitan) casi nunca se usa, pero se comprueban los dos.
+                const capitan = eq.equipoClub?.capitan || eq.capitan;
+                const esCapitan = usuario && capitan?.usuarioId === usuario.id;
                 return (
                   <div key={eq.id} style={{ marginTop: ".6rem" }}>
-                    <em>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}{eq.capitan ? ` — Capitán: ${eq.capitan.apodo || eq.capitan.nombre}` : ""}</em>
+                    <em>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}{capitan ? ` — Capitán: ${capitan.apodo || capitan.nombre}` : ""}</em>
                     {eq.clasificacion?.length > 0 && <TablaClasificacion filas={eq.clasificacion} />}
                     <ul>
                       {eq.partidos.map((p) => (
