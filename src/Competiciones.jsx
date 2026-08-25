@@ -64,6 +64,16 @@ export default function Competiciones({ usuario }) {
     cargarTorneos();
   }
 
+  async function crearPartido(equipoId, fecha, rival) {
+    if (!fecha) return;
+    await fetch(`${API_URL}/api/competiciones-externas/equipos/${equipoId}/partidos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ fecha, rival }),
+    });
+    cargarTorneos();
+  }
+
   if (cargando) return <p className="chronicle-status">Cargando competiciones…</p>;
 
   const pestanas = [{ id: "vikings", nombre: "Vikings" }, ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre }))];
@@ -129,6 +139,9 @@ export default function Competiciones({ usuario }) {
                   <div key={eq.id} style={{ marginTop: ".6rem" }}>
                     <em>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}{capitan ? ` — Capitán: ${capitan.apodo || capitan.nombre}` : ""}</em>
                     {eq.clasificacion?.length > 0 && <TablaClasificacion filas={eq.clasificacion} />}
+                    {esCapitan && (
+                      <NuevoPartidoCapitanForm onCrear={(fecha, rival) => crearPartido(eq.id, fecha, rival)} />
+                    )}
                     <ul>
                       {eq.partidos.map((p) => (
                         esCapitan ? (
@@ -150,6 +163,38 @@ export default function Competiciones({ usuario }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Formulario para que el capitán dé de alta un partido nuevo (fecha +
+// rival), acordado normalmente por él mismo con el equipo rival. Solo se
+// muestra al capitán del equipo (comprobado también en el backend).
+function NuevoPartidoCapitanForm({ onCrear }) {
+  const [fecha, setFecha] = useState("");
+  const [rival, setRival] = useState("");
+
+  return (
+    <div className="admin-inline-form" style={{ marginTop: ".4rem" }}>
+      <label>
+        Fecha y hora
+        <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+      </label>
+      <label>
+        Rival (opcional)
+        <input value={rival} onChange={(e) => setRival(e.target.value)} />
+      </label>
+      <button
+        type="button"
+        disabled={!fecha}
+        onClick={() => {
+          onCrear(new Date(fecha).toISOString(), rival);
+          setFecha("");
+          setRival("");
+        }}
+      >
+        Añadir partido
+      </button>
     </div>
   );
 }
