@@ -28,6 +28,7 @@ function rondaAbierta(cuadrante, partido) {
 
 export default function AdminTorneosClub({ token, salir }) {
   const [torneos, setTorneos] = useState([]);
+  const [papelera, setPapelera] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
   const [gestionandoId, setGestionandoId] = useState(null);
@@ -54,6 +55,13 @@ export default function AdminTorneosClub({ token, salir }) {
       .catch(() => {});
   };
 
+  const cargarPapelera = () => {
+    fetch(`${API_URL}/api/torneos-club/papelera`, { headers: { "x-admin-token": token } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setPapelera)
+      .catch(() => {});
+  };
+
   const cargarJugadores = () => {
     fetch(`${API_URL}/api/jugadores`, { headers: { "x-admin-token": token } })
       .then((r) => (r.ok ? r.json() : []))
@@ -70,6 +78,7 @@ export default function AdminTorneosClub({ token, salir }) {
 
 useEffect(() => {
   cargarTorneos();
+  cargarPapelera();
   cargarJugadores();
   cargarMaquinas();
 }, []);
@@ -133,10 +142,23 @@ useEffect(() => {
   }
 
   async function borrarTorneo(id) {
-    if (!confirm("¿Borrar este torneo, sus cuadrantes y todos sus enfrentamientos?")) return;
+    if (!confirm("¿Enviar este torneo a la papelera? Se podrá restaurar durante 7 días; pasado ese plazo se borrará ya del todo, con sus cuadrantes y enfrentamientos.")) return;
     await fetch(`${API_URL}/api/torneos-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     if (gestionandoId === id) setGestionandoId(null);
     cargarTorneos();
+    cargarPapelera();
+  }
+
+  async function restaurarTorneo(id) {
+    await fetch(`${API_URL}/api/torneos-club/${id}/restaurar`, { method: "POST", headers: { "x-admin-token": token } });
+    cargarTorneos();
+    cargarPapelera();
+  }
+
+  async function borrarTorneoDefinitivo(id) {
+    if (!confirm("¿Borrar este torneo definitivamente? Esto no se puede deshacer.")) return;
+    await fetch(`${API_URL}/api/torneos-club/${id}/definitivo`, { method: "DELETE", headers: { "x-admin-token": token } });
+    cargarPapelera();
   }
 
   async function crearCuadrante(torneoId, datos) {
@@ -367,7 +389,7 @@ async function programarCalendario(partidoId, datos) {
 
       {torneos.length === 0 && <p className="chronicle-status">Todavía no hay torneos del club.</p>}
 
-      {torneos.length > 0 && (
+      {(torneos.length > 0 || papelera.length > 0) && (
         <nav className="admin-tabs" style={{ marginBottom: "1rem" }}>
           <button
             type="button"
@@ -383,49 +405,81 @@ async function programarCalendario(partidoId, datos) {
           >
             Terminados ({torneos.filter((t) => t.finalizado).length})
           </button>
+          <button
+            type="button"
+            className={`admin-tab ${filtro === "papelera" ? "admin-tab-active" : ""}`}
+            onClick={() => setFiltro("papelera")}
+          >
+            Papelera ({papelera.length})
+          </button>
         </nav>
       )}
 
-      {torneos.length > 0 && torneosFiltrados.length === 0 && (
-        <p className="chronicle-status">
-          {filtro === "terminados" ? "Todavía no hay torneos terminados." : "No hay torneos en curso — todos están marcados como terminados."}
-        </p>
-      )}
+      {filtro === "papelera" ? (
+        <>
+          {papelera.length === 0 && <p className="chronicle-status">La papelera está vacía.</p>}
+          <ul className="admin-torneos-club-list">
+            {papelera.map((t) => (
+              <li key={t.id} className="admin-list-item">
+                <div>
+                  <strong>{t.nombre}</strong>
+                  <time>
+                    {formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)} ·{" "}
+                    {t.diasRestantes === 0 ? "se purga hoy" : `se purga en ${t.diasRestantes} día${t.diasRestantes === 1 ? "" : "s"}`}
+                  </time>
+                </div>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                  <button type="button" className="admin-link-btn" onClick={() => restaurarTorneo(t.id)}>Restaurar</button>
+                  <button type="button" className="admin-link-btn" onClick={() => borrarTorneoDefinitivo(t.id)}>Borrar definitivamente</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <>
+          {torneos.length > 0 && torneosFiltrados.length === 0 && (
+            <p className="chronicle-status">
+              {filtro === "terminados" ? "Todavía no hay torneos terminados." : "No hay torneos en curso — todos están marcados como terminados."}
+            </p>
+          )}
 
-      <ul className="admin-torneos-club-list">
-        {torneosFiltrados.map((t) => (
-          <li key={t.id} className="admin-list-item">
-            <div>
-              <strong>{t.nombre}</strong>
-              <time>
-                {formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)} ·{" "}
-                {t.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
-                {t.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"} ·{" "}
-                {MODALIDADES.find((m) => m.id === t.modalidad)?.etiqueta || "Individual"}
-                {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
-                {t.finalizado ? " · Finalizado" : ""}
-              </time>
-            </div>
-            <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="admin-link-btn"
-                onClick={() => cambiarVisibilidad(t, t.visibilidad === "publico" ? "privado" : "publico")}
-              >
-                Hacer {t.visibilidad === "publico" ? "privado" : "público"}
-              </button>
-              <button type="button" className="admin-link-btn" onClick={() => cambiarFinalizado(t, !t.finalizado)}>
-                {t.finalizado ? "Reabrir torneo" : "Marcar finalizado"}
-              </button>
-              <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(t.id)}>Gestionar</button>
-              <a className="admin-link-btn" href={`${window.location.origin}/torneo/${t.id}`} target="_blank" rel="noopener noreferrer">
-                Ver página / QR
-              </a>
-              <button type="button" className="admin-link-btn" onClick={() => borrarTorneo(t.id)}>Borrar</button>
-            </div>
-          </li>
-        ))}
-      </ul>
+          <ul className="admin-torneos-club-list">
+            {torneosFiltrados.map((t) => (
+              <li key={t.id} className="admin-list-item">
+                <div>
+                  <strong>{t.nombre}</strong>
+                  <time>
+                    {formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)} ·{" "}
+                    {t.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
+                    {t.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"} ·{" "}
+                    {MODALIDADES.find((m) => m.id === t.modalidad)?.etiqueta || "Individual"}
+                    {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
+                    {t.finalizado ? " · Finalizado" : ""}
+                  </time>
+                </div>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="admin-link-btn"
+                    onClick={() => cambiarVisibilidad(t, t.visibilidad === "publico" ? "privado" : "publico")}
+                  >
+                    Hacer {t.visibilidad === "publico" ? "privado" : "público"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarFinalizado(t, !t.finalizado)}>
+                    {t.finalizado ? "Reabrir torneo" : "Marcar finalizado"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(t.id)}>Gestionar</button>
+                  <a className="admin-link-btn" href={`${window.location.origin}/torneo/${t.id}`} target="_blank" rel="noopener noreferrer">
+                    Ver página / QR
+                  </a>
+                  <button type="button" className="admin-link-btn" onClick={() => borrarTorneo(t.id)}>Borrar</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }

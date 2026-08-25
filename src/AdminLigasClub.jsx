@@ -18,6 +18,7 @@ function formatFecha(iso) {
 
 export default function AdminLigasClub({ token, salir }) {
   const [ligas, setLigas] = useState([]);
+  const [papelera, setPapelera] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
   const [gestionandoId, setGestionandoId] = useState(null);
@@ -45,22 +46,29 @@ export default function AdminLigasClub({ token, salir }) {
       .then(setLigas)
       .catch(() => {});
   };
+  const cargarPapelera = () => {
+    fetch(`${API_URL}/api/ligas-club/papelera`, { headers: { "x-admin-token": token } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setPapelera)
+      .catch(() => {});
+  };
   const cargarJugadores = () => {
     fetch(`${API_URL}/api/jugadores`, { headers: { "x-admin-token": token } })
       .then((r) => (r.ok ? r.json() : []))
       .then(setJugadores)
       .catch(() => {});
   };
-  
+
   const cargarMaquinas = () => {
     fetch(`${API_URL}/api/maquinas`)
       .then((r) => (r.ok ? r.json() : []))
       .then(setMaquinas)
       .catch(() => {});
   };
-  
+
   useEffect(() => {
     cargarLigas();
+    cargarPapelera();
     cargarJugadores();
     cargarMaquinas();
   }, []);
@@ -121,10 +129,23 @@ export default function AdminLigasClub({ token, salir }) {
     cargarLigas();
   }
   async function borrarLiga(id) {
-    if (!confirm("¿Borrar esta liga, sus participantes y todo su calendario?")) return;
+    if (!confirm("¿Enviar esta liga a la papelera? Se podrá restaurar durante 7 días; pasado ese plazo se borrará ya del todo, con sus participantes y calendario.")) return;
     await fetch(`${API_URL}/api/ligas-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     if (gestionandoId === id) setGestionandoId(null);
     cargarLigas();
+    cargarPapelera();
+  }
+
+  async function restaurarLiga(id) {
+    await fetch(`${API_URL}/api/ligas-club/${id}/restaurar`, { method: "POST", headers: { "x-admin-token": token } });
+    cargarLigas();
+    cargarPapelera();
+  }
+
+  async function borrarLigaDefinitiva(id) {
+    if (!confirm("¿Borrar esta liga definitivamente? Esto no se puede deshacer.")) return;
+    await fetch(`${API_URL}/api/ligas-club/${id}/definitivo`, { method: "DELETE", headers: { "x-admin-token": token } });
+    cargarPapelera();
   }
 
   async function crearParticipante(ligaId, datos) {
@@ -330,7 +351,7 @@ export default function AdminLigasClub({ token, salir }) {
 
       {ligas.length === 0 && <p className="chronicle-status">Todavía no hay ligas del club.</p>}
 
-      {ligas.length > 0 && (
+      {(ligas.length > 0 || papelera.length > 0) && (
         <nav className="admin-tabs" style={{ marginBottom: "1rem" }}>
           <button
             type="button"
@@ -346,42 +367,74 @@ export default function AdminLigasClub({ token, salir }) {
           >
             Terminadas ({ligas.filter((l) => l.finalizado).length})
           </button>
+          <button
+            type="button"
+            className={`admin-tab ${filtro === "papelera" ? "admin-tab-active" : ""}`}
+            onClick={() => setFiltro("papelera")}
+          >
+            Papelera ({papelera.length})
+          </button>
         </nav>
       )}
 
-      {ligas.length > 0 && ligasFiltradas.length === 0 && (
-        <p className="chronicle-status">
-          {filtro === "terminadas" ? "Todavía no hay ligas terminadas." : "No hay ligas en curso — todas están marcadas como terminadas."}
-        </p>
-      )}
+      {filtro === "papelera" ? (
+        <>
+          {papelera.length === 0 && <p className="chronicle-status">La papelera está vacía.</p>}
+          <ul className="admin-torneos-club-list">
+            {papelera.map((l) => (
+              <li key={l.id} className="admin-list-item">
+                <div>
+                  <strong>{l.nombre}</strong>
+                  <time>
+                    {formatFecha(l.fechaInicio)} – {formatFecha(l.fechaFin)} ·{" "}
+                    {l.diasRestantes === 0 ? "se purga hoy" : `se purga en ${l.diasRestantes} día${l.diasRestantes === 1 ? "" : "s"}`}
+                  </time>
+                </div>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                  <button type="button" className="admin-link-btn" onClick={() => restaurarLiga(l.id)}>Restaurar</button>
+                  <button type="button" className="admin-link-btn" onClick={() => borrarLigaDefinitiva(l.id)}>Borrar definitivamente</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <>
+          {ligas.length > 0 && ligasFiltradas.length === 0 && (
+            <p className="chronicle-status">
+              {filtro === "terminadas" ? "Todavía no hay ligas terminadas." : "No hay ligas en curso — todas están marcadas como terminadas."}
+            </p>
+          )}
 
-      <ul className="admin-torneos-club-list">
-        {ligasFiltradas.map((l) => (
-          <li key={l.id} className="admin-list-item">
-            <div>
-              <strong>{l.nombre}</strong>
-              <time>
-                {formatFecha(l.fechaInicio)} – {formatFecha(l.fechaFin)} ·{" "}
-                {l.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
-                {MODALIDADES.find((m) => m.id === l.modalidad)?.etiqueta || "Individual"} ·{" "}
-                {l.vueltas === 2 ? "Ida y vuelta" : "Ida"} · {l.numeroParticipantes} participantes
-                {l.numeroGrupos ? ` · ${l.numeroGrupos} grupos` : ""}
-                {l.finalizado ? " · Finalizada" : ""}
-              </time>
-            </div>
-            <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-              <button type="button" className="admin-link-btn" onClick={() => cambiarVisibilidad(l, l.visibilidad === "publico" ? "privado" : "publico")}>
-                Hacer {l.visibilidad === "publico" ? "privado" : "público"}
-              </button>
-              <button type="button" className="admin-link-btn" onClick={() => cambiarFinalizado(l, !l.finalizado)}>
-                {l.finalizado ? "Reabrir" : "Marcar finalizada"}
-              </button>
-              <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(l.id)}>Gestionar</button>
-              <button type="button" className="admin-link-btn" onClick={() => borrarLiga(l.id)}>Borrar</button>
-            </div>
-          </li>
-        ))}
-      </ul>
+          <ul className="admin-torneos-club-list">
+            {ligasFiltradas.map((l) => (
+              <li key={l.id} className="admin-list-item">
+                <div>
+                  <strong>{l.nombre}</strong>
+                  <time>
+                    {formatFecha(l.fechaInicio)} – {formatFecha(l.fechaFin)} ·{" "}
+                    {l.visibilidad === "publico" ? "Público" : "Privado"} ·{" "}
+                    {MODALIDADES.find((m) => m.id === l.modalidad)?.etiqueta || "Individual"} ·{" "}
+                    {l.vueltas === 2 ? "Ida y vuelta" : "Ida"} · {l.numeroParticipantes} participantes
+                    {l.numeroGrupos ? ` · ${l.numeroGrupos} grupos` : ""}
+                    {l.finalizado ? " · Finalizada" : ""}
+                  </time>
+                </div>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarVisibilidad(l, l.visibilidad === "publico" ? "privado" : "publico")}>
+                    Hacer {l.visibilidad === "publico" ? "privado" : "público"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarFinalizado(l, !l.finalizado)}>
+                    {l.finalizado ? "Reabrir" : "Marcar finalizada"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(l.id)}>Gestionar</button>
+                  <button type="button" className="admin-link-btn" onClick={() => borrarLiga(l.id)}>Borrar</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
