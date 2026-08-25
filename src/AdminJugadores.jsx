@@ -85,7 +85,13 @@ export default function AdminJugadores({ token, salir }) {
 
   async function borrar(id) {
     if (!confirm("¿Borrar este jugador? Si tiene un socio vinculado, solo se borra la ficha de jugador, no la cuenta.")) return;
-    await fetch(`${API_URL}/api/jugadores/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    setMensaje(null);
+    const res = await fetch(`${API_URL}/api/jugadores/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMensaje({ tipo: "error", texto: data.error || "No se pudo borrar el jugador." });
+      return;
+    }
     cargar();
   }
 

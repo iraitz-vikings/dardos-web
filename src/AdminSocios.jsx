@@ -93,9 +93,15 @@ export default function AdminSocios({ token, salir }) {
   }
 
   async function eliminarSocio(id) {
-    if (!confirm("¿Eliminar la cuenta de este socio?")) return;
+    if (!confirm("¿Eliminar la cuenta de este socio? Su ficha de jugador se conserva (pasa a ser invitado sin cuenta), con todo su historial.")) return;
+    setMensaje(null);
     const res = await fetch(`${API_URL}/api/auth/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     if (manejarAuthError(res)) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMensaje({ tipo: "error", texto: data.error || "No se pudo eliminar la cuenta." });
+      return;
+    }
     cargarSocios();
   }
 

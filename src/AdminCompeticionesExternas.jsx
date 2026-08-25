@@ -70,7 +70,13 @@ export default function AdminCompeticionesExternas({ token, salir }) {
   }
   async function borrarPlataforma(id) {
     if (!confirm("¿Borrar esta plataforma? (debe no tener torneos)")) return;
-    await fetch(`${API_URL}/api/competiciones-externas/plataformas/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    setMensaje(null);
+    const res = await fetch(`${API_URL}/api/competiciones-externas/plataformas/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMensaje({ tipo: "error", texto: data.error || "No se pudo borrar la plataforma." });
+      return;
+    }
     cargarTodo();
   }
 
@@ -207,6 +213,7 @@ export default function AdminCompeticionesExternas({ token, salir }) {
           </li>
         ))}
       </ul>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
 
       <h3 style={{ marginTop: "1.5rem" }}>Torneos / Ligas externas</h3>
       <form onSubmit={crearTorneo} className="admin-form">
