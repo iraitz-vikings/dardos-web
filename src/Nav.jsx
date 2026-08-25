@@ -2,6 +2,7 @@ import { useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
 const NAV_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png";
 import LiveTicker from "./LiveTicker.jsx";
+import Buscador from "./Buscador.jsx";
 import { useLang } from "./i18n.jsx";
 
 export default function Nav() {
@@ -28,6 +29,7 @@ export default function Nav() {
         </button>
 
         <nav className={`nav-links ${menuOpen ? "nav-links-open" : ""}`}>
+          <Buscador />
           <a href="/#cronica" onClick={() => setMenuOpen(false)}>{t("nav.cronica")}</a>
           <a href="/galeria" onClick={() => setMenuOpen(false)}>{t("nav.galeria")}</a>
           <a href="/#torneos-en-directo" onClick={() => setMenuOpen(false)}>{t("nav.torneosDirecto")}</a>

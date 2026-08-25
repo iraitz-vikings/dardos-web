@@ -189,7 +189,7 @@ export default function App() {
           {estado === "ok" && noticias.length > 0 && (
             <ol className="timeline">
               {noticias.map((n) => (
-                <li key={n.id} className="timeline-item">
+                <li key={n.id} id={`noticia-${n.id}`} className="timeline-item">
                   <div className="timeline-node" aria-hidden="true">⚔</div>
                   <div className="timeline-content">
                     <time>{formatFecha(n.fechaPublicacion)}</time>
