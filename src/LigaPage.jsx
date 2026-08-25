@@ -10,41 +10,24 @@ function formatFecha(iso) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function calcularClasificacion(liga) {
-  const stats = {};
-  function fila(nombre) {
-    if (!stats[nombre]) stats[nombre] = { nombre, jugados: 0, victorias: 0, empates: 0, derrotas: 0, partidasGanadas: 0, partidasPerdidas: 0, puntos: 0 };
-    return stats[nombre];
-  }
-  for (const p of liga.participantes || []) fila(p.etiqueta);
-  function parseResultado(resultado) {
-    if (!resultado) return null;
-    const m = resultado.trim().match(/^(\d+)\s*-\s*(\d+)$/);
-    if (!m) return null;
-    return [Number(m[1]), Number(m[2])];
-  }
-  for (const p of liga.partidos || []) {
-    const numeros = parseResultado(p.resultado);
-    if (numeros) {
-      const [a, b] = numeros;
-      const f1 = fila(p.participante1);
-      const f2 = fila(p.participante2);
-      f1.jugados++; f2.jugados++;
-      f1.partidasGanadas += a; f1.partidasPerdidas += b;
-      f2.partidasGanadas += b; f2.partidasPerdidas += a;
-      if (a > b) { f1.victorias++; f1.puntos += 2; f2.derrotas++; }
-      else if (a < b) { f2.victorias++; f2.puntos += 2; f1.derrotas++; }
-      else { f1.empates++; f2.empates++; f1.puntos += 1; f2.puntos += 1; }
-    } else if (p.ganador) {
-      const perdedor = p.ganador === p.participante1 ? p.participante2 : p.participante1;
-      const fg = fila(p.ganador);
-      const fp = fila(perdedor);
-      fg.jugados++; fp.jugados++;
-      fg.victorias++; fg.puntos += 2;
-      fp.derrotas++;
-    }
-  }
-  return Object.values(stats).sort((x, y) => y.puntos - x.puntos || (y.partidasGanadas - y.partidasPerdidas) - (x.partidasGanadas - x.partidasPerdidas));
+function TablaClasificacion({ filas }) {
+  if (!filas || filas.length === 0) return null;
+  return (
+    <table className="admin-tabla-clasificacion">
+      <thead>
+        <tr><th>#</th><th>Participante</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>Pts</th></tr>
+      </thead>
+      <tbody>
+        {filas.map((f, i) => (
+          <tr key={f.nombre}>
+            <td>{i + 1}</td><td>{f.nombre}</td><td>{f.jugados}</td><td>{f.victorias}</td>
+            <td>{f.empates}</td><td>{f.derrotas}</td><td>{f.partidasGanadas}</td>
+            <td>{f.partidasPerdidas}</td><td><strong>{f.puntos}</strong></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export default function LigaPage({ id }) {
@@ -52,6 +35,8 @@ export default function LigaPage({ id }) {
   const [estado, setEstado] = useState("cargando");
   const [vista, setVista] = useState("liga");
   const [busqueda, setBusqueda] = useState("");
+
+  const [clasificacion, setClasificacion] = useState(null);
 
   useEffect(() => {
     let primera = true;
@@ -71,21 +56,31 @@ export default function LigaPage({ id }) {
         .finally(() => {
           primera = false;
         });
+      // Clasificación calculada en el backend (con la cascada de desempate
+      // de lib/clasificacionLiga.js), ya dividida por grupo si la liga los
+      // usa — así el orden mostrado aquí es siempre el mismo que en el
+      // panel de admin.
+      fetch(`${API_URL}/api/ligas-club/${id}/clasificacion`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then(setClasificacion)
+        .catch(() => {});
     };
     cargar();
     const intervalo = setInterval(cargar, 15000);
     return () => clearInterval(intervalo);
   }, [id]);
 
-  const clasificacion = liga ? calcularClasificacion(liga) : [];
-  const porJornada = {};
+  const porGrupoJornada = {};
   for (const p of liga?.partidos || []) {
-    if (!porJornada[p.jornada]) porJornada[p.jornada] = [];
-    porJornada[p.jornada].push(p);
+    const g = p.grupo || "_sin_grupo";
+    if (!porGrupoJornada[g]) porGrupoJornada[g] = {};
+    if (!porGrupoJornada[g][p.jornada]) porGrupoJornada[g][p.jornada] = [];
+    porGrupoJornada[g][p.jornada].push(p);
   }
-  const jornadas = Object.keys(porJornada).map(Number).sort((a, b) => a - b);
+  const gruposConCalendario = Object.keys(porGrupoJornada).sort();
 
   const cuadrante = liga?.cuadrantes?.[0];
+  const letrasGrupos = liga?.numeroGrupos ? Array.from({ length: liga.numeroGrupos }, (_, i) => String.fromCharCode(65 + i)) : [];
 
   return (
     <>
@@ -129,40 +124,39 @@ export default function LigaPage({ id }) {
 
               {vista === "liga" && (
                 <>
-                  {clasificacion.length > 0 && (
+                  {clasificacion && (liga.numeroGrupos ? letrasGrupos.some((g) => (clasificacion.grupos[g] || []).length > 0) : (clasificacion.sinGrupo || []).length > 0) && (
                     <>
                       <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Clasificación</h2>
-                      <table className="admin-tabla-clasificacion">
-                        <thead>
-                          <tr><th>#</th><th>Participante</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>Pts</th></tr>
-                        </thead>
-                        <tbody>
-                          {clasificacion.map((f, i) => (
-                            <tr key={f.nombre}>
-                              <td>{i + 1}</td><td>{f.nombre}</td><td>{f.jugados}</td><td>{f.victorias}</td>
-                              <td>{f.empates}</td><td>{f.derrotas}</td><td>{f.partidasGanadas}</td>
-                              <td>{f.partidasPerdidas}</td><td><strong>{f.puntos}</strong></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      {liga.numeroGrupos
+                        ? letrasGrupos.map((g) => (
+                            <div key={g} style={{ marginBottom: "1.5rem" }}>
+                              <h3>Grupo {g}</h3>
+                              <TablaClasificacion filas={clasificacion.grupos[g]} />
+                            </div>
+                          ))
+                        : <TablaClasificacion filas={clasificacion.sinGrupo} />}
                     </>
                   )}
 
-                  {jornadas.length > 0 && (
+                  {gruposConCalendario.length > 0 && (
                     <>
                       <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Calendario</h2>
-                      {jornadas.map((j) => (
-                        <div key={j} style={{ marginBottom: "1rem" }}>
-                          <strong>Jornada {j}</strong>
-                          <ul>
-                            {porJornada[j].map((p) => (
-                              <li key={p.id}>
-                                {p.participante1} vs {p.participante2}
-                                {p.resultado ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
-                              </li>
-                            ))}
-                          </ul>
+                      {gruposConCalendario.map((g) => (
+                        <div key={g} style={{ marginBottom: "1.5rem" }}>
+                          {liga.numeroGrupos && <h3>Grupo {g === "_sin_grupo" ? "sin asignar" : g}</h3>}
+                          {Object.keys(porGrupoJornada[g]).map(Number).sort((a, b) => a - b).map((j) => (
+                            <div key={j} style={{ marginBottom: "1rem" }}>
+                              <strong>Jornada {j}</strong>
+                              <ul>
+                                {porGrupoJornada[g][j].map((p) => (
+                                  <li key={p.id}>
+                                    {p.participante1} vs {p.participante2}
+                                    {p.resultado ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </>
