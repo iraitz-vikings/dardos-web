@@ -917,6 +917,49 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .nav-lang button { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: inherit; text-transform: uppercase; }
 .nav-lang-activo { color: var(--ember) !important; font-weight: 600; }
 
+/* Buscador global (barra de navegación) */
+.nav-buscador { position: relative; }
+.nav-buscador-input {
+  width: 140px;
+  background: var(--iron-2);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  padding: .4rem .6rem;
+  font-size: .74rem;
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  transition: width .2s ease, border-color .15s ease;
+}
+.nav-buscador-input:focus { border-color: var(--ember); outline: none; width: 190px; }
+.nav-buscador-resultados {
+  position: absolute;
+  top: calc(100% + .5rem);
+  left: 0;
+  width: 260px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: #0e0f13f2;
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  padding: .6rem;
+  z-index: 20;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.nav-buscador-estado { font-size: .78rem; color: var(--bone-dim); padding: .2rem .3rem; }
+.nav-buscador-grupo { margin-bottom: .6rem; }
+.nav-buscador-grupo:last-child { margin-bottom: 0; }
+.nav-buscador-grupo-titulo { font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ember); padding: .2rem .3rem; }
+.nav-buscador-item { display: block; padding: .35rem .3rem; font-size: .82rem; color: var(--bone); border-radius: 2px; }
+.nav-buscador-item:hover, .nav-buscador-item:focus-visible { background: var(--iron-2); color: var(--ember); }
+@media (max-width: 860px) {
+  .nav-buscador { width: 100%; padding: 1rem clamp(1.2rem, 5vw, 3rem) 0; }
+  .nav-buscador-input { width: 100%; }
+  .nav-buscador-input:focus { width: 100%; }
+  .nav-buscador-resultados { left: clamp(1.2rem, 5vw, 3rem); right: clamp(1.2rem, 5vw, 3rem); width: auto; }
+}
+
 .admin-tabla-clasificacion { width: 100%; border-collapse: collapse; margin-top: .8rem; font-size: .85rem; }
 .admin-tabla-clasificacion th, .admin-tabla-clasificacion td { border: 1px solid var(--line); padding: .4rem .6rem; text-align: center; }
 .admin-tabla-clasificacion th { color: var(--ember); text-transform: uppercase; font-size: .72rem; letter-spacing: .04em; }

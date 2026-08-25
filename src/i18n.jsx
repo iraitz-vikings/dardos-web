@@ -9,6 +9,10 @@ const dic = {
     "nav.proximoTorneo": "Próximo torneo",
     "nav.contacto": "Contacto",
     "nav.socios": "Socios",
+    "nav.buscarPlaceholder": "Buscar…",
+    "nav.buscando": "Buscando…",
+    "nav.sinResultados": "Sin resultados.",
+    "nav.ligas": "Ligas",
 
     "socios.eyebrow": "Portal privado",
     "socios.title": "Zona de socios",
@@ -83,6 +87,10 @@ const dic = {
     "nav.proximoTorneo": "Hurrengo txapelketa",
     "nav.contacto": "Kontaktua",
     "nav.socios": "Bazkideak",
+    "nav.buscarPlaceholder": "Bilatu…",
+    "nav.buscando": "Bilatzen…",
+    "nav.sinResultados": "Emaitzarik ez.",
+    "nav.ligas": "Ligak",
 
     "socios.eyebrow": "Barne atari pribatua",
     "socios.title": "Bazkideen area",
