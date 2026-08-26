@@ -409,8 +409,10 @@ function simboloMarcas(n) {
   if (n <= 0) return "—";
   if (n === 1) return "／";
   if (n === 2) return "✕";
-  if (n === 3) return "⊗";
-  return `⊗ +${n - 3}`;
+  // A partir de 3 queda cerrado (⊗); los impactos de más ya se reflejan en
+  // la puntuación (tarjetas de arriba), así que aquí no hace falta repetir
+  // el "+N" — Iraitz lo pidió quitar por redundante tras probarlo.
+  return "⊗";
 }
 
 function MarcadorCricket() {
@@ -538,6 +540,14 @@ function MarcadorCricket() {
 
   return (
     <div>
+      <div className="marcador-jugadores">
+        {unidades.map((u, i) => (
+          <TarjetaUnidad key={u.id} unidad={u} activa={turnoIdx === i && ganadorIdx === null} esGanadora={ganadorIdx === i}>
+            <span className="marcador-restante">{puntos[i]}</span>
+          </TarjetaUnidad>
+        ))}
+      </div>
+
       <div className="marcador-tabla-scroll">
         <table className="marcador-tabla">
           <thead>
@@ -561,14 +571,6 @@ function MarcadorCricket() {
                 ))}
               </tr>
             ))}
-            <tr>
-              <th scope="row">Puntos</th>
-              {unidades.map((u, i) => (
-                <td key={u.id} style={{ fontWeight: "bold" }}>
-                  {puntos[i]}
-                </td>
-              ))}
-            </tr>
           </tbody>
         </table>
       </div>
