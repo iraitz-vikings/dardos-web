@@ -8,17 +8,23 @@
 // empezando por el 20 arriba del todo.
 export const ORDEN_SECTORES = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
-// Radios estándar (WDF/PDC, en mm) de cada anillo, normalizados respecto al
-// radio exterior del anillo de doble (170mm = borde exterior de la zona de
-// puntuación). Un click/tap se traduce a estas proporciones sea cual sea el
-// tamaño en píxeles con el que se dibuje la diana en pantalla.
+// Radios de cada anillo, normalizados respecto al radio exterior del anillo
+// de doble (1.0 = borde exterior de la zona de puntuación). El bull usa las
+// proporciones reales (WDF/PDC, 6.35mm/15.9mm sobre 170mm). Los anillos de
+// triple y doble se han ENSANCHADO a propósito respecto a una diana real
+// (que ronda un 5% del radio cada uno) — feedback de Iraitz tras probarlo en
+// el móvil: son muy finos para acertar con el dedo en una herramienta táctil
+// de apoyo, así que aquí se sacrifica fidelidad exacta a cambio de que sea
+// cómodo de usar. Como tanto la diana (Diana.jsx) como la detección del
+// click (resultadoDardo, más abajo) leen estos mismos valores, visual y
+// zona clicable van siempre sincronizados.
 export const RADIOS = {
   bullInterior: 6.35 / 170, // bull doble (50)
   bullExterior: 15.9 / 170, // bull simple (25)
-  tripleInterior: 99 / 170,
-  tripleExterior: 107 / 170,
-  dobleInterior: 162 / 170,
-  dobleExterior: 170 / 170,
+  tripleInterior: 0.56,
+  tripleExterior: 0.65,
+  dobleInterior: 0.9,
+  dobleExterior: 1.0,
 };
 
 // dx, dy: distancia al centro de la diana, ya dividida entre el radio en

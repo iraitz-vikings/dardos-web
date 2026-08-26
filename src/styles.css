@@ -1076,10 +1076,11 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   width: 100%;
   max-width: 360px;
   display: block;
-  margin: 0 auto;
+  margin: 1.4rem auto .6rem;
   cursor: crosshair;
   touch-action: manipulation;
 }
 .diana-deshabilitada { cursor: default; opacity: .6; pointer-events: none; }
 .diana-numero { font-family: 'IBM Plex Mono', monospace; font-size: 15px; fill: var(--bone); }
 .diana-marca { fill: #ffe36b; stroke: #14151a; stroke-width: 1.5; }
+.marcador-boton-destacado { border-color: var(--ember); color: var(--ember); background: #9a2b2814; }
