@@ -65,7 +65,7 @@ export default function Diana({ onTirada, deshabilitada, marcas = [] }) {
   return (
     <svg
       ref={svgRef}
-      viewBox="0 0 400 400"
+      viewBox="-20 -20 440 440"
       className={`diana-svg ${deshabilitada ? "diana-deshabilitada" : ""}`}
       onClick={manejarClick}
       role="img"

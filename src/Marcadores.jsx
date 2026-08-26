@@ -217,6 +217,11 @@ function Marcador501() {
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
+  // true cuando la visita ya ha terminado (3 dardos o bust) pero todavía no
+  // se ha pulsado "Terminar turno ahora" — a petición de Iraitz, el turno ya
+  // NO pasa solo automáticamente al tercer dardo, para dar tiempo a leer el
+  // resultado antes de pasar al siguiente jugador.
+  const [finVisita, setFinVisita] = useState(false);
 
   function empezarPartida() {
     const base = construirUnidades(configBase);
@@ -228,6 +233,7 @@ function Marcador501() {
     setGanadorIdx(null);
     setMensaje("");
     setHistorial([]);
+    setFinVisita(false);
     setFase("jugando");
   }
 
@@ -240,11 +246,13 @@ function Marcador501() {
     setTurnoIdx(siguienteIdx);
     setTiradasVisita([]);
     setRestanteInicioVisita(conIntegranteActualizado[siguienteIdx].restante);
+    setMensaje("");
+    setFinVisita(false);
   }
 
   function tirar(resultado, pos) {
-    if (ganadorIdx !== null) return;
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje })]);
+    if (ganadorIdx !== null || finVisita) return;
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita })]);
 
     const unidad = unidades[turnoIdx];
     const yaAbierto = unidad.abierto;
@@ -286,7 +294,7 @@ function Marcador501() {
       return;
     }
     if (bust || nuevasTiradas.length >= 3) {
-      finalizarVisita(nuevasUnidades, turnoIdx);
+      setFinVisita(true);
     }
   }
 
@@ -300,15 +308,16 @@ function Marcador501() {
     setRestanteInicioVisita(previo.restanteInicioVisita);
     setGanadorIdx(previo.ganadorIdx);
     setMensaje(previo.mensaje);
+    setFinVisita(previo.finVisita);
   }
 
   const unidadActual = fase === "jugando" ? unidades[turnoIdx] : null;
   const sugerencia = useMemo(() => {
-    if (!unidadActual || ganadorIdx !== null || !unidadActual.abierto) return null;
+    if (!unidadActual || ganadorIdx !== null || finVisita || !unidadActual.abierto) return null;
     const dardosDisponibles = 3 - tiradasVisita.length;
     if (dardosDisponibles <= 0) return null;
     return buscarCierre(unidadActual.restante, dardosDisponibles, cierre);
-  }, [unidadActual, tiradasVisita.length, cierre, ganadorIdx]);
+  }, [unidadActual, tiradasVisita.length, cierre, ganadorIdx, finVisita]);
 
   if (fase === "jugadores") {
     return <SelectorModoJugadores onListo={(c) => { setConfigBase(c); setFase("reglas"); }} />;
@@ -364,17 +373,21 @@ function Marcador501() {
       ) : (
         <>
           <p>
-            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {tiradasVisita.length + 1} de 3
+            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {Math.min(tiradasVisita.length + 1, 3)} de 3
           </p>
-          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} />
+          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} deshabilitada={finVisita} />
           <p className="marcador-tiradas-visita">
             Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
           </p>
           {sugerencia && <p className="admin-msg admin-msg-ok">Sugerencia de cierre: {sugerencia.join(" → ")}</p>}
           {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
           <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-            <button type="button" className="admin-link-btn" onClick={() => finalizarVisita(unidades, turnoIdx)}>
-              Terminar turno ahora
+            <button
+              type="button"
+              className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+              onClick={() => finalizarVisita(unidades, turnoIdx)}
+            >
+              {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
             </button>
             <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
               Deshacer último dardo
@@ -411,6 +424,9 @@ function MarcadorCricket() {
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
+  // true cuando ya se han tirado los 3 dardos de la visita pero todavía no
+  // se ha pulsado "Terminar turno ahora" — el turno no pasa solo.
+  const [finVisita, setFinVisita] = useState(false);
 
   const puntos = useMemo(
     () => (modoCricket === "cutthroat" ? calcularPuntosCricketCutThroat(unidades) : calcularPuntosCricket(unidades)),
@@ -426,6 +442,7 @@ function MarcadorCricket() {
     setGanadorIdx(null);
     setMensaje("");
     setHistorial([]);
+    setFinVisita(false);
     setFase("jugando");
   }
 
@@ -437,11 +454,13 @@ function MarcadorCricket() {
     setUnidades(conIntegranteActualizado);
     setTurnoIdx(siguienteIdx);
     setTiradasVisita([]);
+    setMensaje("");
+    setFinVisita(false);
   }
 
   function tirar(resultado, pos) {
-    if (ganadorIdx !== null) return;
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, ganadorIdx, mensaje })]);
+    if (ganadorIdx !== null || finVisita) return;
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, ganadorIdx, mensaje, finVisita })]);
 
     const info = marcasDelDardo(resultado);
     let nuevasUnidades = unidades;
@@ -471,7 +490,7 @@ function MarcadorCricket() {
     }
 
     if (nuevasTiradas.length >= 3) {
-      finalizarVisita(nuevasUnidades, turnoIdx);
+      setFinVisita(true);
     }
   }
 
@@ -484,6 +503,7 @@ function MarcadorCricket() {
     setTiradasVisita(previo.tiradasVisita);
     setGanadorIdx(previo.ganadorIdx);
     setMensaje(previo.mensaje);
+    setFinVisita(previo.finVisita);
   }
 
   if (fase === "jugadores") {
@@ -561,16 +581,20 @@ function MarcadorCricket() {
       ) : (
         <>
           <p style={{ marginTop: "1rem" }}>
-            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {tiradasVisita.length + 1} de 3
+            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {Math.min(tiradasVisita.length + 1, 3)} de 3
           </p>
-          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} />
+          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} deshabilitada={finVisita} />
           <p className="marcador-tiradas-visita">
             Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
           </p>
           {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
           <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-            <button type="button" className="admin-link-btn" onClick={() => finalizarVisita(unidades, turnoIdx)}>
-              Terminar turno ahora
+            <button
+              type="button"
+              className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+              onClick={() => finalizarVisita(unidades, turnoIdx)}
+            >
+              {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
             </button>
             <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
               Deshacer último dardo
