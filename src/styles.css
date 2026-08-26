@@ -1058,22 +1058,7 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .marcador-jugador-activo { border-color: var(--ember); background: #9a2b2814; }
 .marcador-jugador-ganador { border-color: #8fbf8f; }
 .marcador-restante { font-family: 'Cinzel', serif; font-size: 1.8rem; color: var(--bone); }
-.marcador-input-fila {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  flex-wrap: wrap;
-}
-.marcador-input-fila input {
-  background: var(--iron-2);
-  border: 1px solid var(--line);
-  color: var(--bone);
-  padding: .6rem .8rem;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: .88rem;
-  border-radius: 2px;
-  width: 120px;
-}
+.marcador-tiradas-visita { font-size: .82rem; color: var(--bone-dim); margin: .5rem 0; }
 .marcador-tabla-scroll { overflow-x: auto; }
 .marcador-tabla { border-collapse: collapse; width: 100%; min-width: 420px; }
 .marcador-tabla th, .marcador-tabla td {
@@ -1084,16 +1069,17 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .marcador-tabla thead th { color: var(--ember); text-transform: uppercase; font-size: .74rem; letter-spacing: .04em; }
 .marcador-tabla tbody th { color: var(--bone-dim); text-transform: uppercase; font-size: .74rem; }
-.marcador-celda { display: flex; align-items: center; justify-content: center; gap: .3rem; }
-.marcador-celda button {
-  background: none;
-  border: 1px solid var(--line);
-  color: var(--bone-dim);
-  width: 22px;
-  height: 22px;
-  line-height: 1;
-  font-size: .9rem;
-  padding: 0;
-}
-.marcador-celda button:hover { color: var(--bone); border-color: var(--ember); }
 .marcador-celda-cerrada { color: var(--ember); font-weight: bold; }
+
+/* Diana interactiva (Diana.jsx) */
+.diana-svg {
+  width: 100%;
+  max-width: 360px;
+  display: block;
+  margin: 0 auto;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+.diana-deshabilitada { cursor: default; opacity: .6; pointer-events: none; }
+.diana-numero { font-family: 'IBM Plex Mono', monospace; font-size: 15px; fill: var(--bone); }
+.diana-marca { fill: #ffe36b; stroke: #14151a; stroke-width: 1.5; }

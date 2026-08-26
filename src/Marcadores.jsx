@@ -1,65 +1,203 @@
 import { useMemo, useState } from "react";
+import Diana from "./Diana.jsx";
+import {
+  buscarCierre,
+  calcularPuntosCricket,
+  calcularPuntosCricketCutThroat,
+  construirUnidades,
+  cumpleModalidad,
+  jugadorHaCerradoTodo,
+  marcasDelDardo,
+  marcasVacias,
+  NUMEROS_CRICKET,
+  tiradorActual,
+} from "./dardosLogica.js";
 
 // Marcadores manuales de 501 y Cricket, para cuando se juega en una diana
-// sin contador electrónico. Decisión explícita de Iraitz: sin persistencia
-// (no se guarda nada al terminar, es solo una calculadora de apoyo mientras
-// se juega) y hasta 6 jugadores/parejas por partida. Todo vive en memoria
-// del componente — al recargar la página se pierde, como una libreta.
+// sin contador electrónico. Sin persistencia (calculadora de apoyo, no se
+// guarda nada al terminar la partida) y hasta 6 jugadores/parejas. La
+// geometría de la diana y el buscador de cierres viven en dardosLogica.js
+// (probados aparte con Node antes de integrarlos aquí).
 
-const MAX_JUGADORES = 6;
-const NOMBRE_POR_DEFECTO = (i) => `Jugador ${i + 1}`;
+const clonar = (x) => JSON.parse(JSON.stringify(x));
 
-// Pantalla de "cuántos jugadores y cómo se llaman", compartida por 501 y
-// Cricket (misma UI, cada juego la usa con su propio estado independiente).
-function ConfigurarJugadores({ onEmpezar }) {
-  const [cantidad, setCantidad] = useState(2);
-  const [nombres, setNombres] = useState([NOMBRE_POR_DEFECTO(0), NOMBRE_POR_DEFECTO(1)]);
+const ESTILO_BOTON_PRIMARIO = {
+  background: "var(--blood)",
+  color: "var(--bone)",
+  border: "none",
+  padding: ".7rem 1rem",
+  textTransform: "uppercase",
+  letterSpacing: ".04em",
+};
 
-  function cambiarCantidad(n) {
-    setCantidad(n);
-    setNombres((actual) => {
+function etiquetaModalidad(modalidad) {
+  if (modalidad === "doble") return "Doble";
+  if (modalidad === "master") return "Master (doble o triple)";
+  return "Simple (cualquier dardo)";
+}
+
+// --- Selector de jugadores/parejas, compartido por 501 y Cricket ---------
+
+function SelectorModoJugadores({ onListo }) {
+  const [modo, setModo] = useState("individual");
+  const [cantidadIndividual, setCantidadIndividual] = useState(2);
+  const [nombresIndividual, setNombresIndividual] = useState(["Jugador 1", "Jugador 2"]);
+  const [cantidadEquipos, setCantidadEquipos] = useState(2);
+  const [equipos, setEquipos] = useState([
+    { nombre: "Equipo 1", integrantes: ["Jugador 1", "Jugador 2"] },
+    { nombre: "Equipo 2", integrantes: ["Jugador 3", "Jugador 4"] },
+  ]);
+  const [marcadorCompartido, setMarcadorCompartido] = useState(true);
+
+  function cambiarCantidadIndividual(n) {
+    setCantidadIndividual(n);
+    setNombresIndividual((actual) => {
       const copia = actual.slice(0, n);
-      while (copia.length < n) copia.push(NOMBRE_POR_DEFECTO(copia.length));
+      while (copia.length < n) copia.push(`Jugador ${copia.length + 1}`);
       return copia;
     });
   }
 
-  function cambiarNombre(i, valor) {
-    setNombres((actual) => actual.map((n, idx) => (idx === i ? valor : n)));
+  function cambiarCantidadEquipos(n) {
+    setCantidadEquipos(n);
+    setEquipos((actual) => {
+      const copia = actual.slice(0, n);
+      while (copia.length < n) {
+        const idx = copia.length;
+        copia.push({ nombre: `Equipo ${idx + 1}`, integrantes: [`Jugador ${idx * 2 + 1}`, `Jugador ${idx * 2 + 2}`] });
+      }
+      return copia;
+    });
+  }
+
+  function continuar() {
+    if (modo === "individual") {
+      onListo({ modo, jugadores: nombresIndividual.map((n) => (n.trim() ? n.trim() : n)) });
+    } else {
+      onListo({
+        modo,
+        equipos: equipos.map((eq) => ({
+          nombre: eq.nombre.trim() || eq.nombre,
+          integrantes: eq.integrantes.map((n) => (n.trim() ? n.trim() : n)),
+        })),
+        marcadorCompartido,
+      });
+    }
   }
 
   return (
-    <div className="admin-form" style={{ maxWidth: 420 }}>
+    <div className="admin-form" style={{ maxWidth: 460 }}>
       <label>
-        Jugadores o parejas
-        <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
-          {Array.from({ length: MAX_JUGADORES - 1 }, (_, i) => i + 2).map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`admin-tab ${cantidad === n ? "admin-tab-active" : ""}`}
-              onClick={() => cambiarCantidad(n)}
-            >
-              {n}
-            </button>
-          ))}
+        Modo
+        <div className="live-tournament-toggle">
+          <button type="button" className={modo === "individual" ? "active" : ""} onClick={() => setModo("individual")}>
+            Individual
+          </button>
+          <button type="button" className={modo === "parejas" ? "active" : ""} onClick={() => setModo("parejas")}>
+            Parejas
+          </button>
         </div>
       </label>
 
-      {nombres.map((nombre, i) => (
-        <label key={i}>
-          Nombre {i + 1}
-          <input type="text" value={nombre} onChange={(e) => cambiarNombre(i, e.target.value)} maxLength={20} />
-        </label>
-      ))}
+      {modo === "individual" ? (
+        <>
+          <label>
+            Jugadores
+            <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+              {[2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`admin-tab ${cantidadIndividual === n ? "admin-tab-active" : ""}`}
+                  onClick={() => cambiarCantidadIndividual(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </label>
+          {nombresIndividual.map((nombre, i) => (
+            <label key={i}>
+              Nombre {i + 1}
+              <input
+                type="text"
+                value={nombre}
+                maxLength={20}
+                onChange={(e) => setNombresIndividual((a) => a.map((x, idx) => (idx === i ? e.target.value : x)))}
+              />
+            </label>
+          ))}
+        </>
+      ) : (
+        <>
+          <label>
+            Parejas
+            <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+              {[2, 3].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`admin-tab ${cantidadEquipos === n ? "admin-tab-active" : ""}`}
+                  onClick={() => cambiarCantidadEquipos(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </label>
+          {equipos.map((eq, i) => (
+            <div key={i} style={{ border: "1px solid var(--line)", padding: ".7rem", display: "flex", flexDirection: "column", gap: ".5rem" }}>
+              <label>
+                Nombre del equipo
+                <input
+                  type="text"
+                  value={eq.nombre}
+                  maxLength={24}
+                  onChange={(e) => setEquipos((a) => a.map((x, idx) => (idx === i ? { ...x, nombre: e.target.value } : x)))}
+                />
+              </label>
+              {eq.integrantes.map((nombre, j) => (
+                <label key={j}>
+                  Integrante {j + 1}
+                  <input
+                    type="text"
+                    value={nombre}
+                    maxLength={20}
+                    onChange={(e) =>
+                      setEquipos((a) =>
+                        a.map((x, idx) => (idx === i ? { ...x, integrantes: x.integrantes.map((n, jj) => (jj === j ? e.target.value : n)) } : x))
+                      )
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          ))}
+          <label style={{ flexDirection: "row", alignItems: "center", gap: ".5rem", textTransform: "none" }}>
+            <input type="checkbox" checked={marcadorCompartido} onChange={(e) => setMarcadorCompartido(e.target.checked)} style={{ width: "auto" }} />
+            Marcador compartido por pareja (si lo desmarcas, cada integrante lleva el suyo por separado)
+          </label>
+        </>
+      )}
 
-      <button
-        type="button"
-        onClick={() => onEmpezar(nombres.map((n) => (n.trim() ? n.trim() : NOMBRE_POR_DEFECTO(0))))}
-        style={{ background: "var(--blood)", color: "var(--bone)", border: "none", padding: ".7rem 1rem", textTransform: "uppercase", letterSpacing: ".04em" }}
-      >
-        Empezar partida
+      <button type="button" onClick={continuar} style={ESTILO_BOTON_PRIMARIO}>
+        Continuar
       </button>
+    </div>
+  );
+}
+
+// --- Tarjetas de jugador/pareja, compartidas por 501 y Cricket -----------
+
+function TarjetaUnidad({ unidad, activa, esGanadora, children }) {
+  return (
+    <div className={`marcador-jugador ${activa ? "marcador-jugador-activo" : ""} ${esGanadora ? "marcador-jugador-ganador" : ""}`}>
+      <strong>{unidad.etiqueta}</strong>
+      {unidad.equipoEtiqueta && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>{unidad.equipoEtiqueta}</span>}
+      {unidad.integrantes.length > 1 && (
+        <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(unidad)}</span>
+      )}
+      {children}
     </div>
   );
 }
@@ -67,131 +205,192 @@ function ConfigurarJugadores({ onEmpezar }) {
 // --- 501 -------------------------------------------------------------
 
 function Marcador501() {
-  const [jugadores, setJugadores] = useState(null); // null = sin configurar todavía
-  const [turno, setTurno] = useState(0);
-  const [historial, setHistorial] = useState([]);
-  const [ganador, setGanador] = useState(null);
-  const [tirada, setTirada] = useState("");
-  const [aviso, setAviso] = useState("");
+  const [fase, setFase] = useState("jugadores"); // "jugadores" | "reglas" | "jugando"
+  const [configBase, setConfigBase] = useState(null);
+  const [apertura, setApertura] = useState("simple");
+  const [cierre, setCierre] = useState("doble");
 
-  function empezar(nombres) {
-    setJugadores(nombres.map((nombre) => ({ nombre, restante: 501 })));
-    setTurno(0);
+  const [unidades, setUnidades] = useState([]);
+  const [turnoIdx, setTurnoIdx] = useState(0);
+  const [tiradasVisita, setTiradasVisita] = useState([]); // [{ resultado, pos }]
+  const [restanteInicioVisita, setRestanteInicioVisita] = useState(0);
+  const [ganadorIdx, setGanadorIdx] = useState(null);
+  const [mensaje, setMensaje] = useState("");
+  const [historial, setHistorial] = useState([]);
+
+  function empezarPartida() {
+    const base = construirUnidades(configBase);
+    const conEstado = base.map((u) => ({ ...u, restante: 501, abierto: apertura === "simple" }));
+    setUnidades(conEstado);
+    setTurnoIdx(0);
+    setTiradasVisita([]);
+    setRestanteInicioVisita(501);
+    setGanadorIdx(null);
+    setMensaje("");
     setHistorial([]);
-    setGanador(null);
-    setTirada("");
-    setAviso("");
+    setFase("jugando");
   }
 
-  function registrarTirada(e) {
-    e.preventDefault();
-    if (ganador !== null) return;
-    const n = Number(tirada);
-    if (!Number.isInteger(n) || n < 0 || n > 180) {
-      setAviso("Introduce un total de la tirada entre 0 y 180.");
-      return;
-    }
-    setAviso("");
-    const jugadorActual = jugadores[turno];
-    const restanteAntes = jugadorActual.restante;
-    const nuevoRestante = restanteAntes - n;
-    const esBust = nuevoRestante < 0 || nuevoRestante === 1;
+  function finalizarVisita(unidadesActualizadas, turnoQueTiro) {
+    const conIntegranteActualizado = unidadesActualizadas.map((u, i) =>
+      i === turnoQueTiro && u.integrantes.length > 1 ? { ...u, siguienteIntegranteIdx: (u.siguienteIntegranteIdx + 1) % u.integrantes.length } : u
+    );
+    const siguienteIdx = (turnoQueTiro + 1) % conIntegranteActualizado.length;
+    setUnidades(conIntegranteActualizado);
+    setTurnoIdx(siguienteIdx);
+    setTiradasVisita([]);
+    setRestanteInicioVisita(conIntegranteActualizado[siguienteIdx].restante);
+  }
 
-    setHistorial((h) => [...h, { jugador: turno, restanteAntes, tirada: n, bust: esBust }]);
+  function tirar(resultado, pos) {
+    if (ganadorIdx !== null) return;
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje })]);
 
-    if (esBust) {
-      setAviso(`${jugadorActual.nombre} se pasa (bust) — la tirada no cuenta, sigue con ${restanteAntes}.`);
-    } else if (nuevoRestante === 0) {
-      setJugadores((js) => js.map((j, i) => (i === turno ? { ...j, restante: 0 } : j)));
-      setGanador(turno);
-      setTirada("");
-      return;
+    const unidad = unidades[turnoIdx];
+    const yaAbierto = unidad.abierto;
+    let nuevoMensaje = "";
+    let nuevasUnidades = unidades;
+    let bust = false;
+    let gana = false;
+
+    if (!yaAbierto && !cumpleModalidad(resultado, apertura)) {
+      nuevoMensaje = `No cuenta: falta abrir a ${etiquetaModalidad(apertura).toLowerCase()}.`;
     } else {
-      setJugadores((js) => js.map((j, i) => (i === turno ? { ...j, restante: nuevoRestante } : j)));
+      const abreEsteDardo = !yaAbierto;
+      const nuevoRestante = unidad.restante - resultado.valor;
+      if (nuevoRestante < 0 || nuevoRestante === 1) {
+        bust = true;
+        nuevoMensaje = `Bust: la tirada no cuenta, sigue con ${restanteInicioVisita}.`;
+        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: u.abierto || abreEsteDardo } : u));
+      } else if (nuevoRestante === 0) {
+        if (cumpleModalidad(resultado, cierre)) {
+          gana = true;
+          nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
+        } else {
+          bust = true;
+          nuevoMensaje = `Bust: llegas a 0 pero ese dardo no vale para cerrar (hace falta ${etiquetaModalidad(cierre).toLowerCase()}).`;
+          nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: u.abierto || abreEsteDardo } : u));
+        }
+      } else {
+        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: nuevoRestante, abierto: true } : u));
+      }
     }
-    setTurno((t) => (t + 1) % jugadores.length);
-    setTirada("");
+
+    const nuevasTiradas = [...tiradasVisita, { resultado, pos }];
+    setUnidades(nuevasUnidades);
+    setTiradasVisita(nuevasTiradas);
+    setMensaje(nuevoMensaje);
+
+    if (gana) {
+      setGanadorIdx(turnoIdx);
+      return;
+    }
+    if (bust || nuevasTiradas.length >= 3) {
+      finalizarVisita(nuevasUnidades, turnoIdx);
+    }
   }
 
   function deshacer() {
     if (historial.length === 0) return;
-    const ultima = historial[historial.length - 1];
+    const previo = historial[historial.length - 1];
     setHistorial((h) => h.slice(0, -1));
-    setJugadores((js) => js.map((j, i) => (i === ultima.jugador ? { ...j, restante: ultima.restanteAntes } : j)));
-    setTurno(ultima.jugador);
-    setGanador(null);
-    setAviso("");
+    setUnidades(previo.unidades);
+    setTurnoIdx(previo.turnoIdx);
+    setTiradasVisita(previo.tiradasVisita);
+    setRestanteInicioVisita(previo.restanteInicioVisita);
+    setGanadorIdx(previo.ganadorIdx);
+    setMensaje(previo.mensaje);
   }
 
-  if (!jugadores) return <ConfigurarJugadores onEmpezar={empezar} />;
+  const unidadActual = fase === "jugando" ? unidades[turnoIdx] : null;
+  const sugerencia = useMemo(() => {
+    if (!unidadActual || ganadorIdx !== null || !unidadActual.abierto) return null;
+    const dardosDisponibles = 3 - tiradasVisita.length;
+    if (dardosDisponibles <= 0) return null;
+    return buscarCierre(unidadActual.restante, dardosDisponibles, cierre);
+  }, [unidadActual, tiradasVisita.length, cierre, ganadorIdx]);
+
+  if (fase === "jugadores") {
+    return <SelectorModoJugadores onListo={(c) => { setConfigBase(c); setFase("reglas"); }} />;
+  }
+
+  if (fase === "reglas") {
+    return (
+      <div className="admin-form" style={{ maxWidth: 420 }}>
+        <label>
+          Apertura
+          <div className="live-tournament-toggle">
+            {["simple", "doble", "master"].map((op) => (
+              <button key={op} type="button" className={apertura === op ? "active" : ""} onClick={() => setApertura(op)}>
+                {etiquetaModalidad(op)}
+              </button>
+            ))}
+          </div>
+        </label>
+        <label>
+          Cierre
+          <div className="live-tournament-toggle">
+            {["simple", "doble", "master"].map((op) => (
+              <button key={op} type="button" className={cierre === op ? "active" : ""} onClick={() => setCierre(op)}>
+                {etiquetaModalidad(op)}
+              </button>
+            ))}
+          </div>
+        </label>
+        <button type="button" onClick={empezarPartida} style={ESTILO_BOTON_PRIMARIO}>
+          Empezar partida
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <p className="chronicle-status" style={{ marginBottom: "1rem" }}>
-        Cada jugador empieza en 501. Tras cada turno, introduce el total sumado de las 3 tiradas
-        (entre 0 y 180). No se valida que el cierre sea a doble — si tu grupo juega con esa regla,
-        avisa vosotros mismos cuando el resto sea 1 o cuando alguien cierre sin doble.
-      </p>
-
       <div className="marcador-jugadores">
-        {jugadores.map((j, i) => (
-          <div key={i} className={`marcador-jugador ${turno === i && ganador === null ? "marcador-jugador-activo" : ""} ${ganador === i ? "marcador-jugador-ganador" : ""}`}>
-            <strong>{j.nombre}</strong>
-            <span className="marcador-restante">{j.restante}</span>
-          </div>
+        {unidades.map((u, i) => (
+          <TarjetaUnidad key={u.id} unidad={u} activa={turnoIdx === i && ganadorIdx === null} esGanadora={ganadorIdx === i}>
+            <span className="marcador-restante">{u.restante}</span>
+            {!u.abierto && apertura !== "simple" && (
+              <span style={{ fontSize: ".65em", color: "var(--ember)" }}>Sin abrir ({etiquetaModalidad(apertura)})</span>
+            )}
+          </TarjetaUnidad>
         ))}
       </div>
 
-      {ganador !== null ? (
+      {ganadorIdx !== null ? (
         <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem" }}>
-          🏆 ¡{jugadores[ganador].nombre} gana la partida!
+          🏆 ¡{unidades[ganadorIdx].etiqueta} gana la partida!
         </p>
       ) : (
-        <form onSubmit={registrarTirada} className="marcador-input-fila">
-          <span>Turno de <strong>{jugadores[turno].nombre}</strong>:</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={180}
-            value={tirada}
-            onChange={(e) => setTirada(e.target.value)}
-            placeholder="Total (0-180)"
-            autoFocus
-          />
-          <button type="submit" className="admin-link-btn">Registrar tirada</button>
-        </form>
+        <>
+          <p>
+            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {tiradasVisita.length + 1} de 3
+          </p>
+          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} />
+          <p className="marcador-tiradas-visita">
+            Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
+          </p>
+          {sugerencia && <p className="admin-msg admin-msg-ok">Sugerencia de cierre: {sugerencia.join(" → ")}</p>}
+          {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
+          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+            <button type="button" className="admin-link-btn" onClick={() => finalizarVisita(unidades, turnoIdx)}>
+              Terminar turno ahora
+            </button>
+            <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
+              Deshacer último dardo
+            </button>
+          </div>
+        </>
       )}
 
-      {aviso && <p className="admin-msg admin-msg-error">{aviso}</p>}
-
-      <div style={{ display: "flex", gap: ".6rem", marginTop: "1rem", flexWrap: "wrap" }}>
-        <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-          Deshacer última tirada
-        </button>
-        <button type="button" className="admin-link-btn" onClick={() => setJugadores(null)}>
-          Nueva partida
-        </button>
-      </div>
+      <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={() => setFase("jugadores")}>
+        Nueva partida
+      </button>
     </div>
   );
 }
 
 // --- Cricket -----------------------------------------------------------
-
-const NUMEROS_CRICKET = [
-  { clave: "20", etiqueta: "20", valor: 20 },
-  { clave: "19", etiqueta: "19", valor: 19 },
-  { clave: "18", etiqueta: "18", valor: 18 },
-  { clave: "17", etiqueta: "17", valor: 17 },
-  { clave: "16", etiqueta: "16", valor: 16 },
-  { clave: "15", etiqueta: "15", valor: 15 },
-  { clave: "B", etiqueta: "Bull", valor: 25 },
-];
-
-function marcasVacias() {
-  return Object.fromEntries(NUMEROS_CRICKET.map((n) => [n.clave, 0]));
-}
 
 function simboloMarcas(n) {
   if (n <= 0) return "—";
@@ -202,63 +401,132 @@ function simboloMarcas(n) {
 }
 
 function MarcadorCricket() {
-  const [jugadores, setJugadores] = useState(null); // [{nombre, marcas: {20:0,...}}]
+  const [fase, setFase] = useState("jugadores");
+  const [configBase, setConfigBase] = useState(null);
+  const [modoCricket, setModoCricket] = useState("normal"); // "normal" | "cutthroat"
 
-  const puntos = useMemo(() => {
-    if (!jugadores) return [];
-    return jugadores.map((jugador, i) =>
-      NUMEROS_CRICKET.reduce((total, num) => {
-        const propias = jugador.marcas[num.clave];
-        const extra = Math.max(0, propias - 3);
-        if (extra === 0) return total;
-        const algunoSinCerrar = jugadores.some((otro, j) => j !== i && otro.marcas[num.clave] < 3);
-        return algunoSinCerrar ? total + extra * num.valor : total;
-      }, 0)
-    );
-  }, [jugadores]);
+  const [unidades, setUnidades] = useState([]);
+  const [turnoIdx, setTurnoIdx] = useState(0);
+  const [tiradasVisita, setTiradasVisita] = useState([]);
+  const [ganadorIdx, setGanadorIdx] = useState(null);
+  const [mensaje, setMensaje] = useState("");
+  const [historial, setHistorial] = useState([]);
 
-  const ganador = useMemo(() => {
-    if (!jugadores) return null;
-    const maxPuntos = Math.max(...puntos);
-    const cerrados = jugadores
-      .map((j, i) => ({ i, cerrado: NUMEROS_CRICKET.every((n) => j.marcas[n.clave] >= 3) }))
-      .filter((x) => x.cerrado);
-    const ganadorPosible = cerrados.find((c) => puntos[c.i] >= maxPuntos);
-    return ganadorPosible ? ganadorPosible.i : null;
-  }, [jugadores, puntos]);
+  const puntos = useMemo(
+    () => (modoCricket === "cutthroat" ? calcularPuntosCricketCutThroat(unidades) : calcularPuntosCricket(unidades)),
+    [unidades, modoCricket]
+  );
 
-  function empezar(nombres) {
-    setJugadores(nombres.map((nombre) => ({ nombre, marcas: marcasVacias() })));
+  function empezarPartida() {
+    const base = construirUnidades(configBase);
+    const conEstado = base.map((u) => ({ ...u, marcas: marcasVacias() }));
+    setUnidades(conEstado);
+    setTurnoIdx(0);
+    setTiradasVisita([]);
+    setGanadorIdx(null);
+    setMensaje("");
+    setHistorial([]);
+    setFase("jugando");
   }
 
-  function marcar(jugadorIdx, clave, delta) {
-    if (ganador !== null) return;
-    setJugadores((js) =>
-      js.map((j, i) =>
-        i === jugadorIdx
-          ? { ...j, marcas: { ...j.marcas, [clave]: Math.max(0, j.marcas[clave] + delta) } }
-          : j
-      )
+  function finalizarVisita(unidadesActualizadas, turnoQueTiro) {
+    const conIntegranteActualizado = unidadesActualizadas.map((u, i) =>
+      i === turnoQueTiro && u.integrantes.length > 1 ? { ...u, siguienteIntegranteIdx: (u.siguienteIntegranteIdx + 1) % u.integrantes.length } : u
     );
+    const siguienteIdx = (turnoQueTiro + 1) % conIntegranteActualizado.length;
+    setUnidades(conIntegranteActualizado);
+    setTurnoIdx(siguienteIdx);
+    setTiradasVisita([]);
   }
 
-  if (!jugadores) return <ConfigurarJugadores onEmpezar={empezar} />;
+  function tirar(resultado, pos) {
+    if (ganadorIdx !== null) return;
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, ganadorIdx, mensaje })]);
+
+    const info = marcasDelDardo(resultado);
+    let nuevasUnidades = unidades;
+    let nuevoMensaje = "";
+    if (info) {
+      nuevasUnidades = unidades.map((u, i) =>
+        i === turnoIdx ? { ...u, marcas: { ...u.marcas, [info.clave]: u.marcas[info.clave] + info.marcas } } : u
+      );
+    } else {
+      nuevoMensaje = resultado.etiqueta === "Fuera" ? "Fuera de la diana, no cuenta." : `${resultado.etiqueta}: no juega en cricket, sin efecto.`;
+    }
+
+    const nuevasTiradas = [...tiradasVisita, { resultado, pos }];
+    setUnidades(nuevasUnidades);
+    setTiradasVisita(nuevasTiradas);
+    setMensaje(nuevoMensaje);
+
+    const puntosNuevos = modoCricket === "cutthroat" ? calcularPuntosCricketCutThroat(nuevasUnidades) : calcularPuntosCricket(nuevasUnidades);
+    const unidadQueTiro = nuevasUnidades[turnoIdx];
+    if (jugadorHaCerradoTodo(unidadQueTiro)) {
+      const mejor = modoCricket === "cutthroat" ? Math.min(...puntosNuevos) : Math.max(...puntosNuevos);
+      const cumpleCondicion = modoCricket === "cutthroat" ? puntosNuevos[turnoIdx] <= mejor : puntosNuevos[turnoIdx] >= mejor;
+      if (cumpleCondicion) {
+        setGanadorIdx(turnoIdx);
+        return;
+      }
+    }
+
+    if (nuevasTiradas.length >= 3) {
+      finalizarVisita(nuevasUnidades, turnoIdx);
+    }
+  }
+
+  function deshacer() {
+    if (historial.length === 0) return;
+    const previo = historial[historial.length - 1];
+    setHistorial((h) => h.slice(0, -1));
+    setUnidades(previo.unidades);
+    setTurnoIdx(previo.turnoIdx);
+    setTiradasVisita(previo.tiradasVisita);
+    setGanadorIdx(previo.ganadorIdx);
+    setMensaje(previo.mensaje);
+  }
+
+  if (fase === "jugadores") {
+    return <SelectorModoJugadores onListo={(c) => { setConfigBase(c); setFase("reglas"); }} />;
+  }
+
+  if (fase === "reglas") {
+    return (
+      <div className="admin-form" style={{ maxWidth: 460 }}>
+        <label>
+          Modalidad
+          <div className="live-tournament-toggle">
+            <button type="button" className={modoCricket === "normal" ? "active" : ""} onClick={() => setModoCricket("normal")}>
+              Normal
+            </button>
+            <button type="button" className={modoCricket === "cutthroat" ? "active" : ""} onClick={() => setModoCricket("cutthroat")}>
+              Cut-throat
+            </button>
+          </div>
+        </label>
+        <p className="chronicle-status">
+          {modoCricket === "cutthroat"
+            ? "Cut-throat: los impactos de más en un número que ya tienes cerrado suman puntos a los rivales que aún no lo tengan cerrado (no a ti). Gana quien cierra todo con la puntuación MÁS BAJA."
+            : "Normal: los impactos de más en un número que ya tienes cerrado te suman puntos a ti, mientras algún rival no lo tenga cerrado todavía. Gana quien cierra todo con la puntuación más alta."}
+        </p>
+        <button type="button" onClick={empezarPartida} style={ESTILO_BOTON_PRIMARIO}>
+          Empezar partida
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <p className="chronicle-status" style={{ marginBottom: "1rem" }}>
-        Toca "+" en cada casilla por cada impacto en ese número (20 al 15, y Bull). Al tercer
-        impacto el número queda cerrado (⊗); si sigues acertando y algún rival todavía no lo ha
-        cerrado, esos impactos extra suman puntos automáticamente.
-      </p>
-
       <div className="marcador-tabla-scroll">
         <table className="marcador-tabla">
           <thead>
             <tr>
               <th></th>
-              {jugadores.map((j, i) => (
-                <th key={i} className={ganador === i ? "marcador-jugador-ganador" : ""}>{j.nombre}</th>
+              {unidades.map((u, i) => (
+                <th key={u.id} className={ganadorIdx === i ? "marcador-jugador-ganador" : ""}>
+                  {u.etiqueta}
+                </th>
               ))}
             </tr>
           </thead>
@@ -266,36 +534,52 @@ function MarcadorCricket() {
             {NUMEROS_CRICKET.map((num) => (
               <tr key={num.clave}>
                 <th scope="row">{num.etiqueta}</th>
-                {jugadores.map((j, i) => (
-                  <td key={i}>
-                    <div className="marcador-celda">
-                      <button type="button" onClick={() => marcar(i, num.clave, -1)} aria-label="Quitar impacto">−</button>
-                      <span className={j.marcas[num.clave] >= 3 ? "marcador-celda-cerrada" : ""}>
-                        {simboloMarcas(j.marcas[num.clave])}
-                      </span>
-                      <button type="button" onClick={() => marcar(i, num.clave, 1)} aria-label="Añadir impacto">+</button>
-                    </div>
+                {unidades.map((u, i) => (
+                  <td key={u.id} className={u.marcas[num.clave] >= 3 ? "marcador-celda-cerrada" : ""}>
+                    {simboloMarcas(u.marcas[num.clave])}
                   </td>
                 ))}
               </tr>
             ))}
             <tr>
               <th scope="row">Puntos</th>
-              {jugadores.map((j, i) => (
-                <td key={i} style={{ textAlign: "center", fontWeight: "bold" }}>{puntos[i]}</td>
+              {unidades.map((u, i) => (
+                <td key={u.id} style={{ fontWeight: "bold" }}>
+                  {puntos[i]}
+                </td>
               ))}
             </tr>
           </tbody>
         </table>
       </div>
 
-      {ganador !== null && (
+      {ganadorIdx !== null ? (
         <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem", marginTop: "1rem" }}>
-          🏆 ¡{jugadores[ganador].nombre} gana la partida! (todos los números cerrados y más puntos)
+          🏆 ¡{unidades[ganadorIdx].etiqueta} gana la partida!
+          {modoCricket === "cutthroat" ? " (cut-throat: todo cerrado con la puntuación más baja)" : " (todo cerrado con la puntuación más alta)"}
         </p>
+      ) : (
+        <>
+          <p style={{ marginTop: "1rem" }}>
+            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {tiradasVisita.length + 1} de 3
+          </p>
+          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} />
+          <p className="marcador-tiradas-visita">
+            Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
+          </p>
+          {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
+          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+            <button type="button" className="admin-link-btn" onClick={() => finalizarVisita(unidades, turnoIdx)}>
+              Terminar turno ahora
+            </button>
+            <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
+              Deshacer último dardo
+            </button>
+          </div>
+        </>
       )}
 
-      <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={() => setJugadores(null)}>
+      <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={() => setFase("jugadores")}>
         Nueva partida
       </button>
     </div>
@@ -312,15 +596,20 @@ export default function Marcadores() {
       <h3>Marcadores</h3>
       <p className="chronicle-status" style={{ marginBottom: ".8rem" }}>
         Para jugar en una diana sin contador electrónico. No se guarda nada al terminar la
-        partida — es solo una calculadora de apoyo mientras jugáis.
+        partida — es solo una calculadora de apoyo mientras jugáis. Toca la diana en el punto
+        exacto donde ha caído cada dardo.
       </p>
 
       <div className="live-tournament-toggle">
-        <button type="button" className={juego === "501" ? "active" : ""} onClick={() => setJuego("501")}>501</button>
-        <button type="button" className={juego === "cricket" ? "active" : ""} onClick={() => setJuego("cricket")}>Cricket</button>
+        <button type="button" className={juego === "501" ? "active" : ""} onClick={() => setJuego("501")}>
+          501
+        </button>
+        <button type="button" className={juego === "cricket" ? "active" : ""} onClick={() => setJuego("cricket")}>
+          Cricket
+        </button>
       </div>
 
-      {juego === "501" ? <Marcador501 /> : <MarcadorCricket />}
+      {juego === "501" ? <Marcador501 key="501" /> : <MarcadorCricket key="cricket" />}
     </div>
   );
 }
