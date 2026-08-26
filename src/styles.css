@@ -1039,3 +1039,61 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   font-size: .85rem;
   background: rgba(255,255,255,.08);
 }
+
+/* Marcadores manuales de 501 y Cricket (Marcadores.jsx) */
+.marcador-jugadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .7rem;
+  margin-bottom: 1.2rem;
+}
+.marcador-jugador {
+  border: 1px solid var(--line);
+  padding: .8rem;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  text-align: center;
+}
+.marcador-jugador-activo { border-color: var(--ember); background: #9a2b2814; }
+.marcador-jugador-ganador { border-color: #8fbf8f; }
+.marcador-restante { font-family: 'Cinzel', serif; font-size: 1.8rem; color: var(--bone); }
+.marcador-input-fila {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+.marcador-input-fila input {
+  background: var(--iron-2);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  padding: .6rem .8rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .88rem;
+  border-radius: 2px;
+  width: 120px;
+}
+.marcador-tabla-scroll { overflow-x: auto; }
+.marcador-tabla { border-collapse: collapse; width: 100%; min-width: 420px; }
+.marcador-tabla th, .marcador-tabla td {
+  border: 1px solid var(--line);
+  padding: .4rem .5rem;
+  text-align: center;
+  font-size: .85rem;
+}
+.marcador-tabla thead th { color: var(--ember); text-transform: uppercase; font-size: .74rem; letter-spacing: .04em; }
+.marcador-tabla tbody th { color: var(--bone-dim); text-transform: uppercase; font-size: .74rem; }
+.marcador-celda { display: flex; align-items: center; justify-content: center; gap: .3rem; }
+.marcador-celda button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--bone-dim);
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: .9rem;
+  padding: 0;
+}
+.marcador-celda button:hover { color: var(--bone); border-color: var(--ember); }
+.marcador-celda-cerrada { color: var(--ember); font-weight: bold; }
