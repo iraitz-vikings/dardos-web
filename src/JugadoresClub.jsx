@@ -3,6 +3,86 @@ import MediasFabricante from "./MediasFabricante.jsx";
 import { agruparPorSocio } from "./agruparJugadores.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
+const RAMA_ETIQUETA = { ganadores: "Ganadores", perdedores: "Perdedores", final: "Final" };
+
+function ResultadoPartido({ p }) {
+  const estado = p.ganado === null ? "pendiente" : p.ganado ? "✅ Ganado" : "❌ Perdido";
+  return (
+    <li style={{ fontSize: ".9em" }}>
+      vs {p.rival || "?"} — {estado}{p.resultado ? ` (${p.resultado})` : ""}
+    </li>
+  );
+}
+
+// Palmarés del jugador seleccionado en el modal: se pide por separado a GET
+// /api/jugadores/:id/historial (protegido, igual que el resto del
+// directorio) en vez de venir ya incluido en /directorio, para no cargar el
+// historial completo de todos los jugadores del club de golpe cuando solo se
+// va a mostrar el de uno.
+function PalmaresJugador({ jugadorId }) {
+  const [datos, setDatos] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    setDatos(null);
+    setCargando(true);
+    const token = localStorage.getItem("socioToken");
+    fetch(`${API_URL}/api/jugadores/${jugadorId}/historial`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : { torneos: [], ligas: [] }))
+      .then(setDatos)
+      .catch(() => setDatos({ torneos: [], ligas: [] }))
+      .finally(() => setCargando(false));
+  }, [jugadorId]);
+
+  if (cargando) return <p className="chronicle-status">Cargando palmarés…</p>;
+  if (!datos) return null;
+
+  const sinNada = datos.torneos.length === 0 && datos.ligas.length === 0;
+  if (sinNada) {
+    return <p className="chronicle-status">Todavía no ha participado en ningún torneo o liga del club.</p>;
+  }
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <h4>Palmarés</h4>
+      {datos.torneos.length > 0 && (
+        <>
+          <h5 style={{ marginBottom: ".4rem" }}>Torneos</h5>
+          {datos.torneos.map((t, i) => (
+            <div key={i} className="admin-form" style={{ marginBottom: ".8rem", padding: ".8rem" }}>
+              <strong>{t.nombre}</strong> <span style={{ color: "var(--steel)" }}>— {t.cuadrante}</span>
+              <ul style={{ marginTop: ".4rem" }}>
+                {t.partidos.map((p, j) => (
+                  <li key={j} style={{ fontSize: ".9em" }}>
+                    {RAMA_ETIQUETA[p.rama]} ronda {p.ronda} — <ResultadoPartido p={p} />
+                  </li>
+                ))}
+                {t.partidos.length === 0 && <li style={{ fontSize: ".9em", opacity: 0.7 }}>Sin enfrentamientos todavía.</li>}
+              </ul>
+            </div>
+          ))}
+        </>
+      )}
+      {datos.ligas.length > 0 && (
+        <>
+          <h5 style={{ marginBottom: ".4rem" }}>Ligas</h5>
+          {datos.ligas.map((l, i) => (
+            <div key={i} className="admin-form" style={{ marginBottom: ".8rem", padding: ".8rem" }}>
+              <strong>{l.nombre}</strong>
+              <ul style={{ marginTop: ".4rem" }}>
+                {l.partidos.map((p, j) => (
+                  <li key={j} style={{ fontSize: ".9em" }}>
+                    Jornada {p.jornada} — <ResultadoPartido p={p} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function JugadoresClub() {
   const [jugadores, setJugadores] = useState([]);
@@ -128,6 +208,7 @@ export default function JugadoresClub() {
             {(seleccionado.idsFabricantes || []).filter((i) => (i.idExterno || "").trim()).length === 0 && (
               <p className="chronicle-status">Todavía no ha guardado ningún alias de fabricante.</p>
             )}
+            <PalmaresJugador jugadorId={seleccionado.id} />
           </div>
         </div>
       )}
