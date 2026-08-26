@@ -10,6 +10,16 @@ import { ORDEN_SECTORES, RADIOS, resultadoDardo } from "./dardosLogica.js";
 const CENTRO = 200;
 const RADIO_PX = 180; // radio en píxeles del borde exterior del anillo de doble
 
+// Tiene que coincidir exactamente con el atributo viewBox del <svg> de más
+// abajo. El margen de 20px alrededor es para que los números no queden
+// pegados al borde (ver Marcadores.jsx, ronda 2 de ajustes) — pero eso
+// significa que el rectángulo renderizado en pantalla ya NO representa el
+// rango 0..400 sino -20..420 (440 unidades), así que la conversión de un
+// toque a coordenadas del SVG tiene que partir de estos mismos valores, no
+// de 400 a secas (ese desajuste fue justo el bug de "marca por debajo de lo
+// tocado" que reportó Iraitz tras ensanchar el margen).
+const VIEWBOX = { x: -20, y: -20, ancho: 440, alto: 440 };
+
 function pol2cart(r, anguloDeg) {
   // anguloDeg: 0 = arriba, sentido horario (misma convención que resultadoDardo)
   const rad = ((anguloDeg - 90) * Math.PI) / 180;
@@ -54,9 +64,10 @@ export default function Diana({ onTirada, deshabilitada, marcas = [] }) {
     const clienteX = e.clientX ?? (e.touches && e.touches[0]?.clientX);
     const clienteY = e.clientY ?? (e.touches && e.touches[0]?.clientY);
     if (clienteX === undefined || clienteY === undefined) return;
-    // Coordenadas del click dentro del viewBox 0..400, con centro en (200,200)
-    const xSvg = ((clienteX - rect.left) / rect.width) * 400;
-    const ySvg = ((clienteY - rect.top) / rect.height) * 400;
+    // Coordenadas del toque dentro del sistema de coordenadas del SVG
+    // (viewBox), con centro de la diana en (200,200).
+    const xSvg = VIEWBOX.x + ((clienteX - rect.left) / rect.width) * VIEWBOX.ancho;
+    const ySvg = VIEWBOX.y + ((clienteY - rect.top) / rect.height) * VIEWBOX.alto;
     const dx = (xSvg - CENTRO) / RADIO_PX;
     const dy = (ySvg - CENTRO) / RADIO_PX;
     onTirada(resultadoDardo(dx, dy), { xSvg, ySvg });
@@ -65,7 +76,7 @@ export default function Diana({ onTirada, deshabilitada, marcas = [] }) {
   return (
     <svg
       ref={svgRef}
-      viewBox="-20 -20 440 440"
+      viewBox={`${VIEWBOX.x} ${VIEWBOX.y} ${VIEWBOX.ancho} ${VIEWBOX.alto}`}
       className={`diana-svg ${deshabilitada ? "diana-deshabilitada" : ""}`}
       onClick={manejarClick}
       role="img"
