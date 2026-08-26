@@ -9,6 +9,7 @@ import HistorialTorneos from "./HistorialTorneos.jsx";
 import HistoricoPrivado from "./HistoricoPrivado.jsx";
 import Competiciones from "./Competiciones.jsx";
 import CalendarioSocio from "./CalendarioSocio.jsx";
+import Marcadores from "./Marcadores.jsx";
 
 const SECCIONES = [
   { id: "tablon", etiqueta: "Tablón de anuncios", lista: true },
@@ -17,6 +18,7 @@ const SECCIONES = [
   { id: "historico-privado", etiqueta: "Histórico privado", lista: true },
   { id: "competiciones", etiqueta: "Competiciones", lista: true },
   { id: "calendario", etiqueta: "Calendario", lista: true },
+  { id: "marcadores", etiqueta: "Marcadores 501/Cricket", lista: true },
   { id: "galeria-privada", etiqueta: "Galería privada", lista: true },
   { id: "trofeos", etiqueta: "Sala de trofeos", lista: true },
   { id: "equipos", etiqueta: "Equipos del club", lista: true },
@@ -73,6 +75,7 @@ export default function ZonaSocio({ usuario, salir }) {
       {seccion === "historico-privado" && <HistoricoPrivado />}
       {seccion === "competiciones" && <Competiciones usuario={usuario} />}
       {seccion === "calendario" && <CalendarioSocio />}
+      {seccion === "marcadores" && <Marcadores />}
       {seccion === "tablon" && <TablonAnuncios usuario={usuario} />}
       {seccion === "jugadores" && <JugadoresClub />}
       {seccion === "galeria-privada" && <GaleriaPrivada usuario={usuario} />}
