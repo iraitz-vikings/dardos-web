@@ -38,6 +38,7 @@ export default function AdminLigasClub({ token, salir }) {
   const [metodoSorteoParejas, setMetodoSorteoParejas] = useState("AB");
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
+  const [notificaciones, setNotificaciones] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
   const cargarLigas = () => {
@@ -85,7 +86,7 @@ export default function AdminLigasClub({ token, salir }) {
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, modalidad, vueltas, numeroParticipantes,
           numeroGrupos: numeroGrupos === "" ? undefined : Number(numeroGrupos),
           metodoSorteoParejas: modalidad === "parejas_ciegas" ? metodoSorteoParejas : undefined,
-          insigniaUrl, afectaCalendario,
+          insigniaUrl, afectaCalendario, notificaciones,
         }),
       });
       if (res.status === 401) {
@@ -125,6 +126,14 @@ export default function AdminLigasClub({ token, salir }) {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({ ...liga, finalizado: nuevo }),
+    });
+    cargarLigas();
+  }
+  async function cambiarNotificaciones(liga, nuevo) {
+    await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...liga, notificaciones: nuevo }),
     });
     cargarLigas();
   }
@@ -341,6 +350,10 @@ export default function AdminLigasClub({ token, salir }) {
             <input type="checkbox" checked={afectaCalendario} onChange={(e) => setAfectaCalendario(e.target.checked)} style={{ width: "auto" }} />
             Afecta al calendario general del club
           </label>
+          <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+            <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
+            Avisar a los socios de sus partidos de esta liga
+          </label>
           <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
             <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear liga"}</button>
             <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
@@ -418,6 +431,7 @@ export default function AdminLigasClub({ token, salir }) {
                     {l.vueltas === 2 ? "Ida y vuelta" : "Ida"} · {l.numeroParticipantes} participantes
                     {l.numeroGrupos ? ` · ${l.numeroGrupos} grupos` : ""}
                     {l.finalizado ? " · Finalizada" : ""}
+                    {l.notificaciones === false ? " · Sin avisos" : ""}
                   </time>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -426,6 +440,9 @@ export default function AdminLigasClub({ token, salir }) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarFinalizado(l, !l.finalizado)}>
                     {l.finalizado ? "Reabrir" : "Marcar finalizada"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarNotificaciones(l, !l.notificaciones)}>
+                    {l.notificaciones === false ? "Activar avisos" : "Desactivar avisos"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(l.id)}>Gestionar</button>
                   <button type="button" className="admin-link-btn" onClick={() => borrarLiga(l.id)}>Borrar</button>

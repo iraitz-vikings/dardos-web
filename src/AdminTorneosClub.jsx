@@ -45,6 +45,7 @@ export default function AdminTorneosClub({ token, salir }) {
   const [modalidad, setModalidad] = useState("individual");
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
+  const [notificaciones, setNotificaciones] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
@@ -91,7 +92,7 @@ useEffect(() => {
       const res = await fetch(`${API_URL}/api/torneos-club`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl, afectaCalendario }),
+        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl, afectaCalendario, notificaciones }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -113,6 +114,7 @@ useEffect(() => {
       setModalidad("individual");
       setInsigniaUrl("");
       setAfectaCalendario(true);
+      setNotificaciones(true);
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
       setMostrarFormulario(false);
       cargarTorneos();
@@ -137,6 +139,15 @@ useEffect(() => {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({ ...torneo, finalizado: nuevoFinalizado }),
+    });
+    cargarTorneos();
+  }
+
+  async function cambiarNotificaciones(torneo, nuevo) {
+    await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, notificaciones: nuevo }),
     });
     cargarTorneos();
   }
@@ -379,6 +390,10 @@ async function programarCalendario(partidoId, datos) {
           <input type="checkbox" checked={afectaCalendario} onChange={(e) => setAfectaCalendario(e.target.checked)} style={{ width: "auto" }} />
           Afecta al calendario general del club
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+          <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
+          Avisar a los socios de sus partidos de este torneo
+        </label>
         <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
           <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear torneo"}</button>
           <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
@@ -456,6 +471,7 @@ async function programarCalendario(partidoId, datos) {
                     {MODALIDADES.find((m) => m.id === t.modalidad)?.etiqueta || "Individual"}
                     {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
                     {t.finalizado ? " · Finalizado" : ""}
+                    {t.notificaciones === false ? " · Sin avisos" : ""}
                   </time>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -468,6 +484,9 @@ async function programarCalendario(partidoId, datos) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarFinalizado(t, !t.finalizado)}>
                     {t.finalizado ? "Reabrir torneo" : "Marcar finalizado"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarNotificaciones(t, !t.notificaciones)}>
+                    {t.notificaciones === false ? "Activar avisos" : "Desactivar avisos"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(t.id)}>Gestionar</button>
                   <a className="admin-link-btn" href={`${window.location.origin}/torneo/${t.id}`} target="_blank" rel="noopener noreferrer">
