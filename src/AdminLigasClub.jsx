@@ -41,6 +41,7 @@ export default function AdminLigasClub({ token, salir }) {
   const [notificaciones, setNotificaciones] = useState(true);
   const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
   const [imagenCampeonUrl, setImagenCampeonUrl] = useState("");
+  const [imagenBienvenidaUrl, setImagenBienvenidaUrl] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   const cargarLigas = () => {
@@ -88,7 +89,7 @@ export default function AdminLigasClub({ token, salir }) {
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, modalidad, vueltas, numeroParticipantes,
           numeroGrupos: numeroGrupos === "" ? undefined : Number(numeroGrupos),
           metodoSorteoParejas: modalidad === "parejas_ciegas" ? metodoSorteoParejas : undefined,
-          insigniaUrl, afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl,
+          insigniaUrl, afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
         }),
       });
       if (res.status === 401) {
@@ -105,7 +106,7 @@ export default function AdminLigasClub({ token, salir }) {
       setVisibilidad("privado"); setModalidad("individual"); setVueltas(1);
       setNumeroParticipantes(8); setNumeroGrupos(""); setMetodoSorteoParejas("AB"); setInsigniaUrl("");
       setAfectaCalendario(true);
-      setImagenEliminadoUrl(""); setImagenCampeonUrl("");
+      setImagenEliminadoUrl(""); setImagenCampeonUrl(""); setImagenBienvenidaUrl("");
       setMensaje({ tipo: "ok", texto: "Liga creada." });
       setMostrarFormulario(false);
       cargarLigas();
@@ -356,6 +357,20 @@ export default function AdminLigasClub({ token, salir }) {
           <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
             <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
             Avisar a los socios de sus partidos de esta liga
+          </label>
+          <label>
+            Imagen de aviso de bienvenida al sortear (opcional)
+            <SelectorImagen
+              token={token}
+              valor={imagenBienvenidaUrl}
+              onCambiar={setImagenBienvenidaUrl}
+              onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+              etiqueta="Imagen de bienvenida"
+            />
+            <span className="admin-hint">
+              Se manda a cada jugador nada más quedar colocado en el cuadrante final de esta liga (al hacer el
+              sorteo), junto con un enlace a la página pública de la liga.
+            </span>
           </label>
           <label>
             Imagen de aviso al eliminar a un jugador (opcional)
