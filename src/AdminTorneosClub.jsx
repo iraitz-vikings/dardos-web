@@ -46,6 +46,12 @@ export default function AdminTorneosClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  const [modoJornadas, setModoJornadas] = useState(false);
+  const [puntosPorPosicion, setPuntosPorPosicion] = useState([
+    { posicion: 1, puntos: 20 },
+    { posicion: 2, puntos: 17 },
+    { posicion: 3, puntos: 15 },
+  ]);
   const [guardando, setGuardando] = useState(false);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
@@ -92,7 +98,10 @@ useEffect(() => {
       const res = await fetch(`${API_URL}/api/torneos-club`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl, afectaCalendario, notificaciones }),
+        body: JSON.stringify({
+          nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl,
+          afectaCalendario, notificaciones, modoJornadas, puntosPorPosicion: modoJornadas ? puntosPorPosicion : undefined,
+        }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -115,6 +124,7 @@ useEffect(() => {
       setInsigniaUrl("");
       setAfectaCalendario(true);
       setNotificaciones(true);
+      setModoJornadas(false);
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
       setMostrarFormulario(false);
       cargarTorneos();
@@ -185,6 +195,49 @@ useEffect(() => {
   async function borrarCuadrante(cuadranteId) {
     if (!confirm("¿Borrar este cuadrante y todos sus enfrentamientos?")) return;
     await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}`, { method: "DELETE", headers: { "x-admin-token": token } });
+    cargarTorneos();
+  }
+
+  async function cambiarEstadoCuadrante(cuadranteId, estado) {
+    await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/estado`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ estado }),
+    });
+    cargarTorneos();
+  }
+
+  async function obtenerClasificacionCuadrante(cuadranteId) {
+    const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/clasificacion`, {
+      headers: { "x-admin-token": token },
+    });
+    if (!res.ok) return { completo: false };
+    return res.json();
+  }
+
+  async function asignarPuntosCuadrante(cuadranteId) {
+    const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/asignar-puntos`, {
+      method: "POST",
+      headers: { "x-admin-token": token },
+    });
+    const data = await res.json().catch(() => ({}));
+    cargarTorneos();
+    if (!res.ok) return { ok: false, error: data.error || "No se pudieron asignar los puntos." };
+    return { ok: true, clasificacion: data.clasificacion };
+  }
+
+  async function obtenerClasificacionGeneral(torneoId) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneoId}/clasificacion-general`);
+    if (!res.ok) return { clasificacionGeneral: [], sinFicha: [] };
+    return res.json();
+  }
+
+  async function guardarPuntosPorPosicion(torneo, puntosPorPosicion) {
+    await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, puntosPorPosicion }),
+    });
     cargarTorneos();
   }
 
@@ -310,6 +363,11 @@ async function programarCalendario(partidoId, datos) {
         onBorrarParticipante={borrarParticipante}
         onSortearParejas={sortearParejas}
         onSortearParejasGrupos={sortearParejasGrupos}
+        onCambiarEstadoCuadrante={cambiarEstadoCuadrante}
+        onObtenerClasificacionCuadrante={obtenerClasificacionCuadrante}
+        onAsignarPuntosCuadrante={asignarPuntosCuadrante}
+        onObtenerClasificacionGeneral={obtenerClasificacionGeneral}
+        onGuardarPuntosPorPosicion={guardarPuntosPorPosicion}
       />
     );
   }
@@ -394,6 +452,13 @@ async function programarCalendario(partidoId, datos) {
           <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
           Avisar a los socios de sus partidos de este torneo
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+          <input type="checkbox" checked={modoJornadas} onChange={(e) => setModoJornadas(e.target.checked)} style={{ width: "auto" }} />
+          Torneo por jornadas (varios cuadrantes que reparten puntos y se suman en una clasificación general)
+        </label>
+        {modoJornadas && (
+          <TablaPuntosPorPosicion puntosPorPosicion={puntosPorPosicion} onCambiar={setPuntosPorPosicion} />
+        )}
         <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
           <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear torneo"}</button>
           <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
@@ -506,6 +571,8 @@ async function programarCalendario(partidoId, datos) {
 function TorneoGestion({
   torneo, jugadores, maquinas, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortearParejasGrupos,
+  onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
+  onGuardarPuntosPorPosicion,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -518,6 +585,7 @@ function TorneoGestion({
           <span className="admin-hint">
             {MODALIDADES.find((m) => m.id === torneo.modalidad)?.etiqueta || "Individual"} ·{" "}
             {torneo.tipoEliminacion === "doble" ? "Doble eliminación" : "Eliminación directa"}
+            {torneo.modoJornadas ? " · Torneo por jornadas" : ""}
           </span>
         </div>
       </div>
@@ -537,6 +605,15 @@ function TorneoGestion({
         >
           Cuadrantes
         </button>
+        {torneo.modoJornadas && (
+          <button
+            type="button"
+            className={`admin-tab ${subpestana === "clasificacion" ? "admin-tab-active" : ""}`}
+            onClick={() => setSubpestana("clasificacion")}
+          >
+            Clasificación general
+          </button>
+        )}
       </nav>
 
       {subpestana === "participantes" && (
@@ -573,9 +650,95 @@ function TorneoGestion({
           onProgramarCalendario={onProgramarCalendario}
           onSortear={onSortear}
           onReiniciar={onReiniciar}
+          onCambiarEstadoCuadrante={onCambiarEstadoCuadrante}
+          onObtenerClasificacionCuadrante={onObtenerClasificacionCuadrante}
+          onAsignarPuntosCuadrante={onAsignarPuntosCuadrante}
+        />
+      )}
+
+      {subpestana === "clasificacion" && (
+        <ClasificacionGeneral
+          torneo={torneo}
+          onObtenerClasificacionGeneral={onObtenerClasificacionGeneral}
+          onGuardarPuntosPorPosicion={onGuardarPuntosPorPosicion}
         />
       )}
     </section>
+  );
+}
+
+function ClasificacionGeneral({ torneo, onObtenerClasificacionGeneral, onGuardarPuntosPorPosicion }) {
+  const [datos, setDatos] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [tabla, setTabla] = useState(torneo.puntosPorPosicion || []);
+  const [editando, setEditando] = useState(false);
+
+  useEffect(() => {
+    let activo = true;
+    setCargando(true);
+    onObtenerClasificacionGeneral(torneo.id).then((d) => {
+      if (activo) {
+        setDatos(d);
+        setCargando(false);
+      }
+    });
+    return () => {
+      activo = false;
+    };
+  }, [torneo.id]);
+
+  if (cargando) return <p className="chronicle-status">Cargando clasificación…</p>;
+  const clasificacion = datos?.clasificacionGeneral || [];
+  const sinFicha = datos?.sinFicha || [];
+
+  return (
+    <div>
+      <p className="admin-hint">
+        Suma de los puntos ya asignados en cada jornada (cuadrante) de este torneo. Recuerda "Asignar puntos de esta
+        jornada" en cada cuadrante terminado, desde la pestaña "Cuadrantes", para que aparezca aquí.
+      </p>
+
+      <button type="button" className="admin-link-btn" onClick={() => setEditando((e) => !e)}>
+        {editando ? "Ocultar" : "Editar"} tabla de puntos por posición
+      </button>
+      {editando && (
+        <>
+          <TablaPuntosPorPosicion puntosPorPosicion={tabla} onCambiar={setTabla} />
+          <button type="button" onClick={() => onGuardarPuntosPorPosicion(torneo, tabla)}>Guardar tabla de puntos</button>
+        </>
+      )}
+      {clasificacion.length === 0 && <p className="chronicle-status">Todavía no hay puntos asignados en ninguna jornada.</p>}
+      {clasificacion.length > 0 && (
+        <table className="admin-tabla-clasificacion">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jugador</th>
+              <th>Puntos</th>
+              <th>Jornadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clasificacion.map((j, i) => (
+              <tr key={j.jugadorId}>
+                <td>{i + 1}</td>
+                <td>{j.nombre}</td>
+                <td>{j.puntosTotales}</td>
+                <td className="admin-hint">
+                  {j.jornadas.map((jn) => `${jn.cuadrante}: ${jn.posicion}º (${jn.puntos} pts)`).join(" · ")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {sinFicha.length > 0 && (
+        <p className="admin-hint" style={{ marginTop: ".8rem" }}>
+          Participantes sin ficha de jugador del club (no se pueden sumar a nadie):{" "}
+          {sinFicha.map((s) => `${s.etiqueta} (${s.cuadrante}, ${s.posicion}º)`).join(", ")}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -621,7 +784,42 @@ function JugadoresDelClub({ jugadores }) {
   );
 }
 
-function TorneoCuadrantes({ torneo, maquinas, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar }) {
+function TablaPuntosPorPosicion({ puntosPorPosicion, onCambiar }) {
+  function cambiarFila(i, campo, valor) {
+    const copia = puntosPorPosicion.map((f, idx) => (idx === i ? { ...f, [campo]: Number(valor) } : f));
+    onCambiar(copia);
+  }
+  function anadirFila() {
+    const siguiente = Math.max(0, ...puntosPorPosicion.map((f) => f.posicion)) + 1;
+    onCambiar([...puntosPorPosicion, { posicion: siguiente, puntos: 0 }]);
+  }
+  function quitarFila(i) {
+    onCambiar(puntosPorPosicion.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div className="admin-hint" style={{ margin: ".4rem 0" }}>
+      <p>Puntos por posición final en cada jornada (cuadrante). Las posiciones sin fila no dan puntos.</p>
+      {puntosPorPosicion.map((f, i) => (
+        <div key={i} style={{ display: "flex", gap: ".5rem", alignItems: "center", marginBottom: ".3rem" }}>
+          <span>Posición</span>
+          <input type="number" min="1" value={f.posicion} onChange={(e) => cambiarFila(i, "posicion", e.target.value)} style={{ width: "5rem" }} />
+          <span>→ puntos</span>
+          <input type="number" min="0" value={f.puntos} onChange={(e) => cambiarFila(i, "puntos", e.target.value)} style={{ width: "5rem" }} />
+          <button type="button" className="admin-link-btn" onClick={() => quitarFila(i)}>Quitar</button>
+        </div>
+      ))}
+      <button type="button" className="admin-link-btn" onClick={anadirFila}>＋ Añadir posición</button>
+    </div>
+  );
+}
+
+const ORDEN_ESTADO_CUADRANTE = { activo: 0, pendiente: 1, finalizado: 2 };
+
+function TorneoCuadrantes({
+  torneo, maquinas, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
+  onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante,
+}) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
   const [metodoSorteoParejas, setMetodoSorteoParejas] = useState("AB");
@@ -671,17 +869,26 @@ function TorneoCuadrantes({ torneo, maquinas, onCrearCuadrante, onBorrarCuadrant
 
       {(torneo.cuadrantes || []).length === 0 && <p className="chronicle-status">Sin cuadrantes todavía.</p>}
 
-      {(torneo.cuadrantes || []).map((c) => (
+      {(torneo.modoJornadas
+        ? [...(torneo.cuadrantes || [])].sort(
+            (a, b) => (ORDEN_ESTADO_CUADRANTE[a.estado] ?? 1) - (ORDEN_ESTADO_CUADRANTE[b.estado] ?? 1)
+          )
+        : torneo.cuadrantes || []
+      ).map((c) => (
         <CuadranteDetalle
           key={c.id}
           cuadrante={c}
           numeroMaquinas={torneo.numeroMaquinas}
           maquinas={maquinas}
+          modoJornadas={torneo.modoJornadas}
           onBorrar={() => onBorrarCuadrante(c.id)}
           onActualizarPartido={onActualizarPartido}
           onProgramarCalendario={onProgramarCalendario}
           onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
           onReiniciar={() => onReiniciar(c.id)}
+          onCambiarEstado={(estado) => onCambiarEstadoCuadrante(c.id, estado)}
+          onObtenerClasificacion={() => onObtenerClasificacionCuadrante(c.id)}
+          onAsignarPuntos={() => onAsignarPuntosCuadrante(c.id)}
         />
       ))}
     </div>
@@ -1021,9 +1228,38 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   );
 }
 
-function CuadranteDetalle({ cuadrante, numeroMaquinas, maquinas, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar }) {
+const ETIQUETA_ESTADO_CUADRANTE = { pendiente: "Pendiente", activo: "Activo — jornada en juego", finalizado: "Finalizado" };
+
+function CuadranteDetalle({
+  cuadrante, numeroMaquinas, maquinas, modoJornadas, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
+  onCambiarEstado, onObtenerClasificacion, onAsignarPuntos,
+}) {
   const [abierto, setAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [clasificacion, setClasificacion] = useState(null);
+  const [cargandoClasificacion, setCargandoClasificacion] = useState(false);
+  const [asignando, setAsignando] = useState(false);
+  const [avisoPuntos, setAvisoPuntos] = useState(null);
+
+  async function verClasificacion() {
+    setCargandoClasificacion(true);
+    setClasificacion(await onObtenerClasificacion());
+    setCargandoClasificacion(false);
+  }
+
+  async function asignarPuntos() {
+    if (!confirm(`¿Asignar los puntos de "${cuadrante.nombre}" según la clasificación calculada? Se puede repetir más adelante si hace falta recalcular.`)) return;
+    setAsignando(true);
+    setAvisoPuntos(null);
+    const resultado = await onAsignarPuntos();
+    setAsignando(false);
+    if (!resultado.ok) {
+      setAvisoPuntos({ tipo: "error", texto: resultado.error });
+    } else {
+      setClasificacion({ completo: true, clasificacion: resultado.clasificacion });
+      setAvisoPuntos({ tipo: "ok", texto: "Puntos asignados." });
+    }
+  }
 
   const porRama = {};
   for (const p of cuadrante.partidos) {
@@ -1042,7 +1278,11 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, maquinas, onBorrar, onAct
   return (
     <div className="admin-cuadrante">
       <div className="admin-cuadrante-header">
-        <h4>{cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})</h4>
+        <h4>
+          {cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})
+          {modoJornadas ? ` · ${ETIQUETA_ESTADO_CUADRANTE[cuadrante.estado] || cuadrante.estado}` : ""}
+          {cuadrante.puntosAsignados ? " · Puntos asignados" : ""}
+        </h4>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
           <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
             {abierto ? "Ocultar" : "Ver enfrentamientos"}
@@ -1051,6 +1291,54 @@ function CuadranteDetalle({ cuadrante, numeroMaquinas, maquinas, onBorrar, onAct
           <button type="button" className="admin-link-btn" onClick={onBorrar}>Borrar cuadrante</button>
         </div>
       </div>
+
+      {modoJornadas && (
+        <div className="admin-hint" style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center", margin: ".4rem 0" }}>
+          <span>Estado:</span>
+          {["pendiente", "activo", "finalizado"].map((e) => (
+            <button
+              key={e}
+              type="button"
+              className="admin-link-btn"
+              disabled={cuadrante.estado === e}
+              onClick={() => onCambiarEstado(e)}
+            >
+              {cuadrante.estado === e ? `✓ ${ETIQUETA_ESTADO_CUADRANTE[e]}` : `Marcar ${ETIQUETA_ESTADO_CUADRANTE[e].split(" —")[0].toLowerCase()}`}
+            </button>
+          ))}
+          <span style={{ marginLeft: "1rem" }}>·</span>
+          <button type="button" className="admin-link-btn" onClick={verClasificacion} disabled={cargandoClasificacion}>
+            {cargandoClasificacion ? "Calculando…" : "Ver clasificación"}
+          </button>
+          <button type="button" className="admin-link-btn" onClick={asignarPuntos} disabled={asignando}>
+            {asignando ? "Asignando…" : "Asignar puntos de esta jornada"}
+          </button>
+        </div>
+      )}
+
+      {avisoPuntos && <p className={`admin-msg admin-msg-${avisoPuntos.tipo}`}>{avisoPuntos.texto}</p>}
+
+      {clasificacion && (
+        <div className="admin-hint" style={{ margin: ".4rem 0" }}>
+          {!clasificacion.completo ? (
+            <p>El cuadrante todavía no ha terminado — faltan partidos por jugar.</p>
+          ) : (
+            <table className="admin-tabla-clasificacion">
+              <thead>
+                <tr><th>Posición</th><th>Participante</th></tr>
+              </thead>
+              <tbody>
+                {clasificacion.clasificacion.map((c) => (
+                  <tr key={c.etiqueta}>
+                    <td>{c.posicion}º</td>
+                    <td>{c.etiqueta}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
     <div className="admin-hint">
       <strong>Participantes confirmados ({participantesApuntados.length}):</strong>{" "}
