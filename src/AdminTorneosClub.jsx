@@ -48,6 +48,7 @@ export default function AdminTorneosClub({ token, salir }) {
   const [notificaciones, setNotificaciones] = useState(true);
   const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
   const [imagenCampeonUrl, setImagenCampeonUrl] = useState("");
+  const [imagenBienvenidaUrl, setImagenBienvenidaUrl] = useState("");
   const [modoJornadas, setModoJornadas] = useState(false);
   const [puntosPorPosicion, setPuntosPorPosicion] = useState([
     { posicion: 1, puntos: 20 },
@@ -102,7 +103,7 @@ useEffect(() => {
         headers: { "Content-Type": "application/json", "x-admin-token": token },
         body: JSON.stringify({
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl,
-          afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl,
+          afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
           modoJornadas, puntosPorPosicion: modoJornadas ? puntosPorPosicion : undefined,
         }),
       });
@@ -129,6 +130,7 @@ useEffect(() => {
       setNotificaciones(true);
       setImagenEliminadoUrl("");
       setImagenCampeonUrl("");
+      setImagenBienvenidaUrl("");
       setModoJornadas(false);
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
       setMostrarFormulario(false);
@@ -456,6 +458,20 @@ async function programarCalendario(partidoId, datos) {
         <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
           <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
           Avisar a los socios de sus partidos de este torneo
+        </label>
+        <label>
+          Imagen de aviso de bienvenida al sortear (opcional)
+          <SelectorImagen
+            token={token}
+            valor={imagenBienvenidaUrl}
+            onCambiar={setImagenBienvenidaUrl}
+            onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+            etiqueta="Imagen de bienvenida"
+          />
+          <span className="admin-hint">
+            Se manda a cada jugador nada más quedar colocado en un cuadrante de este torneo (al hacer el sorteo),
+            junto con un enlace a la página pública del torneo.
+          </span>
         </label>
         <label>
           Imagen de aviso al eliminar a un jugador (opcional)
