@@ -11,6 +11,55 @@ function formatFecha(iso) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// Clasificación general de un torneo "por jornadas": suma de los puntos ya
+// asignados en cada cuadrante (jornada), por jugador. Se recarga junto con
+// el torneo (mismo intervalo de refresco que TorneoPage) para que se vea en
+// vivo según se van cerrando jornadas.
+function ClasificacionGeneralPublica({ torneoId }) {
+  const [datos, setDatos] = useState(null);
+
+  useEffect(() => {
+    let activo = true;
+    const cargar = () => {
+      fetch(`${API_URL}/api/torneos-club/${torneoId}/clasificacion-general`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (activo && d) setDatos(d);
+        })
+        .catch(() => {});
+    };
+    cargar();
+    const intervalo = setInterval(cargar, 15000);
+    return () => {
+      activo = false;
+      clearInterval(intervalo);
+    };
+  }, [torneoId]);
+
+  const clasificacion = datos?.clasificacionGeneral || [];
+  if (clasificacion.length === 0) return null;
+
+  return (
+    <div className="live-tournament-clasificacion-general">
+      <h3>Clasificación general</h3>
+      <table className="admin-tabla-clasificacion">
+        <thead>
+          <tr><th>#</th><th>Jugador</th><th>Puntos</th></tr>
+        </thead>
+        <tbody>
+          {clasificacion.map((j, i) => (
+            <tr key={j.jugadorId}>
+              <td>{i + 1}</td>
+              <td>{j.nombre}</td>
+              <td>{j.puntosTotales}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function TorneoPage({ id }) {
   const { t } = useLang();
   const [torneo, setTorneo] = useState(null);
@@ -74,6 +123,7 @@ export default function TorneoPage({ id }) {
               </details>
 
               <LiveTournament torneo={torneo} />
+              {torneo.modoJornadas && <ClasificacionGeneralPublica torneoId={torneo.id} />}
             </>
           )}
         </section>

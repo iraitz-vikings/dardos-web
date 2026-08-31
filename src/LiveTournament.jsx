@@ -19,11 +19,35 @@ function Partido({ p, mostrarCuadrante }) {
   );
 }
 
+function ClasificacionCuadrante({ puntosJornada }) {
+  if (!puntosJornada || puntosJornada.length === 0) return null;
+  return (
+    <div className="live-tournament-clasificacion">
+      <h5>Clasificación</h5>
+      <table className="admin-tabla-clasificacion">
+        <thead>
+          <tr><th>Pos.</th><th>Participante</th><th>Puntos</th></tr>
+        </thead>
+        <tbody>
+          {puntosJornada.map((p) => (
+            <tr key={p.id}>
+              <td>{p.posicion}º</td>
+              <td>{p.etiqueta}</td>
+              <td>{p.puntos}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Cuadrante({ cuadrante, busqueda }) {
   return (
     <div className="live-tournament-cuadrante-visual">
       <h4>{cuadrante.nombre}</h4>
       <BracketView cuadrante={cuadrante} busqueda={busqueda} />
+      <ClasificacionCuadrante puntosJornada={cuadrante.puntosJornada} />
     </div>
   );
 }
