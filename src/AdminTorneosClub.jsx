@@ -46,6 +46,8 @@ export default function AdminTorneosClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
+  const [imagenCampeonUrl, setImagenCampeonUrl] = useState("");
   const [modoJornadas, setModoJornadas] = useState(false);
   const [puntosPorPosicion, setPuntosPorPosicion] = useState([
     { posicion: 1, puntos: 20 },
@@ -100,7 +102,8 @@ useEffect(() => {
         headers: { "Content-Type": "application/json", "x-admin-token": token },
         body: JSON.stringify({
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl,
-          afectaCalendario, notificaciones, modoJornadas, puntosPorPosicion: modoJornadas ? puntosPorPosicion : undefined,
+          afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl,
+          modoJornadas, puntosPorPosicion: modoJornadas ? puntosPorPosicion : undefined,
         }),
       });
       if (res.status === 401) {
@@ -124,6 +127,8 @@ useEffect(() => {
       setInsigniaUrl("");
       setAfectaCalendario(true);
       setNotificaciones(true);
+      setImagenEliminadoUrl("");
+      setImagenCampeonUrl("");
       setModoJornadas(false);
       setMensaje({ tipo: "ok", texto: "Torneo creado." });
       setMostrarFormulario(false);
@@ -451,6 +456,33 @@ async function programarCalendario(partidoId, datos) {
         <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
           <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
           Avisar a los socios de sus partidos de este torneo
+        </label>
+        <label>
+          Imagen de aviso al eliminar a un jugador (opcional)
+          <SelectorImagen
+            token={token}
+            valor={imagenEliminadoUrl}
+            onCambiar={setImagenEliminadoUrl}
+            onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+            etiqueta="Imagen de eliminado"
+          />
+          <span className="admin-hint">
+            Se manda con el aviso al jugador que quede eliminado de cualquier cuadrante de este torneo. Si no se
+            elige ninguna, el aviso se manda igual, solo que sin imagen.
+          </span>
+        </label>
+        <label>
+          Imagen de aviso al campeón (opcional)
+          <SelectorImagen
+            token={token}
+            valor={imagenCampeonUrl}
+            onCambiar={setImagenCampeonUrl}
+            onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+            etiqueta="Imagen de campeón"
+          />
+          <span className="admin-hint">
+            Se manda con el aviso al ganador de cada cuadrante de este torneo.
+          </span>
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
           <input type="checkbox" checked={modoJornadas} onChange={(e) => setModoJornadas(e.target.checked)} style={{ width: "auto" }} />

@@ -25,6 +25,10 @@ self.addEventListener("push", (event) => {
     badge: "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png",
     data: { url: datos.url || "/" },
   };
+  // Imagen grande opcional (p.ej. eliminación/campeón de un cuadrante). No
+  // todos los navegadores/sistemas la muestran (sobre todo en escritorio),
+  // pero si no la soportan simplemente se ignora sin romper el resto del aviso.
+  if (datos.imagen) opciones.image = datos.imagen;
 
   event.waitUntil(self.registration.showNotification(titulo, opciones));
 });
