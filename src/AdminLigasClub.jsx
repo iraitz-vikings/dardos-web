@@ -39,6 +39,8 @@ export default function AdminLigasClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
+  const [imagenCampeonUrl, setImagenCampeonUrl] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   const cargarLigas = () => {
@@ -86,7 +88,7 @@ export default function AdminLigasClub({ token, salir }) {
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, modalidad, vueltas, numeroParticipantes,
           numeroGrupos: numeroGrupos === "" ? undefined : Number(numeroGrupos),
           metodoSorteoParejas: modalidad === "parejas_ciegas" ? metodoSorteoParejas : undefined,
-          insigniaUrl, afectaCalendario, notificaciones,
+          insigniaUrl, afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl,
         }),
       });
       if (res.status === 401) {
@@ -103,6 +105,7 @@ export default function AdminLigasClub({ token, salir }) {
       setVisibilidad("privado"); setModalidad("individual"); setVueltas(1);
       setNumeroParticipantes(8); setNumeroGrupos(""); setMetodoSorteoParejas("AB"); setInsigniaUrl("");
       setAfectaCalendario(true);
+      setImagenEliminadoUrl(""); setImagenCampeonUrl("");
       setMensaje({ tipo: "ok", texto: "Liga creada." });
       setMostrarFormulario(false);
       cargarLigas();
@@ -353,6 +356,33 @@ export default function AdminLigasClub({ token, salir }) {
           <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
             <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
             Avisar a los socios de sus partidos de esta liga
+          </label>
+          <label>
+            Imagen de aviso al eliminar a un jugador (opcional)
+            <SelectorImagen
+              token={token}
+              valor={imagenEliminadoUrl}
+              onCambiar={setImagenEliminadoUrl}
+              onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+              etiqueta="Imagen de eliminado"
+            />
+            <span className="admin-hint">
+              Se manda con el aviso al jugador que quede eliminado del cuadrante final de esta liga. Si no se elige
+              ninguna, el aviso se manda igual, solo que sin imagen.
+            </span>
+          </label>
+          <label>
+            Imagen de aviso al campeón (opcional)
+            <SelectorImagen
+              token={token}
+              valor={imagenCampeonUrl}
+              onCambiar={setImagenCampeonUrl}
+              onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+              etiqueta="Imagen de campeón"
+            />
+            <span className="admin-hint">
+              Se manda con el aviso al ganador del cuadrante final de esta liga.
+            </span>
           </label>
           <div style={{ display: "flex", gap: ".6rem", alignItems: "center" }}>
             <button type="submit" disabled={guardando}>{guardando ? "Creando…" : "Crear liga"}</button>
