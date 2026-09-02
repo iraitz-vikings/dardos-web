@@ -220,6 +220,7 @@ export default function SocioPerfil() {
         </div>
         <MediasFabricante idsFabricantes={perfil.idsFabricantes} />
         <AvisosPush />
+        <AvisosTelegram />
       </div>
     );
   }
@@ -386,6 +387,7 @@ export default function SocioPerfil() {
 
       <CambioPasswordVoluntario />
       <AvisosPush />
+      <AvisosTelegram />
       </>
     );
   }
@@ -569,6 +571,61 @@ function AvisosPush() {
         </>
       )}
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
+// Alternativa a los avisos del navegador (AvisosPush): activar los avisos
+// por Telegram desde la propia cuenta, sin depender de que un admin genere
+// el enlace a mano (eso solo estaba disponible para invitados, ver
+// AdminJugadores.jsx). Sobre todo útil en iPhone, donde Safari no siempre
+// puede mostrar la imagen grande de los avisos — Telegram sí la muestra
+// siempre, al ser una app nativa.
+function AvisosTelegram() {
+  const [estado, setEstado] = useState(null); // null mientras carga
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/notificaciones/telegram/estado`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setEstado)
+      .catch(() => setError(true));
+  }, []);
+
+  return (
+    <div style={{ marginTop: "1.5rem" }}>
+      <strong style={{ display: "block", marginBottom: ".4rem" }}>Avisos por Telegram</strong>
+
+      {error && (
+        <p className="admin-hint" style={{ marginTop: 0 }}>
+          No se ha podido comprobar el estado de tus avisos por Telegram ahora mismo.
+        </p>
+      )}
+      {!error && !estado && <p className="admin-hint" style={{ marginTop: 0 }}>Comprobando…</p>}
+
+      {estado?.telegramVinculado && (
+        <p className="admin-msg admin-msg-ok">Ya tienes tus avisos activados por Telegram. ¡Todo listo!</p>
+      )}
+
+      {estado && !estado.telegramVinculado && estado.urlTelegram && (
+        <>
+          <p className="admin-hint" style={{ marginTop: 0 }}>
+            Alternativa a los avisos del navegador, útil sobre todo en iPhone (Safari no siempre puede mostrar la
+            imagen del aviso, Telegram sí).
+          </p>
+          <a href={estado.urlTelegram} target="_blank" rel="noreferrer">
+            <button type="button" className="admin-link-btn">Activar avisos por Telegram</button>
+          </a>
+        </>
+      )}
+
+      {estado && !estado.telegramVinculado && !estado.urlTelegram && (
+        <p className="admin-hint" style={{ marginTop: 0 }}>
+          El club todavía no ha terminado de configurar los avisos por Telegram.
+        </p>
+      )}
     </div>
   );
 }
