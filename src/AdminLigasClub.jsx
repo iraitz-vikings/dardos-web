@@ -531,6 +531,9 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
         <button type="button" className={`admin-tab ${subpestana === "final" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("final")}>
           Cuadrante final
         </button>
+        <button type="button" className={`admin-tab ${subpestana === "avisos" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("avisos")}>
+          Imágenes de avisos
+        </button>
       </nav>
 
       {subpestana === "participantes" && (
@@ -551,7 +554,80 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
       {subpestana === "calendario" && <CalendarioLiga liga={liga} maquinas={maquinas} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />}
       {subpestana === "clasificacion" && <ClasificacionLiga liga={liga} />}
       {subpestana === "final" && <CuadranteFinalLiga liga={liga} token={token} maquinas={maquinas} onRecargar={onRecargar} />}
+      {subpestana === "avisos" && <ImagenesAvisosLiga liga={liga} token={token} onRecargar={onRecargar} />}
     </section>
+  );
+}
+
+// Edición posterior de las tres imágenes de avisos automáticos del
+// cuadrante final de esta liga (bienvenida al sortear, eliminado, campeón)
+// — hasta ahora solo se podían fijar al crear la liga.
+function ImagenesAvisosLiga({ liga, token, onRecargar }) {
+  const [imagenBienvenidaUrl, setImagenBienvenidaUrl] = useState(liga.imagenBienvenidaUrl || "");
+  const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState(liga.imagenEliminadoUrl || "");
+  const [imagenCampeonUrl, setImagenCampeonUrl] = useState(liga.imagenCampeonUrl || "");
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  async function guardar() {
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ ...liga, imagenBienvenidaUrl, imagenEliminadoUrl, imagenCampeonUrl }),
+      });
+      setMensaje(res.ok ? { tipo: "ok", texto: "Imágenes guardadas." } : { tipo: "error", texto: "No se pudieron guardar." });
+      onRecargar();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form">
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Estas imágenes se mandan junto con el aviso correspondiente a los jugadores del cuadrante final de esta
+        liga. Si dejas alguna vacía, ese aviso se sigue mandando igual, solo que sin imagen.
+      </p>
+      <label>
+        Imagen de aviso de bienvenida al sortear (opcional)
+        <SelectorImagen
+          token={token}
+          valor={imagenBienvenidaUrl}
+          onCambiar={setImagenBienvenidaUrl}
+          onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+          etiqueta="Imagen de bienvenida"
+        />
+      </label>
+      <label>
+        Imagen de aviso al eliminar a un jugador (opcional)
+        <SelectorImagen
+          token={token}
+          valor={imagenEliminadoUrl}
+          onCambiar={setImagenEliminadoUrl}
+          onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+          etiqueta="Imagen de eliminado"
+        />
+      </label>
+      <label>
+        Imagen de aviso al campeón (opcional)
+        <SelectorImagen
+          token={token}
+          valor={imagenCampeonUrl}
+          onCambiar={setImagenCampeonUrl}
+          onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+          etiqueta="Imagen de campeón"
+        />
+      </label>
+      <button type="button" disabled={guardando} onClick={guardar}>
+        {guardando ? "Guardando…" : "Guardar imágenes"}
+      </button>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
   );
 }
 

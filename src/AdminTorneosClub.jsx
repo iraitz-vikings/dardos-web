@@ -248,6 +248,18 @@ useEffect(() => {
     cargarTorneos();
   }
 
+  // Guarda las imágenes de avisos (bienvenida/eliminado/campeón) de un
+  // torneo ya creado — hasta ahora solo se podían fijar al crearlo.
+  async function guardarImagenesAvisos(torneo, imagenes) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, ...imagenes }),
+    });
+    cargarTorneos();
+    return res.ok;
+  }
+
   async function sortearCuadrante(cuadranteId, participantes, cabezasDeSerie) {
     const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sorteo`, {
       method: "POST",
@@ -359,6 +371,7 @@ async function programarCalendario(partidoId, datos) {
         torneo={torneoEnGestion}
         jugadores={jugadores}
         maquinas={maquinas}
+        token={token}
         onVolver={() => setGestionandoId(null)}
         onCrearCuadrante={(datos) => crearCuadrante(torneoEnGestion.id, datos)}
         onBorrarCuadrante={borrarCuadrante}
@@ -375,6 +388,7 @@ async function programarCalendario(partidoId, datos) {
         onAsignarPuntosCuadrante={asignarPuntosCuadrante}
         onObtenerClasificacionGeneral={obtenerClasificacionGeneral}
         onGuardarPuntosPorPosicion={guardarPuntosPorPosicion}
+        onGuardarImagenesAvisos={guardarImagenesAvisos}
       />
     );
   }
@@ -617,10 +631,10 @@ async function programarCalendario(partidoId, datos) {
 }
 
 function TorneoGestion({
-  torneo, jugadores, maquinas, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
+  torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
-  onGuardarPuntosPorPosicion,
+  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -662,6 +676,13 @@ function TorneoGestion({
             Clasificación general
           </button>
         )}
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "avisos" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("avisos")}
+        >
+          Imágenes de avisos
+        </button>
       </nav>
 
       {subpestana === "participantes" && (
@@ -711,7 +732,77 @@ function TorneoGestion({
           onGuardarPuntosPorPosicion={onGuardarPuntosPorPosicion}
         />
       )}
+
+      {subpestana === "avisos" && (
+        <ImagenesAvisos torneo={torneo} token={token} onGuardar={onGuardarImagenesAvisos} />
+      )}
     </section>
+  );
+}
+
+// Edición posterior de las tres imágenes de avisos automáticos (bienvenida
+// al sortear, eliminado, campeón) — hasta ahora solo se podían fijar al
+// crear el torneo. Mismo componente SelectorImagen que en el formulario de
+// creación, solo que aquí guarda con un PUT al torneo ya existente.
+function ImagenesAvisos({ torneo, token, onGuardar }) {
+  const [imagenBienvenidaUrl, setImagenBienvenidaUrl] = useState(torneo.imagenBienvenidaUrl || "");
+  const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState(torneo.imagenEliminadoUrl || "");
+  const [imagenCampeonUrl, setImagenCampeonUrl] = useState(torneo.imagenCampeonUrl || "");
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  async function guardar() {
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const ok = await onGuardar(torneo, { imagenBienvenidaUrl, imagenEliminadoUrl, imagenCampeonUrl });
+      setMensaje(ok ? { tipo: "ok", texto: "Imágenes guardadas." } : { tipo: "error", texto: "No se pudieron guardar." });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form">
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Estas imágenes se mandan junto con el aviso correspondiente a los jugadores de este torneo. Si dejas alguna
+        vacía, ese aviso se sigue mandando igual, solo que sin imagen.
+      </p>
+      <label>
+        Imagen de aviso de bienvenida al sortear (opcional)
+        <SelectorImagen
+          token={token}
+          valor={imagenBienvenidaUrl}
+          onCambiar={setImagenBienvenidaUrl}
+          onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+          etiqueta="Imagen de bienvenida"
+        />
+      </label>
+      <label>
+        Imagen de aviso al eliminar a un jugador (opcional)
+        <SelectorImagen
+          token={token}
+          valor={imagenEliminadoUrl}
+          onCambiar={setImagenEliminadoUrl}
+          onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+          etiqueta="Imagen de eliminado"
+        />
+      </label>
+      <label>
+        Imagen de aviso al campeón (opcional)
+        <SelectorImagen
+          token={token}
+          valor={imagenCampeonUrl}
+          onCambiar={setImagenCampeonUrl}
+          onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+          etiqueta="Imagen de campeón"
+        />
+      </label>
+      <button type="button" disabled={guardando} onClick={guardar}>
+        {guardando ? "Guardando…" : "Guardar imágenes"}
+      </button>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
   );
 }
 
