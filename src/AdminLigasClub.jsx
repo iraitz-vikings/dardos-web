@@ -1455,7 +1455,7 @@ function PartidoFinalRow({ p, maquinas, onActualizar, onProgramar, busqueda }) {
       <button
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
-        disabled={!p.jugador1 || !p.jugador2}
+        disabled={!p.jugador1}
         onClick={() => onActualizar({ ganador: p.jugador1 })}
       >
         Ganó
@@ -1465,7 +1465,7 @@ function PartidoFinalRow({ p, maquinas, onActualizar, onProgramar, busqueda }) {
       <button
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
-        disabled={!p.jugador1 || !p.jugador2}
+        disabled={!p.jugador2}
         onClick={() => onActualizar({ ganador: p.jugador2 })}
       >
         Ganó

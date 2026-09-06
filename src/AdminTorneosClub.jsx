@@ -1539,7 +1539,7 @@ function PartidoRow({ p, maquinasOpciones, maquinas, onActualizar, onProgramar, 
       <button
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
-        disabled={bloqueado || !p.jugador1 || !p.jugador2}
+        disabled={bloqueado || !p.jugador1}
         onClick={() => onActualizar({ ganador: p.jugador1 })}
       >
         Ganó
@@ -1554,7 +1554,7 @@ function PartidoRow({ p, maquinasOpciones, maquinas, onActualizar, onProgramar, 
       <button
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
-        disabled={bloqueado || !p.jugador1 || !p.jugador2}
+        disabled={bloqueado || !p.jugador2}
         onClick={() => onActualizar({ ganador: p.jugador2 })}
       >
         Ganó
