@@ -26,6 +26,19 @@ function rondaAbierta(cuadrante, partido) {
   return anteriores.every((p) => !!p.ganador || p.resultado === "__BYE_DOBLE__");
 }
 
+// Estado visual de una ronda del cuadro, para poder plegar automáticamente
+// las que ya no hace falta mirar (terminadas) y las que todavía no han
+// llegado (pendientes), dejando a la vista solo las que están en curso —
+// así un cuadrante con muchas rondas no obliga a hacer scroll por todo el
+// historial para encontrar el partido que hay que gestionar ahora mismo.
+function estadoRonda(partidos) {
+  const terminada = partidos.every((p) => !!p.ganador || p.resultado === "__BYE_DOBLE__");
+  if (terminada) return "terminada";
+  const empezada = partidos.some((p) => !!p.ganador || p.enCurso || p.resultado === "__BYE_DOBLE__");
+  return empezada ? "en_curso" : "pendiente";
+}
+const ETIQUETA_ESTADO_RONDA = { terminada: "✓ Terminada", en_curso: "● En curso", pendiente: "Pendiente" };
+
 export default function AdminTorneosClub({ token, salir }) {
   const [torneos, setTorneos] = useState([]);
   const [papelera, setPapelera] = useState([]);
@@ -1379,6 +1392,12 @@ function CuadranteDetalle({
   const [cargandoClasificacion, setCargandoClasificacion] = useState(false);
   const [asignando, setAsignando] = useState(false);
   const [avisoPuntos, setAvisoPuntos] = useState(null);
+  // Plegado manual de rondas: por defecto se pliegan las terminadas y las
+  // que aún no han empezado (ver estadoRonda), y solo se despliegan las que
+  // están en curso — pero el admin puede desplegar u ocultar cualquiera
+  // cuando le interese revisarla. Solo guarda las excepciones a ese
+  // comportamiento por defecto (clave "rama-ronda" -> true/false).
+  const [rondasManual, setRondasManual] = useState({});
 
   async function verClasificacion() {
     setCargandoClasificacion(true);
@@ -1499,25 +1518,40 @@ function CuadranteDetalle({
       {abierto && ramas.map((rama) => (
         <div key={rama} className="admin-cuadrante-rama">
           <h5>{RAMA_ETIQUETA[rama]}</h5>
-          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => (
-            <div key={ronda} className="admin-cuadro-maquina">
-              <h4>Ronda {ronda}</h4>
-              {porRama[rama][ronda]
-                .sort((a, b) => a.posicion - b.posicion)
-                .map((p) => (
-                  <PartidoRow
-                    key={`${p.id}-${p.jugador1}-${p.jugador2}-${p.ganador}-${p.resultado}-${p.maquina}-${p.confirmadoCalendario}-${p.fechaCalendario}`}
-                    p={p}
-                    maquinasOpciones={maquinasOpciones}
-                    maquinas={maquinas}
-                    onActualizar={(datos) => onActualizarPartido(p.id, datos)}
-                    onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
-                    busqueda={busqueda}
-                    bloqueado={!rondaAbierta(cuadrante, p) && !p.enCurso}
-                  />
-                ))}
-            </div>
-          ))}
+          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => {
+            const partidosRonda = porRama[rama][ronda];
+            const estado = estadoRonda(partidosRonda);
+            const key = `${rama}-${ronda}`;
+            const desplegada = rondasManual[key] !== undefined ? rondasManual[key] : estado === "en_curso";
+            return (
+              <div key={ronda} className="admin-cuadro-maquina">
+                <h4
+                  className="admin-ronda-header"
+                  onClick={() => setRondasManual((prev) => ({ ...prev, [key]: !desplegada }))}
+                >
+                  <span>
+                    Ronda {ronda}{" "}
+                    <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_RONDA[estado]}</span>
+                  </span>
+                  <span className="admin-ronda-toggle">{desplegada ? "Ocultar ▲" : "Ver ▼"}</span>
+                </h4>
+                {desplegada && partidosRonda
+                  .sort((a, b) => a.posicion - b.posicion)
+                  .map((p) => (
+                    <PartidoRow
+                      key={`${p.id}-${p.jugador1}-${p.jugador2}-${p.ganador}-${p.resultado}-${p.maquina}-${p.confirmadoCalendario}-${p.fechaCalendario}`}
+                      p={p}
+                      maquinasOpciones={maquinasOpciones}
+                      maquinas={maquinas}
+                      onActualizar={(datos) => onActualizarPartido(p.id, datos)}
+                      onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
+                      busqueda={busqueda}
+                      bloqueado={!rondaAbierta(cuadrante, p) && !p.enCurso}
+                    />
+                  ))}
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>

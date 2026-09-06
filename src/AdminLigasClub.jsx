@@ -16,6 +16,18 @@ function formatFecha(iso) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// Estado visual de una ronda del cuadrante final, para poder plegar
+// automáticamente las que ya no hace falta mirar (terminadas) y las que
+// todavía no han llegado (pendientes), dejando a la vista solo las que
+// están en curso — mismo criterio que en AdminTorneosClub.jsx.
+function estadoRonda(partidos) {
+  const terminada = partidos.every((p) => !!p.ganador || p.resultado === "__BYE_DOBLE__");
+  if (terminada) return "terminada";
+  const empezada = partidos.some((p) => !!p.ganador || p.enCurso || p.resultado === "__BYE_DOBLE__");
+  return empezada ? "en_curso" : "pendiente";
+}
+const ETIQUETA_ESTADO_RONDA = { terminada: "✓ Terminada", en_curso: "● En curso", pendiente: "Pendiente" };
+
 export default function AdminLigasClub({ token, salir }) {
   const [ligas, setLigas] = useState([]);
   const [papelera, setPapelera] = useState([]);
@@ -1229,6 +1241,11 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
   const [error, setError] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [abierto, setAbierto] = useState(true);
+  // Plegado manual de rondas del cuadrante final (mismo comportamiento que
+  // en torneos: por defecto se pliegan las terminadas y las que aún no han
+  // empezado, dejando a la vista solo las que están en curso). Solo guarda
+  // las excepciones a ese comportamiento por defecto (clave "rama-ronda").
+  const [rondasManual, setRondasManual] = useState({});
 
   // Ungrouped: cuántos clasifican en total, sacados de una única
   // clasificación (comportamiento de siempre).
@@ -1425,21 +1442,36 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
       {abierto && ramas.map((rama) => (
         <div key={rama} className="admin-cuadrante-rama">
           <h5>{RAMA_ETIQUETA[rama]}</h5>
-          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => (
-            <div key={ronda} className="admin-cuadro-maquina">
-              <h4>Ronda {ronda}</h4>
-              {porRama[rama][ronda].sort((a, b) => a.posicion - b.posicion).map((p) => (
-                <PartidoFinalRow
-                  key={p.id}
-                  p={p}
-                  maquinas={maquinas}
-                  onActualizar={(datos) => actualizarPartidoFinal(p.id, datos)}
-                  onProgramar={(datos) => programarCalendarioFinal(p.id, datos)}
-                  busqueda={busqueda}
-                />
-              ))}
-            </div>
-          ))}
+          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => {
+            const partidosRonda = porRama[rama][ronda];
+            const estado = estadoRonda(partidosRonda);
+            const key = `${rama}-${ronda}`;
+            const desplegada = rondasManual[key] !== undefined ? rondasManual[key] : estado === "en_curso";
+            return (
+              <div key={ronda} className="admin-cuadro-maquina">
+                <h4
+                  className="admin-ronda-header"
+                  onClick={() => setRondasManual((prev) => ({ ...prev, [key]: !desplegada }))}
+                >
+                  <span>
+                    Ronda {ronda}{" "}
+                    <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_RONDA[estado]}</span>
+                  </span>
+                  <span className="admin-ronda-toggle">{desplegada ? "Ocultar ▲" : "Ver ▼"}</span>
+                </h4>
+                {desplegada && partidosRonda.sort((a, b) => a.posicion - b.posicion).map((p) => (
+                  <PartidoFinalRow
+                    key={p.id}
+                    p={p}
+                    maquinas={maquinas}
+                    onActualizar={(datos) => actualizarPartidoFinal(p.id, datos)}
+                    onProgramar={(datos) => programarCalendarioFinal(p.id, datos)}
+                    busqueda={busqueda}
+                  />
+                ))}
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>
