@@ -248,7 +248,7 @@ useEffect(() => {
 
   async function obtenerClasificacionGeneral(torneoId) {
     const res = await fetch(`${API_URL}/api/torneos-club/${torneoId}/clasificacion-general`);
-    if (!res.ok) return { clasificacionGeneral: [], sinFicha: [] };
+    if (!res.ok) return { clasificacionGeneral: [] };
     return res.json();
   }
 
@@ -333,6 +333,24 @@ async function programarCalendario(partidoId, datos) {
     cargarTorneos();
   }
 
+  // Vincula (o desvincula) un participante ya apuntado a un jugador del
+  // club, sin tocar su etiqueta — para corregir un alta hecha mal (invitado
+  // apuntado a mano en vez de con su ficha del club) sin tener que rehacer
+  // el sorteo. Ver PUT /participantes/:id en torneosClub.js.
+  async function actualizarParticipante(participanteId, datos) {
+    const res = await fetch(`${API_URL}/api/torneos-club/participantes/${participanteId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo vincular el participante.";
+    }
+    return null;
+  }
+
   async function sortearParejas(cuadranteId, jugadorIds) {
     const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sortear-parejas`, {
       method: "POST",
@@ -394,6 +412,7 @@ async function programarCalendario(partidoId, datos) {
         onReiniciar={reiniciarCuadrante}
         onCrearParticipante={crearParticipante}
         onBorrarParticipante={borrarParticipante}
+        onActualizarParticipante={actualizarParticipante}
         onSortearParejas={sortearParejas}
         onSortearParejasGrupos={sortearParejasGrupos}
         onCambiarEstadoCuadrante={cambiarEstadoCuadrante}
@@ -645,7 +664,7 @@ async function programarCalendario(partidoId, datos) {
 
 function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
-  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onSortearParejas, onSortearParejasGrupos,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos,
 }) {
@@ -713,6 +732,7 @@ function TorneoGestion({
                 jugadores={jugadores}
                 onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
                 onBorrarParticipante={onBorrarParticipante}
+                onActualizarParticipante={onActualizarParticipante}
                 onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
                 onSortearParejasGrupos={(entradas) => onSortearParejasGrupos(c.id, entradas)}
                 onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
@@ -841,7 +861,6 @@ function ClasificacionGeneral({ torneo, onObtenerClasificacionGeneral, onGuardar
 
   if (cargando) return <p className="chronicle-status">Cargando clasificación…</p>;
   const clasificacion = datos?.clasificacionGeneral || [];
-  const sinFicha = datos?.sinFicha || [];
 
   return (
     <div>
@@ -872,9 +891,9 @@ function ClasificacionGeneral({ torneo, onObtenerClasificacionGeneral, onGuardar
           </thead>
           <tbody>
             {clasificacion.map((j, i) => (
-              <tr key={j.jugadorId}>
+              <tr key={j.jugadorId || `invitado-${j.nombre}`}>
                 <td>{i + 1}</td>
-                <td>{j.nombre}</td>
+                <td>{j.nombre}{j.invitado && <span className="admin-hint"> (invitado del torneo)</span>}</td>
                 <td>{j.puntosTotales}</td>
                 <td className="admin-hint">
                   {j.jornadas.map((jn) => `${jn.cuadrante}: ${jn.posicion}º (${jn.puntos} pts)`).join(" · ")}
@@ -883,12 +902,6 @@ function ClasificacionGeneral({ torneo, onObtenerClasificacionGeneral, onGuardar
             ))}
           </tbody>
         </table>
-      )}
-      {sinFicha.length > 0 && (
-        <p className="admin-hint" style={{ marginTop: ".8rem" }}>
-          Participantes sin ficha de jugador del club (no se pueden sumar a nadie):{" "}
-          {sinFicha.map((s) => `${s.etiqueta} (${s.cuadrante}, ${s.posicion}º)`).join(", ")}
-        </p>
       )}
     </div>
   );
@@ -1047,7 +1060,7 @@ function TorneoCuadrantes({
   );
 }
 
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onSortear }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -1186,6 +1199,15 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     if (error) setErrorSorteo(error);
     else setSemillasTexto("");
     setSorteando(false);
+  }
+
+  // Vincula a posteriori un participante ya apuntado (invitado a mano, sin
+  // ficha) a un jugador real del club — corrige un alta hecha mal sin tener
+  // que rehacer el sorteo. Ver PUT /participantes/:id en torneosClub.js.
+  async function vincularParticipante(participanteId, datos) {
+    setMensaje(null);
+    const error = await onActualizarParticipante(participanteId, datos);
+    setMensaje(error ? { tipo: "error", texto: error } : { tipo: "ok", texto: "Participante vinculado." });
   }
 
   return (
@@ -1347,10 +1369,14 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
       {participantes.length === 0 && <p className="chronicle-status">Nadie apuntado todavía.</p>}
       <ul>
         {participantes.map((p) => (
-          <li key={p.id} className="admin-list-item">
-            <span>{p.etiqueta}</span>
-            <button type="button" className="admin-link-btn" onClick={() => onBorrarParticipante(p.id)}>Quitar</button>
-          </li>
+          <FilaParticipante
+            key={p.id}
+            p={p}
+            jugadores={disponiblesClub}
+            esParejas={esParejas}
+            onQuitar={() => onBorrarParticipante(p.id)}
+            onVincular={vincularParticipante}
+          />
         ))}
       </ul>
 
@@ -1377,6 +1403,76 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
         {errorSorteo && <p className="admin-msg admin-msg-error">{errorSorteo}</p>}
       </div>
     </div>
+  );
+}
+
+// Una fila de la lista de participantes ya apuntados, con la posibilidad de
+// vincular a posteriori un hueco sin ficha (invitado apuntado a mano en vez
+// de con su ficha del club) a un jugador real del club — sin tocar la
+// etiqueta ya usada por el sorteo/cuadro. Solo ofrece vincular los huecos
+// que de verdad faltan: en individual/parejas ya formadas eso es
+// jugador1Id/jugador2Id tal cual; en el resto de casos la etiqueta puede
+// llevar el nombre de una pareja separado por " / " para mostrar a quién
+// corresponde cada botón.
+function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular }) {
+  const [vinculando, setVinculando] = useState(null); // "jugador1" | "jugador2" | null
+  const [seleccion, setSeleccion] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  const nombres = p.etiqueta.split(" / ");
+  const faltaJugador1 = !p.jugador1Id;
+  const faltaJugador2 = esParejas && nombres.length > 1 && !p.jugador2Id;
+
+  async function confirmar() {
+    if (!seleccion) return;
+    setEnviando(true);
+    await onVincular(p.id, vinculando === "jugador2" ? { jugador2Id: seleccion } : { jugador1Id: seleccion });
+    setEnviando(false);
+    setVinculando(null);
+    setSeleccion("");
+  }
+
+  return (
+    <li className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".35rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
+        <span>{p.etiqueta}</span>
+        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+          {faltaJugador1 && (
+            <button
+              type="button"
+              className="admin-link-btn"
+              onClick={() => { setVinculando("jugador1"); setSeleccion(""); }}
+            >
+              Vincular{esParejas && nombres.length > 1 ? ` "${nombres[0]}"` : ""} a jugador del club
+            </button>
+          )}
+          {faltaJugador2 && (
+            <button
+              type="button"
+              className="admin-link-btn"
+              onClick={() => { setVinculando("jugador2"); setSeleccion(""); }}
+            >
+              Vincular "{nombres[1]}" a jugador del club
+            </button>
+          )}
+          <button type="button" className="admin-link-btn" onClick={onQuitar}>Quitar</button>
+        </div>
+      </div>
+      {vinculando && (
+        <div className="admin-inline-form" style={{ marginTop: 0 }}>
+          <select value={seleccion} onChange={(e) => setSeleccion(e.target.value)}>
+            <option value="">Elige un jugador del club…</option>
+            {jugadores.map((j) => (
+              <option key={j.id} value={j.id}>{j.nombre}</option>
+            ))}
+          </select>
+          <button type="button" disabled={!seleccion || enviando} onClick={confirmar}>
+            {enviando ? "Vinculando…" : "Confirmar"}
+          </button>
+          <button type="button" className="admin-link-btn" onClick={() => setVinculando(null)}>Cancelar</button>
+        </div>
+      )}
+    </li>
   );
 }
 
