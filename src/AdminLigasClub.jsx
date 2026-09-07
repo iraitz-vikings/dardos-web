@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
+import BracketView from "./BracketView.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -16,17 +17,16 @@ function formatFecha(iso) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-// Estado visual de una ronda del cuadrante final, para poder plegar
-// automáticamente las que ya no hace falta mirar (terminadas) y las que
-// todavía no han llegado (pendientes), dejando a la vista solo las que
-// están en curso — mismo criterio que en AdminTorneosClub.jsx.
-function estadoRonda(partidos) {
-  const terminada = partidos.every((p) => !!p.ganador || p.resultado === "__BYE_DOBLE__");
-  if (terminada) return "terminada";
-  const empezada = partidos.some((p) => !!p.ganador || p.enCurso || p.resultado === "__BYE_DOBLE__");
-  return empezada ? "en_curso" : "pendiente";
+// Una ronda del cuadrante final está abierta si es la primera, o si todos
+// los partidos de la ronda anterior de su misma rama ya tienen ganador (o
+// fueron un bye doble) — mismo criterio que en AdminTorneosClub.jsx, usado
+// para bloquear la edición de partidos que todavía no tocan.
+function rondaAbierta(cuadrante, partido) {
+  if (partido.ronda <= 1) return true;
+  const anteriores = cuadrante.partidos.filter((p) => p.rama === partido.rama && p.ronda === partido.ronda - 1);
+  if (anteriores.length === 0) return true;
+  return anteriores.every((p) => !!p.ganador || p.resultado === "__BYE_DOBLE__");
 }
-const ETIQUETA_ESTADO_RONDA = { terminada: "✓ Terminada", en_curso: "● En curso", pendiente: "Pendiente" };
 
 export default function AdminLigasClub({ token, salir }) {
   const [ligas, setLigas] = useState([]);
@@ -1026,13 +1026,14 @@ function RepartoGruposLiga({ liga, participantes, onRepartirGrupos }) {
 
 function CalendarioLiga({ liga, maquinas, onActualizarPartido, onProgramarCalendario }) {
   const partidos = liga.partidos || [];
+  const afectaCalendario = liga.afectaCalendario !== false;
 
   if (partidos.length === 0) {
     return <p className="chronicle-status">Todavía no hay calendario — apunta a todos los participantes y pulsa "Generar calendario" en la pestaña Participantes.</p>;
   }
 
   if (!liga.numeroGrupos) {
-    return <CalendarioLigaGrupo partidos={partidos} maquinas={maquinas} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />;
+    return <CalendarioLigaGrupo partidos={partidos} maquinas={maquinas} afectaCalendario={afectaCalendario} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />;
   }
 
   const letras = Array.from({ length: liga.numeroGrupos }, (_, i) => String.fromCharCode(65 + i));
@@ -1044,7 +1045,7 @@ function CalendarioLiga({ liga, maquinas, onActualizarPartido, onProgramarCalend
         return (
           <div key={g} style={{ marginBottom: "1.5rem" }}>
             <h3>Grupo {g}</h3>
-            <CalendarioLigaGrupo partidos={partidosGrupo} maquinas={maquinas} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />
+            <CalendarioLigaGrupo partidos={partidosGrupo} maquinas={maquinas} afectaCalendario={afectaCalendario} onActualizarPartido={onActualizarPartido} onProgramarCalendario={onProgramarCalendario} />
           </div>
         );
       })}
@@ -1052,7 +1053,7 @@ function CalendarioLiga({ liga, maquinas, onActualizarPartido, onProgramarCalend
   );
 }
 
-function CalendarioLigaGrupo({ partidos, maquinas, onActualizarPartido, onProgramarCalendario }) {
+function CalendarioLigaGrupo({ partidos, maquinas, afectaCalendario, onActualizarPartido, onProgramarCalendario }) {
   const porJornada = {};
   for (const p of partidos) {
     if (!porJornada[p.jornada]) porJornada[p.jornada] = [];
@@ -1070,6 +1071,7 @@ function CalendarioLigaGrupo({ partidos, maquinas, onActualizarPartido, onProgra
               key={p.id}
               p={p}
               maquinas={maquinas}
+              afectaCalendario={afectaCalendario}
               onActualizar={(datos) => onActualizarPartido(p.id, datos)}
               onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
             />
@@ -1080,7 +1082,7 @@ function CalendarioLigaGrupo({ partidos, maquinas, onActualizarPartido, onProgra
   );
 }
 
-function PartidoLigaRow({ p, maquinas, onActualizar, onProgramar }) {
+function PartidoLigaRow({ p, maquinas, afectaCalendario, onActualizar, onProgramar }) {
   return (
     <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
       <span style={{ minWidth: "140px" }}>{p.participante1}</span>
@@ -1115,7 +1117,7 @@ function PartidoLigaRow({ p, maquinas, onActualizar, onProgramar }) {
       <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
         {p.enCurso ? "★ En curso" : "Marcar en curso"}
       </button>
-      <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />
+      {afectaCalendario && <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />}
     </div>
   );
 }
@@ -1241,11 +1243,11 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
   const [error, setError] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [abierto, setAbierto] = useState(true);
-  // Plegado manual de rondas del cuadrante final (mismo comportamiento que
-  // en torneos: por defecto se pliegan las terminadas y las que aún no han
-  // empezado, dejando a la vista solo las que están en curso). Solo guarda
-  // las excepciones a ese comportamiento por defecto (clave "rama-ronda").
-  const [rondasManual, setRondasManual] = useState({});
+  // Partido cuyo enfrentamiento está abierto en la ventanita de edición —
+  // se guarda solo el id y se busca en cuadrante.partidos en cada render,
+  // igual que en AdminTorneosClub.jsx, para que siempre muestre el dato
+  // más reciente tras cada cambio.
+  const [partidoSeleccionadoId, setPartidoSeleccionadoId] = useState(null);
 
   // Ungrouped: cuántos clasifican en total, sacados de una única
   // clasificación (comportamiento de siempre).
@@ -1409,109 +1411,109 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
     );
   }
 
-  const porRama = {};
-  for (const p of cuadrante.partidos) {
-    if (!porRama[p.rama]) porRama[p.rama] = {};
-    if (!porRama[p.rama][p.ronda]) porRama[p.rama][p.ronda] = [];
-    porRama[p.rama][p.ronda].push(p);
-  }
-  const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
-  const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
+  const afectaCalendario = liga.afectaCalendario !== false;
+  const partidosBloqueados = new Set(
+    cuadrante.partidos.filter((p) => !rondaAbierta(cuadrante, p) && !p.enCurso).map((p) => p.id)
+  );
+  const partidoSeleccionado = cuadrante.partidos.find((p) => p.id === partidoSeleccionadoId) || null;
 
   return (
     <div className="admin-cuadrante">
       <div className="admin-cuadrante-header">
         <h4>{cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})</h4>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-          <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>{abierto ? "Ocultar" : "Ver enfrentamientos"}</button>
+          <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>{abierto ? "Ocultar cuadrante" : "Ver cuadrante"}</button>
           <button type="button" className="admin-link-btn" onClick={reiniciarCuadrante}>Vaciar resultados</button>
           <button type="button" className="admin-link-btn" onClick={borrarCuadrante}>Borrar cuadrante</button>
         </div>
       </div>
 
       {abierto && (
-        <input
-          type="text"
-          className="admin-busqueda"
-          placeholder="Buscar participante…"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
+        <>
+          <input
+            type="text"
+            className="admin-busqueda"
+            placeholder="Buscar participante…"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+          <BracketView
+            cuadrante={cuadrante}
+            busqueda={busqueda}
+            onClickPartido={(p) => setPartidoSeleccionadoId(p.id)}
+            partidosBloqueados={partidosBloqueados}
+          />
+        </>
       )}
 
-      {abierto && ramas.map((rama) => (
-        <div key={rama} className="admin-cuadrante-rama">
-          <h5>{RAMA_ETIQUETA[rama]}</h5>
-          {Object.keys(porRama[rama]).sort((a, b) => a - b).map((ronda) => {
-            const partidosRonda = porRama[rama][ronda];
-            const estado = estadoRonda(partidosRonda);
-            const key = `${rama}-${ronda}`;
-            const desplegada = rondasManual[key] !== undefined ? rondasManual[key] : estado === "en_curso";
-            return (
-              <div key={ronda} className="admin-cuadro-maquina">
-                <h4
-                  className="admin-ronda-header"
-                  onClick={() => setRondasManual((prev) => ({ ...prev, [key]: !desplegada }))}
-                >
-                  <span>
-                    Ronda {ronda}{" "}
-                    <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_RONDA[estado]}</span>
-                  </span>
-                  <span className="admin-ronda-toggle">{desplegada ? "Ocultar ▲" : "Ver ▼"}</span>
-                </h4>
-                {desplegada && partidosRonda.sort((a, b) => a.posicion - b.posicion).map((p) => (
-                  <PartidoFinalRow
-                    key={p.id}
-                    p={p}
-                    maquinas={maquinas}
-                    onActualizar={(datos) => actualizarPartidoFinal(p.id, datos)}
-                    onProgramar={(datos) => programarCalendarioFinal(p.id, datos)}
-                    busqueda={busqueda}
-                  />
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+      {partidoSeleccionado && (
+        <PartidoFinalModal
+          p={partidoSeleccionado}
+          maquinas={maquinas}
+          afectaCalendario={afectaCalendario}
+          bloqueado={partidosBloqueados.has(partidoSeleccionado.id)}
+          onActualizar={(datos) => actualizarPartidoFinal(partidoSeleccionado.id, datos)}
+          onProgramar={(datos) => programarCalendarioFinal(partidoSeleccionado.id, datos)}
+          onCerrar={() => setPartidoSeleccionadoId(null)}
+        />
+      )}
     </div>
   );
 }
 
-function PartidoFinalRow({ p, maquinas, onActualizar, onProgramar, busqueda }) {
-  const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
-  const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
+// Ventanita de edición de un enfrentamiento del cuadrante final, al clicar
+// su caja en el cuadrante visual — mismos campos que antes tenía la fila de
+// la lista de texto (los jugadores del cuadrante final no son editables,
+// vienen fijados por la clasificación, a diferencia del cuadrante de un
+// torneo del club).
+function PartidoFinalModal({ p, maquinas, afectaCalendario, bloqueado, onActualizar, onProgramar, onCerrar }) {
   return (
-    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${encontrado ? "admin-cuadro-encontrado" : ""}`}>
-      <span style={{ minWidth: "140px" }}>{p.jugador1 || "—"}</span>
-      <button
-        type="button"
-        className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
-        disabled={!p.jugador1}
-        onClick={() => onActualizar({ ganador: p.ganador === p.jugador1 ? null : p.jugador1 })}
-      >
-        Ganó
-      </button>
-      <span>vs</span>
-      <span style={{ minWidth: "140px" }}>{p.jugador2 || "—"}</span>
-      <button
-        type="button"
-        className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
-        disabled={!p.jugador2}
-        onClick={() => onActualizar({ ganador: p.ganador === p.jugador2 ? null : p.jugador2 })}
-      >
-        Ganó
-      </button>
-      <input
-        defaultValue={p.resultado || ""}
-        placeholder="Resultado"
-        className="admin-cuadro-resultado"
-        onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
-      />
-      <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
-        {p.enCurso ? "★ En curso" : "Marcar en curso"}
-      </button>
-      {p.jugador1 && p.jugador2 && <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />}
+    <div className="admin-partido-modal" onClick={onCerrar}>
+      <div className="admin-partido-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-partido-panel-header">
+          <h4>Ronda {p.ronda}</h4>
+          <button type="button" className="admin-link-btn" onClick={onCerrar}>Cerrar</button>
+        </div>
+        {bloqueado && (
+          <p className="admin-hint" style={{ marginTop: 0 }}>
+            🔒 Bloqueado hasta terminar la ronda anterior — "Marcar en curso" lo activa manualmente.
+          </p>
+        )}
+        <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
+          <span style={{ minWidth: "140px" }}>{p.jugador1 || "—"}</span>
+          <button
+            type="button"
+            className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
+            disabled={bloqueado || !p.jugador1}
+            onClick={() => onActualizar({ ganador: p.ganador === p.jugador1 ? null : p.jugador1 })}
+          >
+            Ganó
+          </button>
+          <span>vs</span>
+          <span style={{ minWidth: "140px" }}>{p.jugador2 || "—"}</span>
+          <button
+            type="button"
+            className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
+            disabled={bloqueado || !p.jugador2}
+            onClick={() => onActualizar({ ganador: p.ganador === p.jugador2 ? null : p.jugador2 })}
+          >
+            Ganó
+          </button>
+          <input
+            defaultValue={p.resultado || ""}
+            placeholder="Resultado"
+            className="admin-cuadro-resultado"
+            disabled={bloqueado}
+            onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
+          />
+          <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
+            {p.enCurso ? "★ En curso" : "Marcar en curso"}
+          </button>
+          {afectaCalendario && p.jugador1 && p.jugador2 && (
+            <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

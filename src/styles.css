@@ -849,6 +849,12 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .bracket-box-ronda { font-size: .58rem; text-transform: uppercase; color: var(--steel); margin-bottom: .15rem; }
 .bracket-box-jugador { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bracket-box-ganador { color: var(--ember); font-weight: 600; }
+/* Cuadrante del panel de admin: cajas clicables que abren la ventanita de
+   edición del enfrentamiento, y aviso de bloqueo cuando la ronda anterior
+   todavía no ha terminado. */
+.bracket-box-clickable { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.bracket-box-clickable:hover { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember) inset; }
+.bracket-box-bloqueado { opacity: .55; }
 .bracket-final-box {
   display: flex;
   align-items: center;
@@ -859,6 +865,8 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   font-family: 'IBM Plex Mono', monospace;
   font-size: .85rem;
 }
+.bracket-final-box-clickable { cursor: pointer; transition: box-shadow .15s; }
+.bracket-final-box-clickable:hover { box-shadow: 0 0 0 2px var(--ember); }
 .bracket-rama-visual .bracket-final-box + .bracket-final-box { margin-top: .8rem; }
 .bracket-final-desempate { font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; color: var(--steel); margin-right: .4rem; }
 
@@ -1015,6 +1023,31 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   padding: 1.4rem;
 }
 .perfil-jugador-panel-header { display: flex; justify-content: flex-end; margin-bottom: .6rem; }
+
+/* Ventanita de edición de un enfrentamiento, al clicar su caja en el
+   cuadrante visual del panel de admin (torneos y cuadrante final de
+   ligas) — mismo patrón de overlay que perfil-jugador-modal. */
+.admin-partido-modal {
+  position: fixed;
+  inset: 0;
+  background: #000000b3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1.5rem;
+}
+.admin-partido-panel {
+  background: var(--iron);
+  border: 1px solid var(--line);
+  max-width: 460px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.4rem;
+}
+.admin-partido-panel-header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .8rem; }
+.admin-partido-panel-header h4 { margin: 0; font-size: .85rem; text-transform: none; color: var(--bone); }
 .perfil-jugador-cabecera { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
 .perfil-jugador-bio { font-size: .88rem; opacity: .9; margin: 0 0 1rem; }
 
