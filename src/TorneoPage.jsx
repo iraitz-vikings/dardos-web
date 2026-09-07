@@ -48,7 +48,7 @@ function ClasificacionGeneralPublica({ torneoId }) {
         </thead>
         <tbody>
           {clasificacion.map((j, i) => (
-            <tr key={j.jugadorId}>
+            <tr key={j.jugadorId || `invitado-${j.nombre}`}>
               <td>{i + 1}</td>
               <td>{j.nombre}</td>
               <td>{j.puntosTotales}</td>
