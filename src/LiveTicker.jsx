@@ -13,11 +13,20 @@ export default function LiveTicker() {
           const enCurso = torneos
             .filter((t) => !t.finalizado)
             .flatMap((t) =>
-              (t.cuadrantes || []).flatMap((c) =>
-                c.partidos
-                  .filter((p) => p.enCurso)
-                  .map((p) => ({ ...p, torneoId: t.id, torneoNombre: t.nombre }))
-              )
+              // Un cuadrante marcado "finalizado" (torneos "por jornadas", ver
+              // TorneoClub.modoJornadas) puede dejar algún partido con
+              // enCurso todavía a true si nadie lo desmarcó a mano al
+              // terminar — se excluye aquí para que no se quede colgado en
+              // el banner de "en directo" para siempre. Los cuadrantes sin
+              // modo jornadas se quedan siempre en estado "pendiente" (no se
+              // usa ese campo), así que este filtro no les afecta.
+              (t.cuadrantes || [])
+                .filter((c) => c.estado !== "finalizado")
+                .flatMap((c) =>
+                  c.partidos
+                    .filter((p) => p.enCurso)
+                    .map((p) => ({ ...p, torneoId: t.id, torneoNombre: t.nombre }))
+                )
             );
           setPartidos(enCurso);
         })
