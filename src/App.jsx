@@ -23,6 +23,20 @@ function formatRangoTorneo(inicioIso, finIso) {
   };
 }
 
+// Un torneo tiene "algo activo" para el apartado de la portada solo si
+// alguno de sus cuadrantes NO finalizados tiene, en alguna máquina, un
+// partido realmente en curso (enCurso a true y todavía sin ganador — un
+// partido decidido no cuenta como "en directo" aunque su flag se hubiera
+// quedado colgado de antes de este arreglo). Antes esta sección se mostraba
+// siempre que hubiera un torneo sin terminar, con un aviso de "no hay nada
+// en directo" cuando no había partidos activos; ahora, si no hay nada
+// realmente activo, la sección entera desaparece de la portada.
+function tieneActividadEnVivo(torneo) {
+  return (torneo.cuadrantes || []).some(
+    (c) => c.estado !== "finalizado" && (c.partidos || []).some((p) => p.maquina && p.enCurso && !p.ganador)
+  );
+}
+
 function idVideoYoutube(url) {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
@@ -129,6 +143,7 @@ export default function App() {
   }, [lightbox]);
 
   const fechas = torneo ? formatRangoTorneo(torneo.fechaInicio, torneo.fechaFin) : null;
+  const torneosEnDirecto = torneosClub.filter((tc) => !tc.finalizado && tieneActividadEnVivo(tc));
 
   return (
     <>
@@ -164,6 +179,16 @@ export default function App() {
           </div>
         )}
     
+        {torneosEnDirecto.length > 0 && (
+          <section id="torneos-en-directo" className="live-tournaments">
+            <p className="eyebrow">{t("live.eyebrow")}</p>
+            <h2 className="chronicle-title">{t("live.title")}</h2>
+            {torneosEnDirecto.map((tc) => (
+              <TorneoResumen key={tc.id} torneo={tc} />
+            ))}
+          </section>
+        )}
+
         <VideoHome />
 
          <section id="cronica" className="chronicle">
@@ -282,19 +307,6 @@ export default function App() {
             </p>
           </div>
         </section>
-
-        <section id="torneos-en-directo" className="live-tournaments">
-          <p className="eyebrow">{t("live.eyebrow")}</p>
-          <h2 className="chronicle-title">{t("live.title")}</h2>
-
-          {torneosClub.filter((tc) => !tc.finalizado).length === 0 ? (
-            <p className="chronicle-status">{t("live.none")}</p>
-          ) : (
-            torneosClub.filter((tc) => !tc.finalizado).map((tc) => <TorneoResumen key={tc.id} torneo={tc} />)
-          )}
-        </section>
-
-       
 
         <section className="gallery-teaser">
           <p className="eyebrow">{t("galeria.eyebrow")}</p>
