@@ -1087,7 +1087,7 @@ function PartidoLigaRow({ p, maquinas, onActualizar, onProgramar }) {
       <button
         type="button"
         className={`admin-link-btn ${p.ganador === p.participante1 ? "admin-ganador-activo" : ""}`}
-        onClick={() => onActualizar({ ganador: p.participante1 })}
+        onClick={() => onActualizar({ ganador: p.ganador === p.participante1 ? null : p.participante1 })}
       >
         Ganó
       </button>
@@ -1096,7 +1096,7 @@ function PartidoLigaRow({ p, maquinas, onActualizar, onProgramar }) {
       <button
         type="button"
         className={`admin-link-btn ${p.ganador === p.participante2 ? "admin-ganador-activo" : ""}`}
-        onClick={() => onActualizar({ ganador: p.participante2 })}
+        onClick={() => onActualizar({ ganador: p.ganador === p.participante2 ? null : p.participante2 })}
       >
         Ganó
       </button>
@@ -1488,7 +1488,7 @@ function PartidoFinalRow({ p, maquinas, onActualizar, onProgramar, busqueda }) {
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador1 ? "admin-ganador-activo" : ""}`}
         disabled={!p.jugador1}
-        onClick={() => onActualizar({ ganador: p.jugador1 })}
+        onClick={() => onActualizar({ ganador: p.ganador === p.jugador1 ? null : p.jugador1 })}
       >
         Ganó
       </button>
@@ -1498,7 +1498,7 @@ function PartidoFinalRow({ p, maquinas, onActualizar, onProgramar, busqueda }) {
         type="button"
         className={`admin-link-btn ${p.ganador && p.ganador === p.jugador2 ? "admin-ganador-activo" : ""}`}
         disabled={!p.jugador2}
-        onClick={() => onActualizar({ ganador: p.jugador2 })}
+        onClick={() => onActualizar({ ganador: p.ganador === p.jugador2 ? null : p.jugador2 })}
       >
         Ganó
       </button>
