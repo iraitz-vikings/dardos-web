@@ -19,7 +19,16 @@ function Partido({ p, mostrarCuadrante }) {
 export default function TorneoResumen({ torneo }) {
   const { t } = useLang();
   const cuadrantes = torneo.cuadrantes || [];
-  const partidos = cuadrantes.flatMap((c) => c.partidos.map((p) => ({ ...p, cuadranteNombre: c.nombre })));
+  // Los cuadrantes ya marcados "finalizado" (modo "por jornadas", ver
+  // TorneoClub.modoJornadas) se excluyen de este resumen por máquina — igual
+  // que en el banner "En directo" de la portada (LiveTicker.jsx). Además, un
+  // partido con ganador ya nunca cuenta como "actual" aunque su flag
+  // `enCurso` se hubiera quedado colgado a true de antes de este arreglo
+  // (partidos ya jugados con datos antiguos): un partido decidido no está
+  // "en directo".
+  const partidos = cuadrantes
+    .filter((c) => c.estado !== "finalizado")
+    .flatMap((c) => c.partidos.map((p) => ({ ...p, cuadranteNombre: c.nombre })));
   const porMaquina = {};
   for (const p of partidos) {
     if (!p.maquina) continue;
@@ -38,7 +47,7 @@ export default function TorneoResumen({ torneo }) {
       ) : (
         <div className="live-tournament-machines">
           {maquinas.map((maquina) => {
-            const actual = porMaquina[maquina].find((p) => p.enCurso);
+            const actual = porMaquina[maquina].find((p) => p.enCurso && !p.ganador);
             return (
               <div key={maquina} className="live-tournament-machine">
                 <h4>{maquina}</h4>
