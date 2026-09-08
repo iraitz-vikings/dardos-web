@@ -1084,6 +1084,26 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   background: rgba(255,255,255,.08);
 }
 
+/* "Acero" — medias calculadas de partidas de torneo/liga jugadas con la
+   herramienta de marcador (ver AceroJugador.jsx). Mismo lenguaje visual que
+   .medias-fabricante para que ambas secciones del perfil se sientan de la
+   misma familia, aunque la fuente de datos sea distinta. */
+.acero-jugador { margin-top: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.acero-jugador-item {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: .6rem .8rem;
+  font-size: .85rem;
+}
+.acero-jugador-titulo { display: block; margin-bottom: .35rem; }
+.acero-jugador-stats {
+  font-family: 'IBM Plex Mono', monospace;
+  opacity: .9;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem 1rem;
+}
+
 /* Marcadores manuales de 501 y Cricket (Marcadores.jsx) */
 .marcador-jugadores {
   display: grid;

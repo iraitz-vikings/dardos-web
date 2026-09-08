@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import MediasFabricante from "./MediasFabricante.jsx";
+import AceroJugador from "./AceroJugador.jsx";
 import { agruparPorSocio } from "./agruparJugadores.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
@@ -208,6 +209,7 @@ export default function JugadoresClub() {
             {(seleccionado.idsFabricantes || []).filter((i) => (i.idExterno || "").trim()).length === 0 && (
               <p className="chronicle-status">Todavía no ha guardado ningún alias de fabricante.</p>
             )}
+            <AceroJugador jugadorId={seleccionado.id} token={localStorage.getItem("socioToken")} />
             <PalmaresJugador jugadorId={seleccionado.id} />
           </div>
         </div>
