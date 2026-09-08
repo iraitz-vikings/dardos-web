@@ -16,6 +16,12 @@ export default function AdminJugadores({ token, salir }) {
   const [nombreEdicion, setNombreEdicion] = useState("");
   const [apodoEdicion, setApodoEdicion] = useState("");
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  // PIN de partidas (4 dígitos) para jugar con la herramienta de marcador en
+  // torneos/ligas — el admin puede ponérselo/cambiárselo a cualquier
+  // jugador, socio o invitado (el socio también puede desde su perfil).
+  const [editandoPinId, setEditandoPinId] = useState(null);
+  const [pinEdicion, setPinEdicion] = useState("");
+  const [guardandoPin, setGuardandoPin] = useState(false);
 
   const cargar = () => {
     fetch(`${API_URL}/api/jugadores`, { headers: { "x-admin-token": token } })
@@ -125,6 +131,44 @@ export default function AdminJugadores({ token, salir }) {
     }
   }
 
+  function empezarEdicionPin(j) {
+    setMensaje(null);
+    setEditandoPinId(j.id);
+    setPinEdicion("");
+  }
+
+  function cancelarEdicionPin() {
+    setEditandoPinId(null);
+  }
+
+  async function guardarPin(id) {
+    if (!/^\d{4}$/.test(pinEdicion)) {
+      setMensaje({ tipo: "error", texto: "El PIN tiene que ser de 4 dígitos." });
+      return;
+    }
+    setGuardandoPin(true);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/jugadores/${id}/pin`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ pin: pinEdicion }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo guardar el PIN." });
+        return;
+      }
+      setEditandoPinId(null);
+      setMensaje({ tipo: "ok", texto: "PIN actualizado." });
+      cargar();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setGuardandoPin(false);
+    }
+  }
+
   async function borrar(id) {
     if (!confirm("¿Borrar este jugador? Si tiene un socio vinculado, solo se borra la ficha de jugador, no la cuenta.")) return;
     setMensaje(null);
@@ -145,7 +189,8 @@ export default function AdminJugadores({ token, salir }) {
         participantes a los cuadrantes de torneos, individuales o en pareja. El nombre de un invitado se puede
         corregir con "Editar nombre" (el de un socio se cambia desde su propia cuenta); ojo, el cambio no
         reescribe el nombre en los cuadrantes o calendarios ya generados con el nombre anterior, solo afecta a
-        partir de ahora.
+        partir de ahora. El PIN de partidas (4 dígitos) es para identificarse en la página pública al jugar un
+        partido de torneo/liga con la herramienta de marcador; un socio también puede cambiárselo desde su perfil.
       </p>
 
       <form onSubmit={crear} className="admin-inline-form">
@@ -162,6 +207,28 @@ export default function AdminJugadores({ token, salir }) {
       {(() => {
         const { socios, invitados } = agruparPorSocio(jugadores);
         const filaJugador = (j) => {
+          if (editandoPinId === j.id) {
+            return (
+              <li key={j.id} className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".4rem" }}>
+                <div className="admin-inline-form" style={{ marginTop: 0 }}>
+                  <label>
+                    PIN de partidas de {j.nombre} (4 dígitos)
+                    <input
+                      value={pinEdicion}
+                      onChange={(e) => setPinEdicion(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="1234"
+                      inputMode="numeric"
+                      maxLength={4}
+                    />
+                  </label>
+                  <button type="button" disabled={guardandoPin || pinEdicion.length !== 4} onClick={() => guardarPin(j.id)}>
+                    {guardandoPin ? "Guardando…" : "Guardar"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={cancelarEdicionPin}>Cancelar</button>
+                </div>
+              </li>
+            );
+          }
           if (editandoId === j.id) {
             return (
               <li key={j.id} className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".4rem" }}>
@@ -204,6 +271,9 @@ export default function AdminJugadores({ token, salir }) {
                     </button>
                   </>
                 )}
+                <button className="admin-link-btn" onClick={() => empezarEdicionPin(j)}>
+                  {j.tienePinPartidas ? "Cambiar PIN" : "Poner PIN"}
+                </button>
                 <button className="admin-link-btn" onClick={() => borrar(j.id)}>Borrar</button>
               </div>
             </li>
