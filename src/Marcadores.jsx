@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import Diana from "./Diana.jsx";
+import TecladoNumeros from "./TecladoNumeros.jsx";
+import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
 import {
   buscarCierre,
   calcularPuntosCricket,
@@ -12,6 +14,28 @@ import {
   NUMEROS_CRICKET,
   tiradorActual,
 } from "./dardosLogica.js";
+
+// Modos de entrada de dardos, compartidos por 501 y Cricket. "total" (escribir
+// de una vez la puntuación de la visita) solo tiene sentido en 501: en
+// Cricket hace falta saber exactamente qué número y con qué multiplicador se
+// ha marcado, algo que un total no permite deducir.
+function SelectorModoEntrada({ modo, onCambiar, permitirTotal }) {
+  return (
+    <div className="live-tournament-toggle">
+      <button type="button" className={modo === "diana" ? "active" : ""} onClick={() => onCambiar("diana")}>
+        Diana
+      </button>
+      <button type="button" className={modo === "numeros" ? "active" : ""} onClick={() => onCambiar("numeros")}>
+        Números
+      </button>
+      {permitirTotal && (
+        <button type="button" className={modo === "total" ? "active" : ""} onClick={() => onCambiar("total")}>
+          Puntuación total
+        </button>
+      )}
+    </div>
+  );
+}
 
 // Marcadores manuales de 501 y Cricket, para cuando se juega en una diana
 // sin contador electrónico. Sin persistencia (calculadora de apoyo, no se
@@ -217,6 +241,7 @@ function Marcador501() {
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
+  const [modoEntrada, setModoEntrada] = useState("diana"); // "diana" | "numeros" | "total"
   // true cuando la visita ya ha terminado (3 dardos o bust) pero todavía no
   // se ha pulsado "Terminar turno ahora" — a petición de Iraitz, el turno ya
   // NO pasa solo automáticamente al tercer dardo, para dar tiempo a leer el
@@ -298,6 +323,70 @@ function Marcador501() {
     }
   }
 
+  // Modo "puntuación total": en vez de marcar dardo a dardo, se escribe de
+  // una vez el total conseguido en la visita (ver TecladoPuntuacion.jsx). No
+  // hay forma de deducir del total solo si el dardo de apertura cumplía la
+  // modalidad exigida, así que este modo se desactiva en pantalla mientras
+  // la unidad no esté abierta y la apertura no sea simple (hay que abrir con
+  // la diana o el teclado de números). Para el cierre si pasa lo mismo, pero
+  // ahí se resuelve con la casilla "cierreValido" que rellena el propio
+  // jugador en TecladoPuntuacion.
+  function tirarVisitaTotal(valorTotal, { cierreValido }) {
+    if (ganadorIdx !== null || finVisita) return;
+    if (!Number.isFinite(valorTotal) || valorTotal < 0 || valorTotal > 180) {
+      setMensaje("La puntuación de una visita tiene que estar entre 0 y 180.");
+      return;
+    }
+
+    const unidad = unidades[turnoIdx];
+    if (!unidad.abierto && apertura !== "simple") {
+      setMensaje(
+        `Con este modo no se puede abrir a ${etiquetaModalidad(apertura).toLowerCase()}: usa la diana o el teclado de números para el dardo de apertura.`
+      );
+      return;
+    }
+
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita })]);
+
+    const resultado = { etiqueta: `${valorTotal} (visita)`, numero: null, multiplicador: null, valor: valorTotal, esDoble: false, esTriple: false, esBull: false };
+    let nuevoMensaje = "";
+    let nuevasUnidades = unidades;
+    let bust = false;
+    let gana = false;
+    const cierreOk = cierre === "simple" || cierreValido;
+
+    const nuevoRestante = unidad.restante - valorTotal;
+    if (nuevoRestante < 0 || nuevoRestante === 1) {
+      bust = true;
+      nuevoMensaje = `Bust: la visita no cuenta, sigue con ${restanteInicioVisita}.`;
+      nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
+    } else if (nuevoRestante === 0) {
+      if (cierreOk) {
+        gana = true;
+        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
+      } else {
+        bust = true;
+        nuevoMensaje = `Bust: llegas a 0 pero hace falta marcar la casilla de cierre (${etiquetaModalidad(cierre).toLowerCase()}) para que cuente.`;
+        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
+      }
+    } else {
+      nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: nuevoRestante, abierto: true } : u));
+    }
+
+    setUnidades(nuevasUnidades);
+    setTiradasVisita([{ resultado, pos: undefined }]);
+    setMensaje(nuevoMensaje);
+
+    if (gana) {
+      setGanadorIdx(turnoIdx);
+      return;
+    }
+    // Aquí no hay "3 dardos" que contar: al escribir el total ya se ha
+    // introducido la visita entera de una vez, así que pasa a fin de turno
+    // directamente (salvo que ya se haya ganado, tratado arriba).
+    setFinVisita(true);
+  }
+
   function deshacer() {
     if (historial.length === 0) return;
     const previo = historial[historial.length - 1];
@@ -373,9 +462,13 @@ function Marcador501() {
       ) : (
         <>
           <p>
-            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {Math.min(tiradasVisita.length + 1, 3)} de 3
+            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong>
+            {modoEntrada === "total" ? " — introduce el total de la visita" : ` — dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3`}
           </p>
-          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} deshabilitada={finVisita} />
+          <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal />
+          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />}
+          {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />}
+          {modoEntrada === "total" && <TecladoPuntuacion cierre={cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita} />}
           <p className="marcador-tiradas-visita">
             Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
           </p>
@@ -429,6 +522,7 @@ function MarcadorCricket() {
   // true cuando ya se han tirado los 3 dardos de la visita pero todavía no
   // se ha pulsado "Terminar turno ahora" — el turno no pasa solo.
   const [finVisita, setFinVisita] = useState(false);
+  const [modoEntrada, setModoEntrada] = useState("diana"); // "diana" | "numeros" (sin "total": en cricket hace falta saber el número exacto)
 
   const puntos = useMemo(
     () => (modoCricket === "cutthroat" ? calcularPuntosCricketCutThroat(unidades) : calcularPuntosCricket(unidades)),
@@ -585,7 +679,12 @@ function MarcadorCricket() {
           <p style={{ marginTop: "1rem" }}>
             Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {Math.min(tiradasVisita.length + 1, 3)} de 3
           </p>
-          <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos)} deshabilitada={finVisita} />
+          <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal={false} />
+          {modoEntrada === "diana" ? (
+            <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />
+          ) : (
+            <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />
+          )}
           <p className="marcador-tiradas-visita">
             Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
           </p>

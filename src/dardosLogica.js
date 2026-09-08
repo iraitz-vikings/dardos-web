@@ -68,6 +68,41 @@ export function resultadoDardo(dx, dy) {
   };
 }
 
+// Números 1-20 en orden numérico (no el orden de sectores de la diana real,
+// que es ORDEN_SECTORES) — para pintar la rejilla de números del teclado
+// alternativo a la diana (TecladoNumeros.jsx), donde tiene más sentido ver
+// 1,2,3...20 en orden que el orden físico de la diana.
+export const NUMEROS_DEL_1_AL_20 = Array.from({ length: 20 }, (_, i) => i + 1);
+
+// Construye un resultado de dardo a partir de un número y un multiplicador
+// elegidos directamente con botones (modo "teclado", ver TecladoNumeros.jsx),
+// en vez de por geometría de un toque sobre la diana (resultadoDardo). Mismo
+// formato de salida que resultadoDardo para que el resto del marcador
+// (Marcadores.jsx) no tenga que distinguir de dónde vino la tirada.
+// `numero` puede ser 1-20, o las claves especiales "bull50"/"bull25"/"fallo"
+// para los botones que no tienen un multiplicador propio que elegir.
+export function resultadoDesdeNumero(numero, multiplicador) {
+  if (numero === "fallo") {
+    return { etiqueta: "Fuera", numero: 0, multiplicador: 0, valor: 0, esDoble: false, esTriple: false, esBull: false };
+  }
+  if (numero === "bull50") {
+    return { etiqueta: "Bull (50)", numero: 25, multiplicador: 2, valor: 50, esDoble: true, esTriple: false, esBull: true };
+  }
+  if (numero === "bull25") {
+    return { etiqueta: "25", numero: 25, multiplicador: 1, valor: 25, esDoble: false, esTriple: false, esBull: true };
+  }
+  const prefijo = multiplicador === 3 ? "T" : multiplicador === 2 ? "D" : "";
+  return {
+    etiqueta: `${prefijo}${numero}`,
+    numero,
+    multiplicador,
+    valor: numero * multiplicador,
+    esDoble: multiplicador === 2,
+    esTriple: multiplicador === 3,
+    esBull: false,
+  };
+}
+
 // --- Modalidades de apertura/cierre del 501 -----------------------------
 
 // simple: cualquier dardo vale. doble: tiene que ser doble (o bull 50, que
