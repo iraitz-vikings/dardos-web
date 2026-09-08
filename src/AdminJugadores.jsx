@@ -10,6 +10,12 @@ export default function AdminJugadores({ token, salir }) {
   const [mensaje, setMensaje] = useState(null);
   const [enlaces, setEnlaces] = useState({}); // { [jugadorId]: { urlCheckIn, urlTelegram, telegramVinculado } }
   const [copiando, setCopiando] = useState(null);
+  // Edición del nombre/apodo de un invitado (los socios no se editan aquí,
+  // su nombre viene de su cuenta). Solo un jugador a la vez.
+  const [editandoId, setEditandoId] = useState(null);
+  const [nombreEdicion, setNombreEdicion] = useState("");
+  const [apodoEdicion, setApodoEdicion] = useState("");
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
   const cargar = () => {
     fetch(`${API_URL}/api/jugadores`, { headers: { "x-admin-token": token } })
@@ -83,6 +89,42 @@ export default function AdminJugadores({ token, salir }) {
     }
   }
 
+  function empezarEdicion(j) {
+    setMensaje(null);
+    setEditandoId(j.id);
+    setNombreEdicion(j.nombre);
+    setApodoEdicion(j.apodo || "");
+  }
+
+  function cancelarEdicion() {
+    setEditandoId(null);
+  }
+
+  async function guardarEdicion(id) {
+    if (!nombreEdicion.trim()) return;
+    setGuardandoEdicion(true);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/jugadores/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ nombre: nombreEdicion.trim(), apodo: apodoEdicion }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo guardar el cambio." });
+        return;
+      }
+      setEditandoId(null);
+      setMensaje({ tipo: "ok", texto: "Nombre actualizado." });
+      cargar();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  }
+
   async function borrar(id) {
     if (!confirm("¿Borrar este jugador? Si tiene un socio vinculado, solo se borra la ficha de jugador, no la cuenta.")) return;
     setMensaje(null);
@@ -100,7 +142,10 @@ export default function AdminJugadores({ token, salir }) {
       <h2>Jugadores del club</h2>
       <p className="admin-hint">
         Directorio de todos los jugadores, tengan cuenta de socio o no (invitados). Se usan para apuntar
-        participantes a los cuadrantes de torneos, individuales o en pareja.
+        participantes a los cuadrantes de torneos, individuales o en pareja. El nombre de un invitado se puede
+        corregir con "Editar nombre" (el de un socio se cambia desde su propia cuenta); ojo, el cambio no
+        reescribe el nombre en los cuadrantes o calendarios ya generados con el nombre anterior, solo afecta a
+        partir de ahora.
       </p>
 
       <form onSubmit={crear} className="admin-inline-form">
@@ -116,29 +161,54 @@ export default function AdminJugadores({ token, salir }) {
 
       {(() => {
         const { socios, invitados } = agruparPorSocio(jugadores);
-        const filaJugador = (j) => (
-          <li key={j.id} className="admin-list-item">
-            <div>
-              <strong>{j.nombre}</strong>
-              {j.apodo && <span> — "{j.apodo}"</span>}
-              {j.usuario?.email && <em style={{ display: "block", fontSize: ".8em" }}>{j.usuario.email}</em>}
-              {!j.usuario && (
-                <em style={{ display: "block", fontSize: ".8em" }}>
-                  Invitado (sin cuenta)
-                  {enlaces[j.id] && (enlaces[j.id].telegramVinculado ? " · Avisos por Telegram activados" : " · Todavía no ha activado avisos")}
-                </em>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: ".4rem" }}>
-              {!j.usuario && (
-                <button className="admin-link-btn" disabled={copiando === j.id} onClick={() => copiarEnlaceAvisos(j.id)}>
-                  {copiando === j.id ? "Copiando…" : "Copiar enlace de avisos"}
-                </button>
-              )}
-              <button className="admin-link-btn" onClick={() => borrar(j.id)}>Borrar</button>
-            </div>
-          </li>
-        );
+        const filaJugador = (j) => {
+          if (editandoId === j.id) {
+            return (
+              <li key={j.id} className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".4rem" }}>
+                <div className="admin-inline-form" style={{ marginTop: 0 }}>
+                  <label>
+                    Nombre
+                    <input value={nombreEdicion} onChange={(e) => setNombreEdicion(e.target.value)} placeholder="Nombre y apellido" />
+                  </label>
+                  <label>
+                    Apodo (opcional)
+                    <input value={apodoEdicion} onChange={(e) => setApodoEdicion(e.target.value)} />
+                  </label>
+                  <button type="button" disabled={guardandoEdicion || !nombreEdicion.trim()} onClick={() => guardarEdicion(j.id)}>
+                    {guardandoEdicion ? "Guardando…" : "Guardar"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={cancelarEdicion}>Cancelar</button>
+                </div>
+              </li>
+            );
+          }
+          return (
+            <li key={j.id} className="admin-list-item">
+              <div>
+                <strong>{j.nombre}</strong>
+                {j.apodo && <span> — "{j.apodo}"</span>}
+                {j.usuario?.email && <em style={{ display: "block", fontSize: ".8em" }}>{j.usuario.email}</em>}
+                {!j.usuario && (
+                  <em style={{ display: "block", fontSize: ".8em" }}>
+                    Invitado (sin cuenta)
+                    {enlaces[j.id] && (enlaces[j.id].telegramVinculado ? " · Avisos por Telegram activados" : " · Todavía no ha activado avisos")}
+                  </em>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+                {!j.usuario && (
+                  <>
+                    <button className="admin-link-btn" onClick={() => empezarEdicion(j)}>Editar nombre</button>
+                    <button className="admin-link-btn" disabled={copiando === j.id} onClick={() => copiarEnlaceAvisos(j.id)}>
+                      {copiando === j.id ? "Copiando…" : "Copiar enlace de avisos"}
+                    </button>
+                  </>
+                )}
+                <button className="admin-link-btn" onClick={() => borrar(j.id)}>Borrar</button>
+              </div>
+            </li>
+          );
+        };
         return (
           <>
             {socios.length > 0 && (
