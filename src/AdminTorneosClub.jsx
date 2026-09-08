@@ -3,6 +3,7 @@ import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
+import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
@@ -279,6 +280,22 @@ useEffect(() => {
     return res.ok;
   }
 
+  // Guarda la configuración de la herramienta de marcador (activa/porDefecto/
+  // porRonda) de un torneo ya creado — ver ConfiguracionHerramientaPanel.
+  async function guardarConfiguracionHerramienta(torneo, configuracionHerramienta) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, configuracionHerramienta }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error };
+    }
+    return { ok: true };
+  }
+
   async function sortearCuadrante(cuadranteId, participantes, cabezasDeSerie) {
     const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sorteo`, {
       method: "POST",
@@ -427,6 +444,7 @@ async function programarCalendario(partidoId, datos) {
         onObtenerClasificacionGeneral={obtenerClasificacionGeneral}
         onGuardarPuntosPorPosicion={guardarPuntosPorPosicion}
         onGuardarImagenesAvisos={guardarImagenesAvisos}
+        onGuardarConfiguracionHerramienta={guardarConfiguracionHerramienta}
       />
     );
   }
@@ -672,7 +690,7 @@ function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
-  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos,
+  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarConfiguracionHerramienta,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -720,6 +738,13 @@ function TorneoGestion({
           onClick={() => setSubpestana("avisos")}
         >
           Imágenes de avisos
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "herramienta" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("herramienta")}
+        >
+          Herramienta de marcador
         </button>
       </nav>
 
@@ -774,6 +799,10 @@ function TorneoGestion({
 
       {subpestana === "avisos" && (
         <ImagenesAvisos torneo={torneo} token={token} onGuardar={onGuardarImagenesAvisos} />
+      )}
+
+      {subpestana === "herramienta" && (
+        <ConfiguracionHerramientaPanel entidad={torneo} etiquetaRonda="ronda" onGuardar={onGuardarConfiguracionHerramienta} />
       )}
     </section>
   );

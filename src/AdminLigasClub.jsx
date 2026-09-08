@@ -3,6 +3,7 @@ import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
+import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -531,6 +532,28 @@ export default function AdminLigasClub({ token, salir }) {
   );
 }
 
+// Guarda la configuración de la herramienta de marcador (activa/porDefecto/
+// porRonda) de una liga ya creada — mismo patrón que guardarImagenesAvisos
+// de ImagenesAvisosLiga, pero como función suelta porque ConfiguracionHerramientaPanel
+// (compartido con AdminTorneosClub.jsx) espera un onGuardar(entidad, config) genérico.
+async function guardarConfiguracionHerramientaLiga(liga, configuracionHerramienta, token, onRecargar) {
+  try {
+    const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...liga, configuracionHerramienta }),
+    });
+    onRecargar();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Error de conexión." };
+  }
+}
+
 function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onRepartirGrupos, onGenerarCalendario, onActualizarPartido, onProgramarCalendario, token, onRecargar }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -564,6 +587,9 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
         <button type="button" className={`admin-tab ${subpestana === "avisos" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("avisos")}>
           Imágenes de avisos
         </button>
+        <button type="button" className={`admin-tab ${subpestana === "herramienta" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("herramienta")}>
+          Herramienta de marcador
+        </button>
       </nav>
 
       {subpestana === "participantes" && (
@@ -585,6 +611,9 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
       {subpestana === "clasificacion" && <ClasificacionLiga liga={liga} />}
       {subpestana === "final" && <CuadranteFinalLiga liga={liga} token={token} maquinas={maquinas} onRecargar={onRecargar} />}
       {subpestana === "avisos" && <ImagenesAvisosLiga liga={liga} token={token} onRecargar={onRecargar} />}
+      {subpestana === "herramienta" && (
+        <ConfiguracionHerramientaPanel entidad={liga} etiquetaRonda="jornada" onGuardar={(l, config) => guardarConfiguracionHerramientaLiga(l, config, token, onRecargar)} />
+      )}
     </section>
   );
 }
