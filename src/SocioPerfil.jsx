@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import MediasFabricante from "./MediasFabricante.jsx";
+import AceroJugador from "./AceroJugador.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -219,6 +220,7 @@ export default function SocioPerfil() {
           </div>
         </div>
         <MediasFabricante idsFabricantes={perfil.idsFabricantes} />
+        <AceroJugador jugadorId={perfil.id} token={token()} />
         <AvisosPush />
         <AvisosTelegram />
         <PinPartidas tienePin={perfil.tienePinPartidas} />
