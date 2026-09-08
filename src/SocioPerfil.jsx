@@ -221,6 +221,7 @@ export default function SocioPerfil() {
         <MediasFabricante idsFabricantes={perfil.idsFabricantes} />
         <AvisosPush />
         <AvisosTelegram />
+        <PinPartidas tienePin={perfil.tienePinPartidas} />
       </div>
     );
   }
@@ -626,6 +627,103 @@ function AvisosTelegram() {
           El club todavía no ha terminado de configurar los avisos por Telegram.
         </p>
       )}
+    </div>
+  );
+}
+
+// PIN de 4 dígitos para identificarse en la página pública de un torneo/liga
+// al jugar un partido con la herramienta de marcador (dispositivo compartido
+// junto a la diana) — nada que ver con la contraseña de la cuenta. El admin
+// también puede ponerlo/cambiarlo desde "Jugadores del club" (ver
+// AdminJugadores.jsx), por si a alguien se le olvida.
+function PinPartidas({ tienePin }) {
+  const [editando, setEditando] = useState(false);
+  const [pin, setPin] = useState("");
+  const [confirmarPin, setConfirmarPin] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [yaPuesto, setYaPuesto] = useState(!!tienePin);
+  const [mensaje, setMensaje] = useState(null);
+
+  function cancelar() {
+    setEditando(false);
+    setPin("");
+    setConfirmarPin("");
+    setMensaje(null);
+  }
+
+  async function guardar(e) {
+    e.preventDefault();
+    if (!/^\d{4}$/.test(pin)) {
+      setMensaje({ tipo: "error", texto: "El PIN tiene que ser de 4 dígitos." });
+      return;
+    }
+    if (pin !== confirmarPin) {
+      setMensaje({ tipo: "error", texto: "Los dos PIN no coinciden." });
+      return;
+    }
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/perfil/pin`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+        body: JSON.stringify({ pin }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo guardar el PIN." });
+        return;
+      }
+      setYaPuesto(true);
+      setEditando(false);
+      setPin("");
+      setConfirmarPin("");
+      setMensaje({ tipo: "ok", texto: "PIN actualizado." });
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "1.5rem" }}>
+      <strong style={{ display: "block", marginBottom: ".4rem" }}>PIN de partidas</strong>
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Para identificarte en la página pública de un torneo o liga cuando juegues un partido con la
+        herramienta de marcador, en el dispositivo compartido junto a la diana. No es tu contraseña.
+      </p>
+      {!editando ? (
+        <button type="button" className="admin-link-btn" onClick={() => setEditando(true)}>
+          {yaPuesto ? "Cambiar mi PIN" : "Crear mi PIN"}
+        </button>
+      ) : (
+        <form onSubmit={guardar} className="admin-inline-form">
+          <label>
+            PIN nuevo (4 dígitos)
+            <input
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="1234"
+            />
+          </label>
+          <label>
+            Repite el PIN
+            <input
+              value={confirmarPin}
+              onChange={(e) => setConfirmarPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="1234"
+            />
+          </label>
+          <button type="submit" disabled={guardando || pin.length !== 4}>{guardando ? "Guardando…" : "Guardar"}</button>
+          <button type="button" className="admin-link-btn" onClick={cancelar}>Cancelar</button>
+        </form>
+      )}
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
     </div>
   );
 }
