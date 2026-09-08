@@ -517,6 +517,9 @@ export default function AdminLigasClub({ token, salir }) {
                     {l.notificaciones === false ? "Activar avisos" : "Desactivar avisos"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(l.id)}>Gestionar</button>
+                  <a className="admin-link-btn" href={`${window.location.origin}/liga/${l.id}`} target="_blank" rel="noopener noreferrer">
+                    Ver página / QR
+                  </a>
                   <button type="button" className="admin-link-btn" onClick={() => borrarLiga(l.id)}>Borrar</button>
                 </div>
               </li>
