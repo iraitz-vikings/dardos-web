@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import BracketView from "./BracketView.jsx";
+import AccesoHerramienta from "./JuegoHerramienta.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -110,6 +111,13 @@ export default function LigaPage({ id }) {
                 />
                 <p className="torneo-pagina-qr-url">{window.location.href}</p>
               </details>
+
+              <AccesoHerramienta
+                activa={!!liga.configuracionHerramienta?.activa}
+                entidadTipo="liga"
+                entidadId={liga.id}
+                entidadNombre={liga.nombre}
+              />
 
               {cuadrante && (
                 <div className="live-tournament-toggle">
