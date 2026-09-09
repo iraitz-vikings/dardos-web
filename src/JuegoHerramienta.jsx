@@ -65,6 +65,7 @@ function LoginPin({ onEntrar }) {
   const [filtro, setFiltro] = useState("");
   const [jugadorId, setJugadorId] = useState("");
   const [pin, setPin] = useState("");
+  const [pinRepetido, setPinRepetido] = useState("");
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -79,6 +80,42 @@ function LoginPin({ onEntrar }) {
     if (!q) return jugadores;
     return jugadores.filter((j) => (j.apodo || j.nombre).toLowerCase().includes(q));
   }, [jugadores, filtro]);
+
+  const jugador = jugadores.find((j) => j.id === jugadorId) || null;
+
+  function elegirJugador(j) {
+    setJugadorId(j.id);
+    setPin("");
+    setPinRepetido("");
+    setError("");
+  }
+
+  // Si el jugador todavía no tiene PIN de partidas puesto (primera vez que
+  // usa la herramienta), se lo pone él mismo aquí mismo en vez de tener que
+  // pasar antes por el admin o por su perfil de socio.
+  async function crearPinYEntrar() {
+    if (!/^\d{4}$/.test(pin)) {
+      setError("Elige un PIN de 4 dígitos.");
+      return;
+    }
+    if (pin !== pinRepetido) {
+      setError("Los dos PIN no coinciden.");
+      return;
+    }
+    setEnviando(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/partidas-herramienta/pin", {
+        method: "POST",
+        body: JSON.stringify({ jugadorId, pin }),
+      });
+      onEntrar(data);
+    } catch (err) {
+      setError(err.message || "No se ha podido crear el PIN.");
+    } finally {
+      setEnviando(false);
+    }
+  }
 
   async function entrar() {
     if (!jugadorId || !/^\d{4}$/.test(pin)) {
@@ -112,27 +149,64 @@ function LoginPin({ onEntrar }) {
             key={j.id}
             type="button"
             className={`admin-tab ${jugadorId === j.id ? "admin-tab-active" : ""}`}
-            onClick={() => setJugadorId(j.id)}
+            onClick={() => elegirJugador(j)}
           >
             {j.apodo || j.nombre}
+            {!j.tienePinPartidas && <small style={{ opacity: 0.7 }}> · sin PIN todavía</small>}
           </button>
         ))}
-        {filtrados.length === 0 && <p className="chronicle-status">Nadie con ese nombre tiene PIN puesto todavía.</p>}
+        {filtrados.length === 0 && <p className="chronicle-status">Nadie con ese nombre.</p>}
       </div>
-      <label>
-        Tu PIN
-        <input
-          type="password"
-          inputMode="numeric"
-          maxLength={4}
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-        />
-      </label>
-      {error && <p className="admin-msg admin-msg-error">{error}</p>}
-      <button type="button" disabled={enviando} onClick={entrar}>
-        {enviando ? "Comprobando…" : "Entrar"}
-      </button>
+
+      {jugador && !jugador.tienePinPartidas ? (
+        <>
+          <p className="chronicle-status" style={{ margin: 0 }}>
+            Es la primera vez que {jugador.apodo || jugador.nombre} usa la herramienta: elige un PIN de 4 dígitos para
+            identificarte las próximas veces.
+          </p>
+          <label>
+            Elige tu PIN
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+          </label>
+          <label>
+            Repite el PIN
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pinRepetido}
+              onChange={(e) => setPinRepetido(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+          </label>
+          {error && <p className="admin-msg admin-msg-error">{error}</p>}
+          <button type="button" disabled={enviando} onClick={crearPinYEntrar}>
+            {enviando ? "Creando…" : "Crear PIN y entrar"}
+          </button>
+        </>
+      ) : (
+        <>
+          <label>
+            Tu PIN
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+          </label>
+          {error && <p className="admin-msg admin-msg-error">{error}</p>}
+          <button type="button" disabled={enviando} onClick={entrar}>
+            {enviando ? "Comprobando…" : "Entrar"}
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -216,11 +290,11 @@ function idJugadorTirador(partida, ladoIdx, unidad) {
 
 // --- Resumen de marcador de la partida (legs ganados) ----------------------
 
-function MarcadorLegs({ partida }) {
+function MarcadorLegs({ partida, numeroLeg }) {
   return (
     <p className="marcador-tiradas-visita" style={{ fontSize: "1.1rem" }}>
       <strong>{partida.etiqueta1}</strong> {partida.legsGanados1} — {partida.legsGanados2} <strong>{partida.etiqueta2}</strong>
-      {" "}(al mejor de {partida.alMejorDe})
+      {" "}(al mejor de {partida.alMejorDe}) · Leg {numeroLeg}
     </p>
   );
 }
@@ -362,18 +436,35 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: nuevoRestante, abierto: true } : u));
     }
 
-    setUnidades(nuevasUnidades);
-    setTiradasVisita([{ resultado, pos: undefined }]);
-    setMensaje(nuevoMensaje);
-
     const jugadorId = idJugadorTirador(partida, turnoIdx, unidad);
     registrarVisita(jugadorId, 3, bust ? 0 : valorTotal, gana);
 
     if (gana) {
+      setUnidades(nuevasUnidades);
+      setTiradasVisita([{ resultado, pos: undefined }]);
+      setMensaje(nuevoMensaje);
       setGanadorIdx(turnoIdx);
       return;
     }
-    setFinVisita(true);
+
+    // En este modo cada envío ya es la visita entera (a diferencia de
+    // diana/números, donde una visita puede quedar a medias antes de los 3
+    // dardos): se pasa directamente al siguiente jugador sin esperar un
+    // segundo clic en "Siguiente jugador" — pedido de Iraitz, 2026-09-09.
+    const conIntegranteActualizado = nuevasUnidades.map((u, i) =>
+      i === turnoIdx && u.integrantes.length > 1
+        ? { ...u, siguienteIntegranteIdx: (u.siguienteIntegranteIdx + 1) % u.integrantes.length }
+        : u
+    );
+    const siguienteIdx = (turnoIdx + 1) % conIntegranteActualizado.length;
+    setUnidades(conIntegranteActualizado);
+    setTurnoIdx(siguienteIdx);
+    setTiradasVisita([]);
+    setRestanteInicioVisita(conIntegranteActualizado[siguienteIdx].restante);
+    // El mensaje de bust se descarta al pasar de turno (iría pegado al
+    // jugador equivocado); el marcador ya deja ver que no se ha movido.
+    setMensaje("");
+    setFinVisita(false);
   }
 
   function deshacer() {
@@ -431,11 +522,14 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
 
   return (
     <div>
-      <MarcadorLegs partida={partida} />
+      <MarcadorLegs partida={partida} numeroLeg={partida.legs.length + 1} />
       <div className="marcador-jugadores">
         {unidades.map((u, i) => (
           <div key={u.id} className={`marcador-jugador ${turnoIdx === i && ganadorIdx === null ? "marcador-jugador-activo" : ""} ${ganadorIdx === i ? "marcador-jugador-ganador" : ""}`}>
-            <strong>{u.etiqueta}</strong>
+            <strong>
+              {i === inicio.turnoIdx && <span className="marcador-punto-inicio" title="Ha empezado este leg">●</span>}
+              {u.etiqueta}
+            </strong>
             {u.integrantes.length > 1 && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(u)}</span>}
             <span className="marcador-restante">{u.restante}</span>
           </div>
@@ -470,15 +564,22 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
           {sugerencia && <p className="admin-msg admin-msg-ok">Sugerencia de cierre: {sugerencia.join(" → ")}</p>}
           {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
           <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-            <button
-              type="button"
-              className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
-              onClick={() => finalizarVisita(unidades, turnoIdx)}
-            >
-              {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
-            </button>
+            {/* En modo "total" cada envío ya avanza solo al siguiente jugador (ver
+                tirarVisitaTotal), así que este botón se oculta salvo que finVisita
+                se haya quedado a true de antes de cambiar a este modo a medio turno
+                — caso raro, pero si pasara no queremos dejar el teclado bloqueado
+                sin forma de continuar. */}
+            {(modoEntrada !== "total" || finVisita) && (
+              <button
+                type="button"
+                className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+                onClick={() => finalizarVisita(unidades, turnoIdx)}
+              >
+                {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
+              </button>
+            )}
             <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-              Deshacer último dardo
+              Deshacer {modoEntrada === "total" ? "última visita" : "último dardo"}
             </button>
           </div>
         </>
@@ -615,11 +716,14 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
 
   return (
     <div>
-      <MarcadorLegs partida={partida} />
+      <MarcadorLegs partida={partida} numeroLeg={partida.legs.length + 1} />
       <div className="marcador-jugadores">
         {unidades.map((u, i) => (
           <div key={u.id} className={`marcador-jugador ${turnoIdx === i && ganadorIdx === null ? "marcador-jugador-activo" : ""} ${ganadorIdx === i ? "marcador-jugador-ganador" : ""}`}>
-            <strong>{u.etiqueta}</strong>
+            <strong>
+              {i === inicio.turnoIdx && <span className="marcador-punto-inicio" title="Ha empezado este leg">●</span>}
+              {u.etiqueta}
+            </strong>
             {u.integrantes.length > 1 && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(u)}</span>}
             <span className="marcador-restante">{puntos[i]}</span>
           </div>

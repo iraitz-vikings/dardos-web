@@ -1138,6 +1138,7 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .marcador-jugador-activo { border-color: var(--ember); background: #9a2b2814; }
 .marcador-jugador-ganador { border-color: #8fbf8f; }
+.marcador-punto-inicio { color: var(--ember); font-size: .7em; margin-right: .3em; vertical-align: middle; }
 .marcador-restante { font-family: 'Cinzel', serif; font-size: 1.8rem; color: var(--bone); }
 .marcador-tiradas-visita { font-size: .82rem; color: var(--bone-dim); margin: .5rem 0; }
 .marcador-tabla-scroll { overflow-x: auto; }
