@@ -3,6 +3,7 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import BracketView from "./BracketView.jsx";
 import AccesoHerramienta from "./JuegoHerramienta.jsx";
+import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -111,6 +112,8 @@ export default function LigaPage({ id }) {
                 />
                 <p className="torneo-pagina-qr-url">{window.location.href}</p>
               </details>
+
+              {liga.videoDirectoUrl && <VideoDirectoEmbed url={liga.videoDirectoUrl} titulo={liga.nombre} />}
 
               <AccesoHerramienta
                 activa={!!liga.configuracionHerramienta?.activa}

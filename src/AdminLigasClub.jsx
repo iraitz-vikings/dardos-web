@@ -4,6 +4,7 @@ import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
+import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -554,6 +555,27 @@ async function guardarConfiguracionHerramientaLiga(liga, configuracionHerramient
   }
 }
 
+// Guarda (o quita) el enlace de YouTube en directo de una liga ya creada —
+// ver VideoDirectoPanel. Mismo patrón de función suelta que
+// guardarConfiguracionHerramientaLiga, un poco más arriba.
+async function guardarVideoDirectoLiga(liga, videoDirectoUrl, token, onRecargar) {
+  try {
+    const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...liga, videoDirectoUrl }),
+    });
+    onRecargar();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Error de conexión." };
+  }
+}
+
 function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onRepartirGrupos, onGenerarCalendario, onActualizarPartido, onProgramarCalendario, token, onRecargar }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -590,6 +612,9 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
         <button type="button" className={`admin-tab ${subpestana === "herramienta" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("herramienta")}>
           Herramienta de marcador
         </button>
+        <button type="button" className={`admin-tab ${subpestana === "video" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("video")}>
+          Vídeo en directo
+        </button>
       </nav>
 
       {subpestana === "participantes" && (
@@ -613,6 +638,9 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
       {subpestana === "avisos" && <ImagenesAvisosLiga liga={liga} token={token} onRecargar={onRecargar} />}
       {subpestana === "herramienta" && (
         <ConfiguracionHerramientaPanel entidad={liga} etiquetaRonda="jornada" onGuardar={(l, config) => guardarConfiguracionHerramientaLiga(l, config, token, onRecargar)} />
+      )}
+      {subpestana === "video" && (
+        <VideoDirectoPanel entidad={liga} onGuardar={(l, videoDirectoUrl) => guardarVideoDirectoLiga(l, videoDirectoUrl, token, onRecargar)} />
       )}
     </section>
   );

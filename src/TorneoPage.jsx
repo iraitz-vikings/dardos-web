@@ -3,6 +3,7 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import LiveTournament from "./LiveTournament.jsx";
 import AccesoHerramienta from "./JuegoHerramienta.jsx";
+import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
@@ -122,6 +123,8 @@ export default function TorneoPage({ id }) {
                 />
                 <p className="torneo-pagina-qr-url">{window.location.href}</p>
               </details>
+
+              {torneo.videoDirectoUrl && <VideoDirectoEmbed url={torneo.videoDirectoUrl} titulo={torneo.nombre} />}
 
               <LiveTournament torneo={torneo} />
               {torneo.modoJornadas && <ClasificacionGeneralPublica torneoId={torneo.id} />}
