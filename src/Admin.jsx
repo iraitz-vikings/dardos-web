@@ -12,6 +12,7 @@ import AdminEquiposClub from "./AdminEquiposClub.jsx";
 import AdminMaquinas from "./AdminMaquinas.jsx";
 import AdminFabricantes from "./AdminFabricantes.jsx";
 import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
+import AdminCalendario from "./AdminCalendario.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -522,6 +523,7 @@ function cancelarEdicionNoticia() {
     { id: "equipos-club", etiqueta: "Equipos" },
     { id: "jugadores-club", etiqueta: "Jugadores" },
     { id: "maquinas", etiqueta: "Máquinas" },
+    { id: "calendario", etiqueta: "Calendario" },
     { id: "fabricantes", etiqueta: "Fabricantes" },
     { id: "competiciones-externas", etiqueta: "Comp. externas" },
   ];
@@ -724,6 +726,7 @@ function cancelarEdicionNoticia() {
       {pestana === "equipos-club" && <AdminEquiposClub token={token} salir={salir} />}
       {pestana === "jugadores-club" && <AdminJugadores token={token} salir={salir} />}
       {pestana === "maquinas" && <AdminMaquinas token={token} salir={salir} />}
+      {pestana === "calendario" && <AdminCalendario token={token} salir={salir} />}
       {pestana === "fabricantes" && <AdminFabricantes token={token} salir={salir} />}
       {pestana === "competiciones-externas" && <AdminCompeticionesExternas token={token} salir={salir} />}
     </div>
