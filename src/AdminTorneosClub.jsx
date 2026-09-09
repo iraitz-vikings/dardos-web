@@ -4,6 +4,7 @@ import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
+import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
@@ -280,6 +281,22 @@ useEffect(() => {
     return res.ok;
   }
 
+  // Guarda (o quita, si se manda vacío) el enlace de YouTube en directo de
+  // un torneo ya creado — ver VideoDirectoPanel.
+  async function guardarVideoDirecto(torneo, videoDirectoUrl) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, videoDirectoUrl }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error };
+    }
+    return { ok: true };
+  }
+
   // Guarda la configuración de la herramienta de marcador (activa/porDefecto/
   // porRonda) de un torneo ya creado — ver ConfiguracionHerramientaPanel.
   async function guardarConfiguracionHerramienta(torneo, configuracionHerramienta) {
@@ -445,6 +462,7 @@ async function programarCalendario(partidoId, datos) {
         onGuardarPuntosPorPosicion={guardarPuntosPorPosicion}
         onGuardarImagenesAvisos={guardarImagenesAvisos}
         onGuardarConfiguracionHerramienta={guardarConfiguracionHerramienta}
+        onGuardarVideoDirecto={guardarVideoDirecto}
       />
     );
   }
@@ -690,7 +708,7 @@ function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
-  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarConfiguracionHerramienta,
+  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -745,6 +763,13 @@ function TorneoGestion({
           onClick={() => setSubpestana("herramienta")}
         >
           Herramienta de marcador
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "video" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("video")}
+        >
+          Vídeo en directo
         </button>
       </nav>
 
@@ -803,6 +828,10 @@ function TorneoGestion({
 
       {subpestana === "herramienta" && (
         <ConfiguracionHerramientaPanel entidad={torneo} etiquetaRonda="ronda" onGuardar={onGuardarConfiguracionHerramienta} />
+      )}
+
+      {subpestana === "video" && (
+        <VideoDirectoPanel entidad={torneo} onGuardar={onGuardarVideoDirecto} />
       )}
     </section>
   );

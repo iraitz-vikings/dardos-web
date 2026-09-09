@@ -755,6 +755,23 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .mensaje-anclado { max-width: 700px; margin: 1.5rem auto 0; padding: .8rem 1.2rem; text-align: center; border: 1px solid var(--ember); background: #1a0d0dcc; }
 .mensaje-anclado p { margin: 0; color: var(--ember); font-size: .95rem; letter-spacing: .02em; }
 
+/* Vídeo en directo (streaming) de un torneo/liga — TorneoPage, LigaPage y portada */
+.video-directo-embed { margin: 1.5rem 0; }
+.video-directo-embed-marco {
+  position: relative;
+  aspect-ratio: 16/9;
+  border: 1px solid var(--line);
+  background: #000;
+  overflow: hidden;
+}
+.video-directo-embed-marco iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.streaming-en-directo { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 1rem; }
+.streaming-en-directo-item { margin-bottom: 1.5rem; }
+.streaming-en-directo-item h3 { font-size: clamp(1rem, 2.6vw, 1.25rem); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 0; color: var(--ember); }
+.streaming-en-directo-item h3 a { color: inherit; text-decoration: none; }
+.streaming-en-directo-item h3 a:hover { text-decoration: underline; }
+
 /* Cartel (póster grande) del torneo destacado, si se sube además de la insignia */
 .tournament-poster { width: 100%; max-width: 260px; margin: .6rem 0; border: 1px solid var(--line); cursor: pointer; transition: opacity .15s ease; }
 .tournament-poster:hover { opacity: .82; }

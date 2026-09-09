@@ -43,6 +43,9 @@ const dic = {
     "video.play": "▶ Reproducir vídeo",
     "video.unmute": "🔊 Activar sonido",
 
+    "streaming.eyebrow": "Retransmisión",
+    "streaming.title": "En directo por streaming",
+
     "live.eyebrow": "En directo",
     "live.title": "Torneos en directo",
     "live.none": "Ahora mismo no hay ningún torneo en directo.",
@@ -120,6 +123,9 @@ const dic = {
     "video.title": "Honela hasten da dena",
     "video.play": "▶ Bideoa erreproduzitu",
     "video.unmute": "🔊 Soinua aktibatu",
+
+    "streaming.eyebrow": "Zuzenean",
+    "streaming.title": "Streaming bidez zuzenean",
 
     "live.eyebrow": "Zuzenean",
     "live.title": "Zuzeneko txapelketak",

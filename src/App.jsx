@@ -3,6 +3,7 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import TorneoResumen from "./TorneoResumen.jsx";
 import VideoHome from "./VideoHome.jsx";
+import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
@@ -72,6 +73,7 @@ export default function App() {
   const [lightbox, setLightbox] = useState(null); // { tipo: "foto"|"video", src }
   const [torneo, setTorneo] = useState(null);
   const [torneosClub, setTorneosClub] = useState([]);
+  const [ligasClub, setLigasClub] = useState([]);
   const [patrocinadores, setPatrocinadores] = useState([]);
   const [mensajeAnclado, setMensajeAnclado] = useState(null);
 
@@ -100,6 +102,29 @@ export default function App() {
     // Solo repite el fetch cada 15s mientras la pestaña esté visible: si el
     // socio la deja abierta horas en segundo plano no tiene sentido seguir
     // pidiendo el torneo en directo cada 15s sin que nadie lo esté mirando.
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === "visible") cargar();
+    }, 15000);
+    const onVisibilidad = () => {
+      if (document.visibilityState === "visible") cargar();
+    };
+    document.addEventListener("visibilitychange", onVisibilidad);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", onVisibilidad);
+    };
+  }, []);
+
+  // Mismo patrón que torneosClub, arriba: se necesita para el apartado de
+  // "en directo por streaming" (ligas públicas con videoDirectoUrl).
+  useEffect(() => {
+    const cargar = () => {
+      fetch(`${API_URL}/api/ligas-club`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then(setLigasClub)
+        .catch(() => {});
+    };
+    cargar();
     const intervalo = setInterval(() => {
       if (document.visibilityState === "visible") cargar();
     }, 15000);
@@ -145,6 +170,19 @@ export default function App() {
   const fechas = torneo ? formatRangoTorneo(torneo.fechaInicio, torneo.fechaFin) : null;
   const torneosEnDirecto = torneosClub.filter((tc) => !tc.finalizado && tieneActividadEnVivo(tc));
 
+  // Torneos/ligas públicos que ahora mismo están retransmitiendo en directo
+  // por YouTube (campo `videoDirectoUrl`, lo pone el admin a mano) — señal
+  // independiente de `torneosEnDirecto` de arriba, que se basa en si hay
+  // partidos en curso. Aquí basta con que el admin haya pegado el enlace.
+  const streamingEnDirecto = [
+    ...torneosClub
+      .filter((tc) => tc.visibilidad === "publico" && !tc.finalizado && tc.videoDirectoUrl)
+      .map((tc) => ({ tipo: "torneo", id: tc.id, nombre: tc.nombre, url: tc.videoDirectoUrl })),
+    ...ligasClub
+      .filter((l) => l.visibilidad === "publico" && !l.finalizado && l.videoDirectoUrl)
+      .map((l) => ({ tipo: "liga", id: l.id, nombre: l.nombre, url: l.videoDirectoUrl })),
+  ];
+
   return (
     <>
       <Nav />
@@ -185,6 +223,21 @@ export default function App() {
             <h2 className="chronicle-title">{t("live.title")}</h2>
             {torneosEnDirecto.map((tc) => (
               <TorneoResumen key={tc.id} torneo={tc} />
+            ))}
+          </section>
+        )}
+
+        {streamingEnDirecto.length > 0 && (
+          <section id="streaming-en-directo" className="streaming-en-directo">
+            <p className="eyebrow">{t("streaming.eyebrow")}</p>
+            <h2 className="chronicle-title">{t("streaming.title")}</h2>
+            {streamingEnDirecto.map((item) => (
+              <div key={`${item.tipo}-${item.id}`} className="streaming-en-directo-item">
+                <h3>
+                  <a href={`/${item.tipo}/${item.id}`}>{item.nombre}</a>
+                </h3>
+                <VideoDirectoEmbed url={item.url} titulo={item.nombre} />
+              </div>
             ))}
           </section>
         )}
