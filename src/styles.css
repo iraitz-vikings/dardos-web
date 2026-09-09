@@ -584,11 +584,20 @@ button {
 .nav-toggle-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .nav-toggle-open span:nth-child(2) { opacity: 0; }
 .nav-toggle-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-@media (max-width: 640px) {
+/* Menú hamburguesa: hasta 1024px (móvil Y tablet, incluida una tablet en
+   vertical) — con todos los enlaces + buscador + selector de idioma, la fila
+   horizontal necesita más de 1200px para no apretarse, así que por debajo de
+   esto siempre es mejor el menú plegable. Este breakpoint tiene que coincidir
+   con el de ".nav-buscador" más abajo: si se cambia uno, cambiar el otro
+   también, o el buscador se queda "a ancho completo" dentro de una fila que
+   ya no está en modo menú plegado (bug detectado y corregido 2026-09-09: el
+   desajuste entre 640px aquí y 860px en el buscador dejaba la barra de
+   navegación rota justo en el rango típico de una tablet). */
+@media (max-width: 1024px) {
       .nav-toggle { display: flex; }
       .nav-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; gap: 0; background: #0e0f13f2; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); max-height: 0; overflow: hidden; transition: max-height .25s ease; }
       .nav-links a { padding: 1rem clamp(1.2rem, 5vw, 3rem); border-top: 1px solid var(--line); }
-      .nav-links-open { max-height: 460px; }
+      .nav-links-open { max-height: 460px; overflow-y: auto; }
 }
 
 
@@ -989,7 +998,11 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .nav-buscador-grupo-titulo { font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ember); padding: .2rem .3rem; }
 .nav-buscador-item { display: block; padding: .35rem .3rem; font-size: .82rem; color: var(--bone); border-radius: 2px; }
 .nav-buscador-item:hover, .nav-buscador-item:focus-visible { background: var(--iron-2); color: var(--ember); }
-@media (max-width: 860px) {
+/* Mismo breakpoint que el menú hamburguesa de arriba (1024px) — el buscador
+   solo tiene sentido a "ancho completo" cuando el menú está en modo plegable
+   (columna), si no se queda ocupando toda una fila que no está pensada para
+   eso. Ver el comentario junto a ".nav-toggle". */
+@media (max-width: 1024px) {
   .nav-buscador { width: 100%; padding: 1rem clamp(1.2rem, 5vw, 3rem) 0; }
   .nav-buscador-input { width: 100%; }
   .nav-buscador-input:focus { width: 100%; }
