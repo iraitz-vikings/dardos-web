@@ -19,6 +19,17 @@ function formatFecha(iso) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// Estado visual de una jornada, para poder plegarla automáticamente una vez
+// jugada y dejar a la vista solo la que está en curso — igual que las rondas
+// de los cuadrantes de torneos (ver estadoRonda en AdminTorneosClub.jsx).
+function estadoJornada(partidos) {
+  const terminada = partidos.every((p) => !!p.ganador);
+  if (terminada) return "terminada";
+  const empezada = partidos.some((p) => !!p.ganador || p.enCurso);
+  return empezada ? "en_curso" : "pendiente";
+}
+const ETIQUETA_ESTADO_JORNADA = { terminada: "✓ Terminada", en_curso: "● En curso", pendiente: "Pendiente" };
+
 const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
 
 // Una ronda del cuadrante final está abierta si es la primera, o si todos
@@ -1129,6 +1140,12 @@ function CalendarioLiga({ liga, maquinas, onActualizarPartido, onProgramarCalend
 }
 
 function CalendarioLigaGrupo({ partidos, maquinas, afectaCalendario, onActualizarPartido, onProgramarCalendario }) {
+  // Plegado manual de jornadas: por defecto se pliegan las terminadas y las
+  // que aún no han empezado, y solo se despliega la que está en curso — igual
+  // que las rondas de los cuadrantes de torneos (ver rondasManual en
+  // AdminTorneosClub.jsx). Solo guarda las excepciones a ese comportamiento.
+  const [jornadasManual, setJornadasManual] = useState({});
+
   const porJornada = {};
   for (const p of partidos) {
     if (!porJornada[p.jornada]) porJornada[p.jornada] = [];
@@ -1138,21 +1155,31 @@ function CalendarioLigaGrupo({ partidos, maquinas, afectaCalendario, onActualiza
 
   return (
     <div>
-      {jornadas.map((j) => (
-        <div key={j} className="admin-cuadro-maquina">
-          <h4>Jornada {j}</h4>
-          {porJornada[j].sort((a, b) => a.posicion - b.posicion).map((p) => (
-            <PartidoLigaRow
-              key={p.id}
-              p={p}
-              maquinas={maquinas}
-              afectaCalendario={afectaCalendario}
-              onActualizar={(datos) => onActualizarPartido(p.id, datos)}
-              onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
-            />
-          ))}
-        </div>
-      ))}
+      {jornadas.map((j) => {
+        const partidosJornada = porJornada[j].sort((a, b) => a.posicion - b.posicion);
+        const estado = estadoJornada(partidosJornada);
+        const desplegada = jornadasManual[j] !== undefined ? jornadasManual[j] : estado === "en_curso";
+        return (
+          <div key={j} className="admin-cuadro-maquina">
+            <h4 className="admin-ronda-header" onClick={() => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada }))}>
+              <span>
+                Jornada {j} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_JORNADA[estado]}</span>
+              </span>
+              <span className="admin-ronda-toggle">{desplegada ? "Ocultar ▲" : "Ver ▼"}</span>
+            </h4>
+            {desplegada && partidosJornada.map((p) => (
+              <PartidoLigaRow
+                key={p.id}
+                p={p}
+                maquinas={maquinas}
+                afectaCalendario={afectaCalendario}
+                onActualizar={(datos) => onActualizarPartido(p.id, datos)}
+                onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
+              />
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
