@@ -32,10 +32,57 @@ function TablaClasificacion({ filas }) {
   );
 }
 
+// Estado visual de una jornada, para poder plegarla automáticamente una vez
+// jugada y dejar a la vista solo la que está en curso — igual que las rondas
+// de los cuadrantes de torneos en el panel de admin.
+function estadoJornada(partidos) {
+  const terminada = partidos.every((p) => !!p.ganador);
+  if (terminada) return "terminada";
+  const empezada = partidos.some((p) => !!p.ganador || p.enCurso);
+  return empezada ? "en_curso" : "pendiente";
+}
+const ETIQUETA_ESTADO_JORNADA = { terminada: "✓ Terminada", en_curso: "● En curso", pendiente: "Pendiente" };
+
+function CalendarioGrupo({ grupo, porJornada, mostrarGrupo }) {
+  const [jornadasManual, setJornadasManual] = useState({});
+  const jornadas = Object.keys(porJornada).map(Number).sort((a, b) => a - b);
+
+  return (
+    <div style={{ marginBottom: "1.5rem" }}>
+      {mostrarGrupo && <h3>Grupo {grupo === "_sin_grupo" ? "sin asignar" : grupo}</h3>}
+      {jornadas.map((j) => {
+        const partidosJornada = porJornada[j];
+        const estado = estadoJornada(partidosJornada);
+        const desplegada = jornadasManual[j] !== undefined ? jornadasManual[j] : estado === "en_curso";
+        return (
+          <div key={j} className="admin-cuadro-maquina">
+            <h4 className="admin-ronda-header" onClick={() => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada }))}>
+              <span>
+                Jornada {j} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_JORNADA[estado]}</span>
+              </span>
+              <span className="admin-ronda-toggle">{desplegada ? "Ocultar ▲" : "Ver ▼"}</span>
+            </h4>
+            {desplegada && (
+              <ul>
+                {partidosJornada.map((p) => (
+                  <li key={p.id}>
+                    {p.participante1} vs {p.participante2}
+                    {p.resultado ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function LigaPage({ id }) {
   const [liga, setLiga] = useState(null);
   const [estado, setEstado] = useState("cargando");
-  const [vista, setVista] = useState("liga");
+  const [vista, setVista] = useState("clasificacion");
   const [busqueda, setBusqueda] = useState("");
 
   const [clasificacion, setClasificacion] = useState(null);
@@ -122,55 +169,49 @@ export default function LigaPage({ id }) {
                 entidadNombre={liga.nombre}
               />
 
-              {cuadrante && (
-                <div className="live-tournament-toggle">
-                  <button className={vista === "liga" ? "active" : ""} onClick={() => setVista("liga")}>
-                    Liga
-                  </button>
+              <div className="live-tournament-toggle">
+                <button className={vista === "clasificacion" ? "active" : ""} onClick={() => setVista("clasificacion")}>
+                  Clasificación
+                </button>
+                <button className={vista === "calendario" ? "active" : ""} onClick={() => setVista("calendario")}>
+                  Calendario
+                </button>
+                {cuadrante && (
                   <button className={vista === "cuadrante" ? "active" : ""} onClick={() => setVista("cuadrante")}>
                     Cuadrante final
                   </button>
-                </div>
+                )}
+              </div>
+
+              {vista === "clasificacion" && (
+                <>
+                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Clasificación</h2>
+                  {!clasificacion ? (
+                    <p className="chronicle-status">Cargando…</p>
+                  ) : (liga.numeroGrupos ? letrasGrupos.some((g) => (clasificacion.grupos[g] || []).length > 0) : (clasificacion.sinGrupo || []).length > 0) ? (
+                    liga.numeroGrupos
+                      ? letrasGrupos.map((g) => (
+                          <div key={g} style={{ marginBottom: "1.5rem" }}>
+                            <h3>Grupo {g}</h3>
+                            <TablaClasificacion filas={clasificacion.grupos[g]} />
+                          </div>
+                        ))
+                      : <TablaClasificacion filas={clasificacion.sinGrupo} />
+                  ) : (
+                    <p className="chronicle-status">Todavía no hay clasificación.</p>
+                  )}
+                </>
               )}
 
-              {vista === "liga" && (
+              {vista === "calendario" && (
                 <>
-                  {clasificacion && (liga.numeroGrupos ? letrasGrupos.some((g) => (clasificacion.grupos[g] || []).length > 0) : (clasificacion.sinGrupo || []).length > 0) && (
-                    <>
-                      <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Clasificación</h2>
-                      {liga.numeroGrupos
-                        ? letrasGrupos.map((g) => (
-                            <div key={g} style={{ marginBottom: "1.5rem" }}>
-                              <h3>Grupo {g}</h3>
-                              <TablaClasificacion filas={clasificacion.grupos[g]} />
-                            </div>
-                          ))
-                        : <TablaClasificacion filas={clasificacion.sinGrupo} />}
-                    </>
-                  )}
-
-                  {gruposConCalendario.length > 0 && (
-                    <>
-                      <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Calendario</h2>
-                      {gruposConCalendario.map((g) => (
-                        <div key={g} style={{ marginBottom: "1.5rem" }}>
-                          {liga.numeroGrupos && <h3>Grupo {g === "_sin_grupo" ? "sin asignar" : g}</h3>}
-                          {Object.keys(porGrupoJornada[g]).map(Number).sort((a, b) => a - b).map((j) => (
-                            <div key={j} style={{ marginBottom: "1rem" }}>
-                              <strong>Jornada {j}</strong>
-                              <ul>
-                                {porGrupoJornada[g][j].map((p) => (
-                                  <li key={p.id}>
-                                    {p.participante1} vs {p.participante2}
-                                    {p.resultado ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </>
+                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Calendario</h2>
+                  {gruposConCalendario.length > 0 ? (
+                    gruposConCalendario.map((g) => (
+                      <CalendarioGrupo key={g} grupo={g} porJornada={porGrupoJornada[g]} mostrarGrupo={!!liga.numeroGrupos} />
+                    ))
+                  ) : (
+                    <p className="chronicle-status">Todavía no hay calendario.</p>
                   )}
                 </>
               )}
