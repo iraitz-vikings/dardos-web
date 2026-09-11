@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import MarcaAgua from "./MarcaAgua.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -121,12 +122,15 @@ export default function GaleriaPrivada({ usuario }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: ".8rem" }}>
         {fotos.map((f) => (
           <div key={f.id}>
-            <img
-              src={f.url}
-              alt={f.descripcion || "Foto de la galería"}
-              style={{ width: "100%", aspectRatio: "1", objectFit: "cover", cursor: "zoom-in" }}
-              onClick={() => setLightbox(f)}
-            />
+            <div style={{ position: "relative" }}>
+              <img
+                src={f.url}
+                alt={f.descripcion || "Foto de la galería"}
+                style={{ width: "100%", aspectRatio: "1", objectFit: "cover", cursor: "zoom-in" }}
+                onClick={() => setLightbox(f)}
+              />
+              <MarcaAgua usuario={usuario} />
+            </div>
             <div style={{ fontSize: ".75em", marginTop: ".3rem", display: "flex", justifyContent: "space-between" }}>
               <span>{f.autor?.nombre} · {formatFecha(f.fechaSubida)}</span>
               {(f.autor?.nombre === usuario.nombre || usuario.rol === "admin") && (
@@ -142,7 +146,10 @@ export default function GaleriaPrivada({ usuario }) {
           onClick={() => setLightbox(null)}
           style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, cursor: "zoom-out" }}
         >
-          <img src={lightbox.url} alt={lightbox.descripcion || ""} style={{ maxWidth: "90%", maxHeight: "85%", objectFit: "contain" }} />
+          <div style={{ position: "relative", maxWidth: "90%", maxHeight: "85%" }}>
+            <img src={lightbox.url} alt={lightbox.descripcion || ""} style={{ maxWidth: "100%", maxHeight: "85vh", objectFit: "contain", display: "block" }} />
+            <MarcaAgua usuario={usuario} />
+          </div>
         </div>
       )}
     </div>
