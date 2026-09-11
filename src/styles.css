@@ -468,6 +468,27 @@ button {
 .admin-hint { font-size: .78rem; color: var(--steel); margin-top: -.4rem; }
 .admin-hint-bloque { font-size: .78rem; color: var(--steel); margin: .5rem 0 .8rem; display: block; }
 
+/* Marca de agua discreta con el nombre del socio, sobre contenido solo-socios
+   (fotos de galería privada, calendario) — ver MarcaAgua.jsx. El contenedor
+   que la usa debe llevar position: relative. */
+.marca-agua {
+  position: absolute;
+  bottom: .3rem;
+  right: .4rem;
+  font-size: .62rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, .6);
+  background: rgba(0, 0, 0, .4);
+  padding: .15rem .4rem;
+  border-radius: 3px;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  z-index: 5;
+}
+.marca-agua-fija { position: fixed; bottom: .6rem; right: .6rem; z-index: 60; }
+
 .admin-inline-form { display: flex; gap: .6rem; align-items: flex-end; }
 .admin-inline-form label { flex: 1; }
 .admin-inline-form button { background: var(--iron-2); border: 1px solid var(--line); color: var(--bone); padding: .55rem 1rem; font-size: .78rem; text-transform: uppercase; cursor: pointer; }

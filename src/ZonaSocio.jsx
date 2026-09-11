@@ -74,7 +74,7 @@ export default function ZonaSocio({ usuario, salir }) {
       {seccion === "historial" && <HistorialTorneos />}
       {seccion === "historico-privado" && <HistoricoPrivado />}
       {seccion === "competiciones" && <Competiciones usuario={usuario} />}
-      {seccion === "calendario" && <CalendarioSocio />}
+      {seccion === "calendario" && <CalendarioSocio usuario={usuario} />}
       {seccion === "marcadores" && <Marcadores />}
       {seccion === "tablon" && <TablonAnuncios usuario={usuario} />}
       {seccion === "jugadores" && <JugadoresClub />}
