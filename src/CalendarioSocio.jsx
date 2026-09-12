@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import MarcaAgua from "./MarcaAgua.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -20,7 +19,7 @@ function inicioDeSemana(fechaBase) {
   return d;
 }
 
-export default function CalendarioSocio({ usuario }) {
+export default function CalendarioSocio() {
   const [semana, setSemana] = useState(() => inicioDeSemana(new Date()));
   const [eventos, setEventos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -59,7 +58,6 @@ export default function CalendarioSocio({ usuario }) {
   return (
     <div>
       <h3>Calendario</h3>
-      <MarcaAgua usuario={usuario} fijo />
 
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
         <button type="button" className="admin-link-btn" onClick={() => cambiarSemana(-1)}>← Semana anterior</button>
