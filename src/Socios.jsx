@@ -3,8 +3,14 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { useLang } from "./i18n.jsx";
 import ZonaSocio from "./ZonaSocio.jsx";
+import { vigilarSesionSocio, EVENTO_SESION_CADUCADA } from "./socioSesion.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
+
+// Se engancha en cuanto se carga esta página (una sola vez, ver
+// socioSesion.js) para que cualquier fetch con el token de socio que
+// reciba un 401 dispare el aviso de sesión caducada más abajo.
+vigilarSesionSocio();
 
 export default function Socios() {
   const { t } = useLang();
@@ -19,6 +25,19 @@ export default function Socios() {
   const [codigoInvitacion, setCodigoInvitacion] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+
+  // Si cualquier petición autenticada de la zona de socios recibe un 401
+  // (sesión caducada o invalidada), se cierra la sesión y se avisa aquí en
+  // vez de dejar que cada sección se quede en silencio con una lista vacía.
+  useEffect(() => {
+    function alCaducar() {
+      salir();
+      setMensaje({ tipo: "error", texto: t("socios.sesionCaducada") });
+    }
+    window.addEventListener(EVENTO_SESION_CADUCADA, alCaducar);
+    return () => window.removeEventListener(EVENTO_SESION_CADUCADA, alCaducar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function limpiarFormulario() {
     setNombre("");
