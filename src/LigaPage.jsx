@@ -17,16 +17,20 @@ function TablaClasificacion({ filas }) {
   return (
     <table className="admin-tabla-clasificacion">
       <thead>
-        <tr><th>#</th><th>Participante</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>Pts</th></tr>
+        <tr><th>#</th><th>Participante</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>+/−</th><th>Pts</th></tr>
       </thead>
       <tbody>
-        {filas.map((f, i) => (
-          <tr key={f.nombre}>
-            <td>{i + 1}</td><td>{f.nombre}</td><td>{f.jugados}</td><td>{f.victorias}</td>
-            <td>{f.empates}</td><td>{f.derrotas}</td><td>{f.partidasGanadas}</td>
-            <td>{f.partidasPerdidas}</td><td><strong>{f.puntos}</strong></td>
-          </tr>
-        ))}
+        {filas.map((f, i) => {
+          const diferencia = f.partidasGanadas - f.partidasPerdidas;
+          return (
+            <tr key={f.nombre}>
+              <td>{i + 1}</td><td>{f.nombre}</td><td>{f.jugados}</td><td>{f.victorias}</td>
+              <td>{f.empates}</td><td>{f.derrotas}</td><td>{f.partidasGanadas}</td>
+              <td>{f.partidasPerdidas}</td><td>{diferencia > 0 ? `+${diferencia}` : diferencia}</td>
+              <td><strong>{f.puntos}</strong></td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

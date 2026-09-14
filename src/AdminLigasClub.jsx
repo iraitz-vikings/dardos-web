@@ -1284,23 +1284,28 @@ function TablaClasificacion({ filas }) {
           <th>D</th>
           <th>Partidas +</th>
           <th>Partidas −</th>
+          <th>+/−</th>
           <th>Pts</th>
         </tr>
       </thead>
       <tbody>
-        {filas.map((f, i) => (
-          <tr key={f.nombre}>
-            <td>{i + 1}</td>
-            <td>{f.nombre}{f.empateSinResolver && <span title="Empate sin desempate objetivo posible — orden alfabético solo para que sea reproducible."> ⚠︎</span>}</td>
-            <td>{f.jugados}</td>
-            <td>{f.victorias}</td>
-            <td>{f.empates}</td>
-            <td>{f.derrotas}</td>
-            <td>{f.partidasGanadas}</td>
-            <td>{f.partidasPerdidas}</td>
-            <td><strong>{f.puntos}</strong></td>
-          </tr>
-        ))}
+        {filas.map((f, i) => {
+          const diferencia = f.partidasGanadas - f.partidasPerdidas;
+          return (
+            <tr key={f.nombre}>
+              <td>{i + 1}</td>
+              <td>{f.nombre}{f.empateSinResolver && <span title="Empate sin desempate objetivo posible — orden alfabético solo para que sea reproducible."> ⚠︎</span>}</td>
+              <td>{f.jugados}</td>
+              <td>{f.victorias}</td>
+              <td>{f.empates}</td>
+              <td>{f.derrotas}</td>
+              <td>{f.partidasGanadas}</td>
+              <td>{f.partidasPerdidas}</td>
+              <td>{diferencia > 0 ? `+${diferencia}` : diferencia}</td>
+              <td><strong>{f.puntos}</strong></td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
@@ -1323,7 +1328,7 @@ function ClasificacionLiga({ liga }) {
           <TablaClasificacion filas={clasificacion.grupos[g]} />
         </div>
       ))}
-      <p className="admin-hint">⚠︎ = empate que ningún criterio objetivo pudo resolver (puntos, enfrentamiento directo y partidas ganadas totales iguales); el orden mostrado es solo alfabético, para que al menos sea siempre el mismo.</p>
+      <p className="admin-hint">⚠︎ = empate que ningún criterio objetivo pudo resolver (puntos, enfrentamiento directo y diferencia de partidas iguales); el orden mostrado es solo alfabético, para que al menos sea siempre el mismo.</p>
     </div>
   );
 }
