@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { EMBLEM_DATA_URI } from "./emblem.js";
-const NAV_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png";
+const NAV_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/f_auto,q_auto/v1789382590/vikings-logo-transparente-2026.png";
 import LiveTicker from "./LiveTicker.jsx";
 import Buscador from "./Buscador.jsx";
 import { useLang } from "./i18n.jsx";

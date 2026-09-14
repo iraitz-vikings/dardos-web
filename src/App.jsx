@@ -56,7 +56,7 @@ function analizarVideo(url) {
   return null;
 }
 
-const HERO_LOGO_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png";
+const HERO_LOGO_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/f_auto,q_auto/v1789382590/vikings-logo-transparente-2026.png";
 const TOURNAMENT_BADGE_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1785705038/dardos-club/ykdezhnoze0porj7fk8q.jpg";
 
 const EMBERS = Array.from({ length: 14 }, (_, i) => ({
