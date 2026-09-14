@@ -64,7 +64,7 @@ export default function AdminTrofeos({ token, salir }) {
   return (
     <section className="admin-form">
       <h2>Sala de trofeos</h2>
-      <p className="admin-hint">Lista curada a mano, visible para los socios en su portal privado.</p>
+      <p className="admin-hint">Lista curada a mano, visible para los miembros en su portal privado.</p>
 
       <form onSubmit={crear} className="admin-form" style={{ marginBottom: "1.5rem" }}>
         <label>

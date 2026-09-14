@@ -516,7 +516,7 @@ function cancelarEdicionNoticia() {
     { id: "galeria", etiqueta: "Galería" },
     { id: "torneo-destacado", etiqueta: "Torneo destacado" },
     { id: "patrocinadores", etiqueta: "Patrocinadores" },
-    { id: "socios", etiqueta: "Socios" },
+    { id: "socios", etiqueta: "Miembros" },
     { id: "mensaje", etiqueta: "Mensaje" },
     { id: "ligas-club", etiqueta: "Ligas del club" },
     { id: "trofeos", etiqueta: "Trofeos" },

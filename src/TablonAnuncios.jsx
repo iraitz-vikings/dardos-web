@@ -97,7 +97,7 @@ export default function TablonAnuncios({ usuario }) {
           </label>
           <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
             <input type="checkbox" checked={notificar} onChange={(e) => setNotificar(e.target.checked)} style={{ width: "auto" }} />
-            Notificar a todos los socios
+            Notificar a todos los miembros
           </label>
           <div style={{ display: "flex", gap: ".6rem" }}>
             <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>

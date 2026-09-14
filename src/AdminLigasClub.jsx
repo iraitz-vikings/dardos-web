@@ -742,7 +742,7 @@ function JugadoresDelClubLiga({ jugadores }) {
           {jugadores.length === 0 && <p className="chronicle-status">Todavía no hay nadie en el plantel del club.</p>}
           {socios.length > 0 && (
             <>
-              <p className="admin-hint">Socios</p>
+              <p className="admin-hint">Miembros</p>
               <ul>
                 {socios.map((j) => (
                   <li key={j.id} className="admin-list-item">
@@ -754,7 +754,7 @@ function JugadoresDelClubLiga({ jugadores }) {
           )}
           {invitados.length > 0 && (
             <>
-              <p className="admin-hint">Invitados</p>
+              <p className="admin-hint">Amigos</p>
               <ul>
                 {invitados.map((j) => (
                   <li key={j.id} className="admin-list-item">
@@ -897,7 +897,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
           <p className="admin-hint-bloque">Añádelos aquí uno a uno, del plantel o a mano; luego fórmalos en parejas más abajo.</p>
           <form onSubmit={anadirManualAlPool} className="admin-inline-form">
             <label>
-              Añadir invitado por nombre
+              Añadir amigo por nombre
               <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
             </label>
             <button type="submit" disabled={!nombreManual.trim()}>＋ Añadir a disponibles</button>
@@ -907,7 +907,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
               <p className="admin-hint">Añadir del plantel del club:</p>
               {disponiblesAgrupados.socios.length > 0 && (
                 <>
-                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Socios</p>
+                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.socios.map((j) => (
                       <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>＋ {j.nombre}</button>
@@ -917,7 +917,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
               )}
               {disponiblesAgrupados.invitados.length > 0 && (
                 <>
-                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Invitados</p>
+                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Amigos</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.invitados.map((j) => (
                       <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>＋ {j.nombre}</button>
@@ -930,7 +930,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
           <ul>
             {poolManual.map((p) => (
               <li key={p.key} className="admin-list-item">
-                <span>{p.nombre}{!p.jugadorId && " (invitado)"}</span>
+                <span>{p.nombre}{!p.jugadorId && " (amigo)"}</span>
                 <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
                   {esParejasCiegas && grupos.length > 0 && (
                     <select value={p.grupo || ""} onChange={(e) => cambiarGrupo(p.key, e.target.value)}>
@@ -985,14 +985,14 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
           <h5>Añadir participante</h5>
           <form onSubmit={anadirManualDirecto} className="admin-inline-form">
             <label>
-              Invitado por nombre
+              Amigo por nombre
               <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
             </label>
             <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
           </form>
           {disponiblesAgrupados.socios.length > 0 && (
             <>
-              <p className="admin-hint" style={{ fontSize: ".8em" }}>Socios</p>
+              <p className="admin-hint" style={{ fontSize: ".8em" }}>Miembros</p>
               <ul>
                 {disponiblesAgrupados.socios.map((j) => (
                   <li key={j.id} className="admin-list-item">
@@ -1005,7 +1005,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
           )}
           {disponiblesAgrupados.invitados.length > 0 && (
             <>
-              <p className="admin-hint" style={{ fontSize: ".8em" }}>Invitados</p>
+              <p className="admin-hint" style={{ fontSize: ".8em" }}>Amigos</p>
               <ul>
                 {disponiblesAgrupados.invitados.map((j) => (
                   <li key={j.id} className="admin-list-item">

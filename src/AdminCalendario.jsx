@@ -91,7 +91,7 @@ export default function AdminCalendario({ token, salir }) {
       <h2>Eventos del calendario</h2>
       <p className="admin-hint">
         Reserva una máquina para algo que no es un partido de torneo o liga (mantenimiento, quedada, exhibición...).
-        Aparecerá junto a los partidos en el calendario que ven los socios.
+        Aparecerá junto a los partidos en el calendario que ven los miembros.
       </p>
       <form onSubmit={crear} className="admin-inline-form">
         <label>

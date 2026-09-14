@@ -56,7 +56,7 @@ export default function AdminSocios({ token, salir }) {
       body: JSON.stringify({ rol }),
     });
     if (manejarAuthError(res)) return;
-    setMensaje({ tipo: "ok", texto: "Socio aprobado." });
+    setMensaje({ tipo: "ok", texto: "Miembro aprobado." });
     cargarPendientes();
     cargarSocios();
   }
@@ -93,7 +93,7 @@ export default function AdminSocios({ token, salir }) {
   }
 
   async function eliminarSocio(id) {
-    if (!confirm("¿Eliminar la cuenta de este socio? Su ficha de jugador se conserva (pasa a ser invitado sin cuenta), con todo su historial.")) return;
+    if (!confirm("¿Eliminar la cuenta de este miembro? Su ficha de jugador se conserva (pasa a ser amigo sin cuenta), con todo su historial.")) return;
     setMensaje(null);
     const res = await fetch(`${API_URL}/api/auth/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     if (manejarAuthError(res)) return;
@@ -179,12 +179,12 @@ export default function AdminSocios({ token, salir }) {
             {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </label>
-        <button type="submit" disabled={creando}>{creando ? "Creando…" : "Crear socio"}</button>
+        <button type="submit" disabled={creando}>{creando ? "Creando…" : "Crear miembro"}</button>
       </form>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
 
-      <h2>Socios ({socios.length})</h2>
-      {socios.length === 0 && <p className="chronicle-status">Todavía no hay socios aprobados.</p>}
+      <h2>Miembros ({socios.length})</h2>
+      {socios.length === 0 && <p className="chronicle-status">Todavía no hay miembros aprobados.</p>}
       <ul>
         {socios.map((s) => (
           <li key={s.id} className="admin-list-item" style={{ alignItems: "flex-start" }}>

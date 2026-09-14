@@ -96,7 +96,7 @@ export default function GaleriaPrivada({ usuario }) {
   return (
     <div>
       <h3>Galería privada</h3>
-      <p className="admin-hint-bloque">Fotos y momentos del club, subidas por los propios socios.</p>
+      <p className="admin-hint-bloque">Fotos y momentos del club, subidas por los propios miembros.</p>
 
       <div className="admin-inline-form" style={{ marginBottom: "1.2rem" }}>
         <label>
