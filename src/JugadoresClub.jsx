@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLang } from "./i18n.jsx";
 import MediasFabricante from "./MediasFabricante.jsx";
 import AceroJugador from "./AceroJugador.jsx";
 import { agruparPorSocio } from "./agruparJugadores.js";
@@ -6,6 +7,7 @@ import { agruparPorSocio } from "./agruparJugadores.js";
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 export default function JugadoresClub() {
+  const { t } = useLang();
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
@@ -68,16 +70,16 @@ export default function JugadoresClub() {
 
   return (
     <div>
-      <h3>Jugadores del club</h3>
+      <h3>{t("zona.jugadores")}</h3>
       <input
         type="text"
-        placeholder="Buscar jugador…"
+        placeholder={t("jugadoresClub.buscarPlaceholder")}
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
         style={{ marginBottom: "1rem" }}
       />
 
-      {cargando && <p className="chronicle-status">Cargando…</p>}
+      {cargando && <p className="chronicle-status">{t("jugadoresClub.cargando")}</p>}
 
       {!cargando && (
         <>
@@ -87,20 +89,20 @@ export default function JugadoresClub() {
               className={`admin-tab ${pestana === "socios" ? "admin-tab-active" : ""}`}
               onClick={() => setPestana("socios")}
             >
-              Miembros ({socios.length})
+              {t("nav.socios")} ({socios.length})
             </button>
             <button
               type="button"
               className={`admin-tab ${pestana === "invitados" ? "admin-tab-active" : ""}`}
               onClick={() => setPestana("invitados")}
             >
-              Amigos ({invitados.length})
+              {t("jugadoresClub.amigos")} ({invitados.length})
             </button>
           </div>
 
           {listaActual.length === 0 && (
             <p className="chronicle-status">
-              No hay {pestana === "socios" ? "miembros" : "amigos"} que coincidan.
+              {pestana === "socios" ? t("jugadoresClub.vacioMiembros") : t("jugadoresClub.vacioAmigos")}
             </p>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "1rem" }}>
@@ -113,7 +115,7 @@ export default function JugadoresClub() {
         <div className="perfil-jugador-modal" onClick={() => setSeleccionado(null)}>
           <div className="perfil-jugador-panel" onClick={(e) => e.stopPropagation()}>
             <div className="perfil-jugador-panel-header">
-              <button type="button" className="admin-link-btn" onClick={() => setSeleccionado(null)}>Cerrar</button>
+              <button type="button" className="admin-link-btn" onClick={() => setSeleccionado(null)}>{t("jugadoresClub.cerrar")}</button>
             </div>
             <div className="perfil-jugador-cabecera">
               {seleccionado.avatarUrl ? (
@@ -137,14 +139,14 @@ export default function JugadoresClub() {
                 <strong style={{ display: "block", fontSize: "1.15rem" }}>{seleccionado.nombre}</strong>
                 {seleccionado.apodo && <span style={{ display: "block", opacity: 0.85 }}>"{seleccionado.apodo}"</span>}
                 {seleccionado.usuarioId && (
-                  <span style={{ fontSize: ".7em", color: "var(--ember)" }}>Miembro</span>
+                  <span style={{ fontSize: ".7em", color: "var(--ember)" }}>{t("jugadoresClub.miembroBadge")}</span>
                 )}
               </div>
             </div>
             {seleccionado.bio && <p className="perfil-jugador-bio">{seleccionado.bio}</p>}
             <MediasFabricante idsFabricantes={seleccionado.idsFabricantes} />
             {(seleccionado.idsFabricantes || []).filter((i) => (i.idExterno || "").trim()).length === 0 && (
-              <p className="chronicle-status">Todavía no ha guardado ningún alias de fabricante.</p>
+              <p className="chronicle-status">{t("jugadoresClub.sinAlias")}</p>
             )}
             <AceroJugador jugadorId={seleccionado.id} token={localStorage.getItem("socioToken")} />
           </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLang } from "./i18n.jsx";
 import { NUMEROS_DEL_1_AL_20, resultadoDesdeNumero } from "./dardosLogica.js";
 
 // Alternativa a Diana.jsx para marcar un dardo: en vez de tocar el punto
@@ -9,13 +10,13 @@ import { NUMEROS_DEL_1_AL_20, resultadoDesdeNumero } from "./dardosLogica.js";
 // resultado que Diana (mismo formato de tirada), así que Marcadores.jsx no
 // necesita distinguir de dónde vino cada dardo.
 
-const MULTIPLICADORES = [
-  { clave: 1, etiqueta: "Simple" },
-  { clave: 2, etiqueta: "Doble" },
-  { clave: 3, etiqueta: "Triple" },
-];
-
 export default function TecladoNumeros({ onTirada, deshabilitada }) {
+  const { t } = useLang();
+  const MULTIPLICADORES = [
+    { clave: 1, etiqueta: t("marcador.tSimple") },
+    { clave: 2, etiqueta: t("marcador.doble") },
+    { clave: 3, etiqueta: t("marcador.tTriple") },
+  ];
   const [multiplicador, setMultiplicador] = useState(1);
 
   function tirar(resultado) {
@@ -43,7 +44,7 @@ export default function TecladoNumeros({ onTirada, deshabilitada }) {
           disabled={deshabilitada}
           onClick={() => tirar(resultadoDesdeNumero("bull50", 1))}
         >
-          Bull 50
+          {t("marcador.bull50")}
         </button>
         <button
           type="button"
@@ -51,7 +52,7 @@ export default function TecladoNumeros({ onTirada, deshabilitada }) {
           disabled={deshabilitada}
           onClick={() => tirar(resultadoDesdeNumero("bull25", 1))}
         >
-          25 exterior
+          {t("marcador.exterior25")}
         </button>
       </div>
 
@@ -75,7 +76,7 @@ export default function TecladoNumeros({ onTirada, deshabilitada }) {
         disabled={deshabilitada}
         onClick={() => tirar(resultadoDesdeNumero("fallo", 1))}
       >
-        Fallo (fuera de la diana)
+        {t("marcador.fallo")}
       </button>
     </div>
   );

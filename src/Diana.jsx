@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useLang } from "./i18n.jsx";
 import { ORDEN_SECTORES, RADIOS, resultadoDardo } from "./dardosLogica.js";
 
 // Diana interactiva en SVG: cada tap/click se traduce a un resultado de
@@ -56,6 +57,7 @@ const SECTORES = ORDEN_SECTORES.map((numero, i) => ({
 }));
 
 export default function Diana({ onTirada, deshabilitada, marcas = [] }) {
+  const { t } = useLang();
   const svgRef = useRef(null);
 
   function manejarClick(e) {
@@ -80,7 +82,7 @@ export default function Diana({ onTirada, deshabilitada, marcas = [] }) {
       className={`diana-svg ${deshabilitada ? "diana-deshabilitada" : ""}`}
       onClick={manejarClick}
       role="img"
-      aria-label="Diana interactiva: toca el punto donde ha caído el dardo"
+      aria-label={t("marcador.dianaAriaLabel")}
     >
       <circle cx={CENTRO} cy={CENTRO} r={R.dobleExterior + 6} fill={OSCURO} />
       {SECTORES.map((s) => (

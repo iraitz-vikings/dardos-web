@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 export default function SalaTrofeos() {
+  const { t } = useLang();
   const [trofeos, setTrofeos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -17,9 +19,9 @@ export default function SalaTrofeos() {
 
   return (
     <div>
-      <h3>Sala de trofeos</h3>
-      {cargando && <p className="chronicle-status">Cargando…</p>}
-      {!cargando && trofeos.length === 0 && <p className="chronicle-status">Todavía no hay trofeos registrados.</p>}
+      <h3>{t("zona.trofeos")}</h3>
+      {cargando && <p className="chronicle-status">{t("trofeos.cargando")}</p>}
+      {!cargando && trofeos.length === 0 && <p className="chronicle-status">{t("trofeos.vacio")}</p>}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem" }}>
         {trofeos.map((t) => (

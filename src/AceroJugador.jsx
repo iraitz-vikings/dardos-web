@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -11,6 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-pro
 // Mismo estilo que MediasFabricante.jsx (que muestra medias de fabricantes
 // externos, scrapeadas) pero con datos propios del club.
 export default function AceroJugador({ jugadorId, token }) {
+  const { t } = useLang();
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
 
@@ -27,7 +29,7 @@ export default function AceroJugador({ jugadorId, token }) {
       .finally(() => setCargando(false));
   }, [jugadorId, token]);
 
-  if (cargando) return <p className="chronicle-status">Cargando Acero…</p>;
+  if (cargando) return <p className="chronicle-status">{t("acero.cargando")}</p>;
   if (!datos) return null;
 
   const stats501 = datos["501"];
@@ -36,9 +38,9 @@ export default function AceroJugador({ jugadorId, token }) {
   if (sinNada) {
     return (
       <div style={{ marginTop: "1rem" }}>
-        <h4>Acero</h4>
+        <h4>{t("acero.titulo")}</h4>
         <p className="chronicle-status">
-          Todavía no ha jugado ningún partido de torneo o liga con la herramienta de marcador.
+          {t("acero.sinDatos")}
         </p>
       </div>
     );
@@ -46,20 +48,20 @@ export default function AceroJugador({ jugadorId, token }) {
 
   return (
     <div className="acero-jugador">
-      <h4 style={{ margin: 0 }}>Acero</h4>
+      <h4 style={{ margin: 0 }}>{t("acero.titulo")}</h4>
       <p className="chronicle-status" style={{ margin: 0 }}>
-        Medias de partidos de torneo/liga jugados con la herramienta de marcador (no cuenta jugar en solitario).
+        {t("acero.intro")}
       </p>
 
       {stats501.partidosJugados > 0 && (
         <div className="acero-jugador-item">
           <strong className="acero-jugador-titulo">
-            501 — {stats501.partidosGanados}/{stats501.partidosJugados} partidos · {stats501.legsGanados}/{stats501.legsJugados} legs
+            501 — {stats501.partidosGanados}/{stats501.partidosJugados} {t("acero.partidos")} · {stats501.legsGanados}/{stats501.legsJugados} {t("acero.legs")}
           </strong>
           <span className="acero-jugador-stats">
-            <span>Media (3 dardos): {stats501.media}</span>
-            <span>PPD: {stats501.ppd}</span>
-            <span>Mejor cierre: {stats501.mejorCheckout || "—"}</span>
+            <span>{t("acero.media3")} {stats501.media}</span>
+            <span>{t("acero.ppd")} {stats501.ppd}</span>
+            <span>{t("acero.mejorCierre")} {stats501.mejorCheckout || "—"}</span>
             <span>100+: {stats501.visitas100}</span>
             <span>140+: {stats501.visitas140}</span>
             <span>180: {stats501.visitas180}</span>
@@ -70,10 +72,10 @@ export default function AceroJugador({ jugadorId, token }) {
       {cricket.partidosJugados > 0 && (
         <div className="acero-jugador-item">
           <strong className="acero-jugador-titulo">
-            Cricket — {cricket.partidosGanados}/{cricket.partidosJugados} partidos · {cricket.legsGanados}/{cricket.legsJugados} legs
+            Cricket — {cricket.partidosGanados}/{cricket.partidosJugados} {t("acero.partidos")} · {cricket.legsGanados}/{cricket.legsJugados} {t("acero.legs")}
           </strong>
           <span className="acero-jugador-stats">
-            <span>MPR: {cricket.mpr}</span>
+            <span>{t("acero.mpr")} {cricket.mpr}</span>
           </span>
         </div>
       )}

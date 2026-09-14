@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
-function formatFecha(iso) {
+function formatFecha(iso, lang) {
   const d = new Date(iso);
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(lang === "eu" ? "eu-ES" : "es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 // Convierte un ISO a formato apto para <input type="datetime-local">, en
@@ -17,6 +18,7 @@ function paraInputFecha(iso) {
 }
 
 export default function Competiciones({ usuario }) {
+  const { t, lang } = useLang();
   const [plataformas, setPlataformas] = useState([]);
   const [torneosExternos, setTorneosExternos] = useState([]);
   const [torneosVikings, setTorneosVikings] = useState([]);
@@ -74,13 +76,13 @@ export default function Competiciones({ usuario }) {
     cargarTorneos();
   }
 
-  if (cargando) return <p className="chronicle-status">Cargando competiciones…</p>;
+  if (cargando) return <p className="chronicle-status">{t("competiciones.cargando")}</p>;
 
   const pestanas = [{ id: "vikings", nombre: "Vikings" }, ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre }))];
 
   return (
     <div>
-      <h3>Competiciones activas</h3>
+      <h3>{t("competiciones.titulo")}</h3>
       <div className="admin-tabs" style={{ marginBottom: "1rem" }}>
         {pestanas.map((p) => (
           <button
@@ -97,13 +99,13 @@ export default function Competiciones({ usuario }) {
       {pestana === "vikings" && (
         <div>
           {torneosVikings.length === 0 && ligasVikings.length === 0 && (
-            <p className="chronicle-status">No hay competiciones internas activas ahora mismo.</p>
+            <p className="chronicle-status">{t("competiciones.sinInternas")}</p>
           )}
-          {torneosVikings.map((t) => (
-            <div key={`t-${t.id}`} className="admin-list-item">
+          {torneosVikings.map((tv) => (
+            <div key={`t-${tv.id}`} className="admin-list-item">
               <div>
-                <a href={`/torneo/${t.id}`} target="_blank" rel="noopener noreferrer"><strong>{t.nombre}</strong></a>
-                <time style={{ display: "block", fontSize: ".8em" }}>{formatFecha(t.fechaInicio)} – {formatFecha(t.fechaFin)} · Torneo</time>
+                <a href={`/torneo/${tv.id}`} target="_blank" rel="noopener noreferrer"><strong>{tv.nombre}</strong></a>
+                <time style={{ display: "block", fontSize: ".8em" }}>{formatFecha(tv.fechaInicio, lang)} – {formatFecha(tv.fechaFin, lang)} · {t("competiciones.torneo")}</time>
               </div>
             </div>
           ))}
@@ -111,7 +113,7 @@ export default function Competiciones({ usuario }) {
             <div key={`l-${l.id}`} className="admin-list-item">
               <div>
                 <a href={`/liga/${l.id}`} target="_blank" rel="noopener noreferrer"><strong>{l.nombre}</strong></a>
-                <time style={{ display: "block", fontSize: ".8em" }}>{formatFecha(l.fechaInicio)} – {formatFecha(l.fechaFin)} · Liga</time>
+                <time style={{ display: "block", fontSize: ".8em" }}>{formatFecha(l.fechaInicio, lang)} – {formatFecha(l.fechaFin, lang)} · {t("competiciones.liga")}</time>
               </div>
             </div>
           ))}
@@ -120,16 +122,16 @@ export default function Competiciones({ usuario }) {
 
       {pestana !== "vikings" && (
         <div>
-          {torneosExternos.filter((t) => t.plataformaId === pestana).length === 0 && (
-            <p className="chronicle-status">No hay torneos de esta plataforma todavía.</p>
+          {torneosExternos.filter((tx) => tx.plataformaId === pestana).length === 0 && (
+            <p className="chronicle-status">{t("competiciones.sinExternos")}</p>
           )}
-          {torneosExternos.filter((t) => t.plataformaId === pestana).map((t) => (
-            <div key={t.id} className="admin-form" style={{ marginBottom: "1rem", padding: "1rem" }}>
-              <strong>{t.nombre}</strong>
-              {t.nivel && <span style={{ color: "var(--steel)" }}> — {t.nivel}</span>}
-              {t.temporada && <span style={{ display: "block", fontSize: ".8em" }}>{t.temporada}</span>}
-              {t.clasificacion?.length > 0 && <TablaClasificacion filas={t.clasificacion} />}
-              {t.equipos.map((eq) => {
+          {torneosExternos.filter((tx) => tx.plataformaId === pestana).map((tx) => (
+            <div key={tx.id} className="admin-form" style={{ marginBottom: "1rem", padding: "1rem" }}>
+              <strong>{tx.nombre}</strong>
+              {tx.nivel && <span style={{ color: "var(--steel)" }}> — {tx.nivel}</span>}
+              {tx.temporada && <span style={{ display: "block", fontSize: ".8em" }}>{tx.temporada}</span>}
+              {tx.clasificacion?.length > 0 && <TablaClasificacion filas={tx.clasificacion} />}
+              {tx.equipos.map((eq) => {
                 // El capitán "real" es el de la plantilla del equipo del club
                 // (eq.equipoClub.capitan); el de la inscripción concreta
                 // (eq.capitan) casi nunca se usa, pero se comprueban los dos.
@@ -137,24 +139,27 @@ export default function Competiciones({ usuario }) {
                 const esCapitan = usuario && capitan?.usuarioId === usuario.id;
                 return (
                   <div key={eq.id} style={{ marginTop: ".6rem" }}>
-                    <em>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}{capitan ? ` — Capitán: ${capitan.apodo || capitan.nombre}` : ""}</em>
+                    <em>
+                      {eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}
+                      {capitan ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
+                    </em>
                     {eq.clasificacion?.length > 0 && <TablaClasificacion filas={eq.clasificacion} />}
                     {esCapitan && (
-                      <NuevoPartidoCapitanForm onCrear={(fecha, rival) => crearPartido(eq.id, fecha, rival)} />
+                      <NuevoPartidoCapitanForm onCrear={(fecha, rival) => crearPartido(eq.id, fecha, rival)} t={t} />
                     )}
                     <ul>
                       {eq.partidos.map((p) => (
                         esCapitan ? (
-                          <PartidoCapitanRow key={p.id} p={p} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} />
+                          <PartidoCapitanRow key={p.id} p={p} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
                         ) : (
                           <li key={p.id} style={{ fontSize: ".85em" }}>
-                            {formatFecha(p.fecha)} — vs {p.rival || "?"}
-                            {p.resultado ? ` — ${p.resultado}` : p.fijado ? " — confirmado" : " — sin confirmar"}
+                            {formatFecha(p.fecha, lang)} — {t("partido.vs")} {p.rival || "?"}
+                            {p.resultado ? ` — ${p.resultado}` : p.fijado ? ` — ${t("competiciones.confirmado")}` : ` — ${t("competiciones.sinConfirmar")}`}
                             {p.maquina ? ` (${p.maquina.nombre})` : ""}
                           </li>
                         )
                       ))}
-                      {eq.partidos.length === 0 && <li style={{ fontSize: ".85em", opacity: 0.7 }}>Sin partidos todavía.</li>}
+                      {eq.partidos.length === 0 && <li style={{ fontSize: ".85em", opacity: 0.7 }}>{t("competiciones.sinPartidos")}</li>}
                     </ul>
                   </div>
                 );
@@ -170,18 +175,18 @@ export default function Competiciones({ usuario }) {
 // Formulario para que el capitán dé de alta un partido nuevo (fecha +
 // rival), acordado normalmente por él mismo con el equipo rival. Solo se
 // muestra al capitán del equipo (comprobado también en el backend).
-function NuevoPartidoCapitanForm({ onCrear }) {
+function NuevoPartidoCapitanForm({ onCrear, t }) {
   const [fecha, setFecha] = useState("");
   const [rival, setRival] = useState("");
 
   return (
     <div className="admin-inline-form" style={{ marginTop: ".4rem" }}>
       <label>
-        Fecha y hora
+        {t("competiciones.fechaHora")}
         <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} />
       </label>
       <label>
-        Rival (opcional)
+        {t("competiciones.rivalOpcional")}
         <input value={rival} onChange={(e) => setRival(e.target.value)} />
       </label>
       <button
@@ -193,7 +198,7 @@ function NuevoPartidoCapitanForm({ onCrear }) {
           setRival("");
         }}
       >
-        Añadir partido
+        {t("competiciones.anadirPartido")}
       </button>
     </div>
   );
@@ -203,14 +208,14 @@ function NuevoPartidoCapitanForm({ onCrear }) {
 // rival, máquina, resultado y una nota, y confirmar/desconfirmar el
 // partido. Solo se muestra cuando el socio logueado es el capitán de este
 // equipo concreto (comprobado también en el backend).
-function PartidoCapitanRow({ p, maquinas, onActualizar }) {
+function PartidoCapitanRow({ p, maquinas, onActualizar, t, lang }) {
   const [nota, setNota] = useState(p.notaCapitan || "");
 
   return (
     <li className="admin-list-item" style={{ flexWrap: "wrap", fontSize: ".85em" }}>
       <div>
-        <strong>{formatFecha(p.fecha)}</strong> — vs {p.rival || "?"}
-        {p.fijado ? " · confirmado" : " · sin confirmar"}
+        <strong>{formatFecha(p.fecha, lang)}</strong> — {t("partido.vs")} {p.rival || "?"}
+        {p.fijado ? ` · ${t("competiciones.confirmado")}` : ` · ${t("competiciones.sinConfirmar")}`}
         {p.maquina ? ` · ${p.maquina.nombre}` : ""}
         {p.resultado ? ` · ${p.resultado}` : ""}
       </div>
@@ -222,17 +227,17 @@ function PartidoCapitanRow({ p, maquinas, onActualizar }) {
         />
         <input
           defaultValue={p.rival || ""}
-          placeholder="Rival"
+          placeholder={t("competiciones.rivalPlaceholder")}
           onBlur={(e) => e.target.value !== (p.rival || "") && onActualizar({ rival: e.target.value })}
           style={{ width: "110px" }}
         />
         <select defaultValue={p.maquinaId || ""} onChange={(e) => onActualizar({ maquinaId: e.target.value || null })}>
-          <option value="">Sin máquina</option>
+          <option value="">{t("competiciones.sinMaquina")}</option>
           {maquinas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
         </select>
         <input
           defaultValue={p.resultado || ""}
-          placeholder="Resultado"
+          placeholder={t("competiciones.resultadoPlaceholder")}
           onBlur={(e) => e.target.value !== (p.resultado || "") && onActualizar({ resultado: e.target.value })}
           style={{ width: "90px" }}
         />
@@ -240,11 +245,11 @@ function PartidoCapitanRow({ p, maquinas, onActualizar }) {
           value={nota}
           onChange={(e) => setNota(e.target.value)}
           onBlur={(e) => e.target.value !== (p.notaCapitan || "") && onActualizar({ notaCapitan: e.target.value })}
-          placeholder="Nota (opcional)"
+          placeholder={t("competiciones.notaPlaceholder")}
           style={{ width: "140px" }}
         />
         <button type="button" className="admin-link-btn" onClick={() => onActualizar({ fijado: !p.fijado })}>
-          {p.fijado ? "Desconfirmar" : "Confirmar"}
+          {p.fijado ? t("competiciones.desconfirmar") : t("competiciones.confirmar")}
         </button>
       </div>
     </li>

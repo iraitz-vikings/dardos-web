@@ -13,7 +13,10 @@
 // En todos los casos con MPR/PPD se usa 0.00 como valor por defecto si
 // todavía no hay datos, en vez de dejarlo en blanco (que es lo que hacía
 // parecer que la media "no estaba" aunque el alias sí estuviera guardado).
+import { useLang } from "./i18n.jsx";
+
 export default function MediasFabricante({ idsFabricantes }) {
+  const { t } = useLang();
   const conAlias = (idsFabricantes || []).filter((i) => (i.idExterno || "").trim());
   if (conAlias.length === 0) return null;
 
@@ -41,17 +44,17 @@ export default function MediasFabricante({ idsFabricantes }) {
             {esBullshooter ? (
               enlace && (
                 <a href={enlace} target="_blank" rel="noreferrer" className="admin-link-btn">
-                  Ver mi media ↗
+                  {t("mediasFab.verMedia")}
                 </a>
               )
             ) : esConnection ? (
               <span className="medias-fabricante-stats medias-fabricante-stats-doble">
-                <span>Virtual: MPR {Number(i.mprVirtual ?? 0).toFixed(2)} · PPD {Number(i.ppdVirtual ?? 0).toFixed(2)}</span>
-                <span>Presencial: MPR {Number(i.mprPresencial ?? 0).toFixed(2)} · PPD {Number(i.ppdPresencial ?? 0).toFixed(2)}</span>
+                <span>{t("mediasFab.virtual").replace("{mpr}", Number(i.mprVirtual ?? 0).toFixed(2)).replace("{ppd}", Number(i.ppdVirtual ?? 0).toFixed(2))}</span>
+                <span>{t("mediasFab.presencial").replace("{mpr}", Number(i.mprPresencial ?? 0).toFixed(2)).replace("{ppd}", Number(i.ppdPresencial ?? 0).toFixed(2))}</span>
               </span>
             ) : (
               <span className="medias-fabricante-stats">
-                MPR {Number(i.mpr ?? 0).toFixed(2)} · PPD {Number(i.ppd ?? 0).toFixed(2)}
+                {t("mediasFab.stats").replace("{mpr}", Number(i.mpr ?? 0).toFixed(2)).replace("{ppd}", Number(i.ppd ?? 0).toFixed(2))}
               </span>
             )}
           </div>

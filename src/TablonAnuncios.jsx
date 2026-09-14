@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
-function formatFecha(iso) {
+function formatFecha(iso, lang) {
   const d = new Date(iso);
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(lang === "eu" ? "eu-ES" : "es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function TablonAnuncios({ usuario }) {
+  const { t, lang } = useLang();
   const [anuncios, setAnuncios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -46,7 +48,7 @@ export default function TablonAnuncios({ usuario }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setMensaje({ tipo: "error", texto: data.error || "No se pudo publicar el anuncio." });
+        setMensaje({ tipo: "error", texto: data.error || t("tablon.errorPublicar") });
         return;
       }
       setTitulo("");
@@ -56,14 +58,14 @@ export default function TablonAnuncios({ usuario }) {
       setMostrarFormulario(false);
       cargar();
     } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión." });
+      setMensaje({ tipo: "error", texto: t("socios.errorConexion") });
     } finally {
       setEnviando(false);
     }
   }
 
   async function borrar(id) {
-    if (!confirm("¿Borrar este anuncio?")) return;
+    if (!confirm(t("tablon.confirmarBorrar"))) return;
     await fetch(`${API_URL}/api/anuncios/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token()}` },
@@ -73,42 +75,42 @@ export default function TablonAnuncios({ usuario }) {
 
   return (
     <div>
-      <h3>Tablón de anuncios</h3>
+      <h3>{t("zona.tablon")}</h3>
 
       {puedePublicar && !mostrarFormulario && (
         <button type="button" onClick={() => setMostrarFormulario(true)} style={{ marginBottom: "1rem" }}>
-          ＋ Publicar anuncio
+          ＋ {t("tablon.publicarAnuncio")}
         </button>
       )}
 
       {puedePublicar && mostrarFormulario && (
         <form onSubmit={publicar} style={{ marginBottom: "1.5rem" }}>
           <label>
-            Título
+            {t("tablon.tituloLabel")}
             <input value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
           </label>
           <label>
-            Contenido
+            {t("tablon.contenidoLabel")}
             <textarea rows={4} value={contenido} onChange={(e) => setContenido(e.target.value)} required />
           </label>
           <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
             <input type="checkbox" checked={fijado} onChange={(e) => setFijado(e.target.checked)} style={{ width: "auto" }} />
-            Fijar arriba del todo
+            {t("tablon.fijarLabel")}
           </label>
           <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
             <input type="checkbox" checked={notificar} onChange={(e) => setNotificar(e.target.checked)} style={{ width: "auto" }} />
-            Notificar a todos los miembros
+            {t("tablon.notificarLabel")}
           </label>
           <div style={{ display: "flex", gap: ".6rem" }}>
-            <button type="submit" disabled={enviando}>{enviando ? "Publicando…" : "Publicar"}</button>
-            <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
+            <button type="submit" disabled={enviando}>{enviando ? t("tablon.publicando") : t("tablon.publicar")}</button>
+            <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>{t("tablon.cancelar")}</button>
           </div>
           {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
         </form>
       )}
 
-      {cargando && <p className="chronicle-status">Cargando anuncios…</p>}
-      {!cargando && anuncios.length === 0 && <p className="chronicle-status">Todavía no hay anuncios.</p>}
+      {cargando && <p className="chronicle-status">{t("tablon.cargando")}</p>}
+      {!cargando && anuncios.length === 0 && <p className="chronicle-status">{t("tablon.vacio")}</p>}
 
       <ul>
         {anuncios.map((a) => (
@@ -116,11 +118,11 @@ export default function TablonAnuncios({ usuario }) {
             <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
               <strong>{a.fijado ? "📌 " : ""}{a.titulo}</strong>
               {(usuario.rol === "admin" || a.autor?.nombre === usuario.nombre) && (
-                <button type="button" className="admin-link-btn" onClick={() => borrar(a.id)}>Borrar</button>
+                <button type="button" className="admin-link-btn" onClick={() => borrar(a.id)}>{t("tablon.borrar")}</button>
               )}
             </div>
             <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{a.contenido}</p>
-            <em style={{ fontSize: ".8em" }}>{a.autor?.nombre} · {formatFecha(a.fechaPublicacion)}</em>
+            <em style={{ fontSize: ".8em" }}>{a.autor?.nombre} · {formatFecha(a.fechaPublicacion, lang)}</em>
           </li>
         ))}
       </ul>
