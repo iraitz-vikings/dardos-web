@@ -363,7 +363,7 @@ const dic = {
     "nav.ligas": "Ligak",
 
     "socios.eyebrow": "Barne atari pribatua",
-    "socios.title": "Bazkideen area",
+    "socios.title": "Bazkideen ataria",
     "socios.tabEntrar": "Sartu",
     "socios.tabRegistro": "Izena eman",
     "socios.nombre": "Izena",
