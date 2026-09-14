@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
-function formatFecha(iso) {
+function formatFecha(iso, lang) {
   const d = new Date(iso);
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(lang === "eu" ? "eu-ES" : "es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function HistoricoPrivado() {
+  const { t, lang } = useLang();
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -31,11 +33,11 @@ export default function HistoricoPrivado() {
 
   return (
     <div>
-      <h3>Histórico privado</h3>
-      <p className="admin-hint-bloque">Torneos y ligas del club ya finalizados, solo visibles para miembros.</p>
+      <h3>{t("zona.historicoPrivado")}</h3>
+      <p className="admin-hint-bloque">{t("historicoPriv.intro")}</p>
 
-      {cargando && <p className="chronicle-status">Cargando…</p>}
-      {!cargando && items.length === 0 && <p className="chronicle-status">Todavía no hay nada finalizado.</p>}
+      {cargando && <p className="chronicle-status">{t("historicoPriv.cargando")}</p>}
+      {!cargando && items.length === 0 && <p className="chronicle-status">{t("historicoPriv.vacio")}</p>}
 
       <ul>
         {items.map((item) => (
@@ -45,7 +47,7 @@ export default function HistoricoPrivado() {
                 <strong>{item.nombre}</strong>
               </a>
               <time style={{ display: "block", fontSize: ".8em" }}>
-                {formatFecha(item.fechaInicio)} – {formatFecha(item.fechaFin)}{item.tipo === "liga" ? " · Liga" : ""}
+                {formatFecha(item.fechaInicio, lang)} – {formatFecha(item.fechaFin, lang)}{item.tipo === "liga" ? ` · ${t("historicoPriv.liga")}` : ""}
               </time>
             </div>
           </li>

@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
-function formatFecha(iso) {
+function formatFecha(iso, lang) {
   const d = new Date(iso);
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(lang === "eu" ? "eu-ES" : "es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function GaleriaPrivada({ usuario }) {
+  const { t, lang } = useLang();
   const [fotos, setFotos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [subiendo, setSubiendo] = useState(false);
@@ -72,11 +74,14 @@ export default function GaleriaPrivada({ usuario }) {
 
     setSubiendo(false);
     if (errores.length === 0) {
-      setMensaje(subidas > 1 ? { tipo: "ok", texto: `${subidas} fotos subidas.` } : null);
+      setMensaje(subidas > 1 ? { tipo: "ok", texto: t("galeriaPriv.fotosSubidas").replace("{n}", subidas) } : null);
     } else {
       setMensaje({
         tipo: subidas > 0 ? "ok" : "error",
-        texto: `${subidas} de ${archivos.length} fotos subidas. No se pudieron subir: ${errores.join(", ")}`,
+        texto: t("galeriaPriv.fotosSubidasParcial")
+          .replace("{subidas}", subidas)
+          .replace("{total}", archivos.length)
+          .replace("{lista}", errores.join(", ")),
       });
     }
     setDescripcion("");
@@ -85,7 +90,7 @@ export default function GaleriaPrivada({ usuario }) {
   }
 
   async function borrar(id) {
-    if (!confirm("¿Borrar esta foto?")) return;
+    if (!confirm(t("galeriaPriv.confirmarBorrar"))) return;
     await fetch(`${API_URL}/api/galeria-privada/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token()}` },
@@ -95,42 +100,42 @@ export default function GaleriaPrivada({ usuario }) {
 
   return (
     <div>
-      <h3>Galería privada</h3>
-      <p className="admin-hint-bloque">Fotos y momentos del club, subidas por los propios miembros.</p>
+      <h3>{t("zona.galeriaPrivada")}</h3>
+      <p className="admin-hint-bloque">{t("galeriaPriv.intro")}</p>
 
       <div className="admin-inline-form" style={{ marginBottom: "1.2rem" }}>
         <label>
-          Descripción (opcional, se aplica a la próxima foto o tanda de fotos que subas)
-          <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Final del torneo de verano" />
+          {t("galeriaPriv.descripcionLabel")}
+          <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder={t("galeriaPriv.descripcionPlaceholder")} />
         </label>
         <label>
-          Subir una o varias fotos
+          {t("galeriaPriv.subirLabel")}
           <input type="file" accept="image/*" multiple onChange={subirFoto} disabled={!!subiendo} />
         </label>
       </div>
       {subiendo && (
         <p className="admin-hint">
-          Subiendo {subiendo.actual} de {subiendo.total}…
+          {t("galeriaPriv.subiendo").replace("{actual}", subiendo.actual).replace("{total}", subiendo.total)}
         </p>
       )}
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
 
-      {cargando && <p className="chronicle-status">Cargando fotos…</p>}
-      {!cargando && fotos.length === 0 && <p className="chronicle-status">Todavía no hay fotos.</p>}
+      {cargando && <p className="chronicle-status">{t("galeriaPriv.cargando")}</p>}
+      {!cargando && fotos.length === 0 && <p className="chronicle-status">{t("galeriaPriv.vacio")}</p>}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: ".8rem" }}>
         {fotos.map((f) => (
           <div key={f.id}>
             <img
               src={f.url}
-              alt={f.descripcion || "Foto de la galería"}
+              alt={f.descripcion || t("galeriaPriv.altFoto")}
               style={{ width: "100%", aspectRatio: "1", objectFit: "cover", cursor: "zoom-in" }}
               onClick={() => setLightbox(f)}
             />
             <div style={{ fontSize: ".75em", marginTop: ".3rem", display: "flex", justifyContent: "space-between" }}>
-              <span>{f.autor?.nombre} · {formatFecha(f.fechaSubida)}</span>
+              <span>{f.autor?.nombre} · {formatFecha(f.fechaSubida, lang)}</span>
               {(f.autor?.nombre === usuario.nombre || usuario.rol === "admin") && (
-                <button type="button" className="admin-link-btn" onClick={() => borrar(f.id)}>Borrar</button>
+                <button type="button" className="admin-link-btn" onClick={() => borrar(f.id)}>{t("galeriaPriv.borrar")}</button>
               )}
             </div>
           </div>

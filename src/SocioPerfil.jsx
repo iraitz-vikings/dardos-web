@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLang } from "./i18n.jsx";
 import MediasFabricante from "./MediasFabricante.jsx";
 import AceroJugador from "./AceroJugador.jsx";
 
@@ -14,6 +15,7 @@ function claveVapidABytes(base64) {
 }
 
 export default function SocioPerfil() {
+  const { t } = useLang();
   const [perfil, setPerfil] = useState(null);
   const [fabricantes, setFabricantes] = useState([]);
   const [editando, setEditando] = useState(false);
@@ -88,13 +90,13 @@ export default function SocioPerfil() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setMensaje({ tipo: "error", texto: data.error || "No se pudo subir la foto." });
+        setMensaje({ tipo: "error", texto: data.error || t("perfil.noSubioFoto") });
         return;
       }
       const data = await res.json();
       setAvatarUrl(data.url);
     } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión al subir la foto." });
+      setMensaje({ tipo: "error", texto: t("perfil.errorConexionFoto") });
     } finally {
       setSubiendo(false);
       e.target.value = "";
@@ -148,10 +150,10 @@ export default function SocioPerfil() {
         }),
       });
       if (!res.ok) {
-        setMensaje({ tipo: "error", texto: "No se pudo guardar el perfil." });
+        setMensaje({ tipo: "error", texto: t("perfil.noGuardoPerfil") });
         return;
       }
-      setMensaje({ tipo: "ok", texto: "Perfil actualizado." });
+      setMensaje({ tipo: "ok", texto: t("perfil.actualizado") });
       setPerfil((p) => ({
         ...p,
         apodo,
@@ -176,13 +178,13 @@ export default function SocioPerfil() {
       }));
       setEditando(false);
     } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión." });
+      setMensaje({ tipo: "error", texto: t("perfil.errorConexion") });
     } finally {
       setGuardando(false);
     }
   }
 
-  if (!perfil) return <p className="chronicle-status">Cargando tu perfil…</p>;
+  if (!perfil) return <p className="chronicle-status">{t("perfil.cargando")}</p>;
 
   if (!editando) {
     return (
@@ -191,7 +193,7 @@ export default function SocioPerfil() {
           {avatarUrl ? (
             <img
               src={avatarUrl}
-              alt="Tu foto de perfil"
+              alt={t("perfil.tuFoto")}
               style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover" }}
             />
           ) : (
@@ -215,7 +217,7 @@ export default function SocioPerfil() {
             <strong style={{ display: "block", fontSize: "1.1rem" }}>{perfil.nombre}</strong>
             {apodo && <span style={{ display: "block", opacity: 0.85 }}>"{apodo}"</span>}
             <button type="button" className="admin-link-btn" style={{ marginTop: ".6rem" }} onClick={() => setEditando(true)}>
-              Editar perfil
+              {t("perfil.editarPerfil")}
             </button>
           </div>
         </div>
@@ -234,42 +236,41 @@ export default function SocioPerfil() {
       {avatarUrl && (
         <img
           src={avatarUrl}
-          alt="Tu foto de perfil"
+          alt={t("perfil.tuFoto")}
           style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", marginBottom: "1rem" }}
         />
       )}
       <label>
-        Nombre
+        {t("perfil.nombre")}
         <input value={perfil.nombre} disabled />
       </label>
       <label>
-        Email
+        {t("perfil.email")}
         <input value={perfil.email} disabled />
       </label>
       <label>
-        Rol
+        {t("perfil.rol")}
         <input value={perfil.rol} disabled />
       </label>
       <label>
-        Apodo (como quieres que te vean en torneos y ligas)
-        <input value={apodo} onChange={(e) => setApodo(e.target.value)} placeholder="Ej: El Certero" />
+        {t("perfil.apodoLabel")}
+        <input value={apodo} onChange={(e) => setApodo(e.target.value)} placeholder={t("perfil.apodoPlaceholder")} />
       </label>
       <label>
-        Foto de perfil
+        {t("perfil.fotoLabel")}
         <input type="file" accept="image/*" onChange={subirAvatar} disabled={subiendo} />
-        {subiendo && <span className="admin-uploading">Subiendo…</span>}
+        {subiendo && <span className="admin-uploading">{t("perfil.subiendo")}</span>}
       </label>
       <label>
-        Sobre ti (opcional)
-        <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Una frase, tu récord favorito, lo que quieras..." />
+        {t("perfil.sobreTiLabel")}
+        <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder={t("perfil.sobreTiPlaceholder")} />
       </label>
 
       {fabricantes.length > 0 && (
         <fieldset style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1rem" }}>
-          <legend style={{ padding: "0 .4rem" }}>Alias de fabricante</legend>
+          <legend style={{ padding: "0 .4rem" }}>{t("perfil.aliasFabricante")}</legend>
           <p className="admin-hint" style={{ marginTop: 0 }}>
-            Si juegas en dianas de estos fabricantes, indica tu alias de jugador en cada una para poder
-            consultar más adelante tu media en su web.
+            {t("perfil.aliasHint")}
           </p>
           {fabricantes.map((f) => {
             const guardado = (perfil.idsFabricantes || []).find((i) => i.fabricanteId === f.id);
@@ -297,7 +298,7 @@ export default function SocioPerfil() {
                 <input
                   value={alias}
                   onChange={(e) => cambiarIdFabricante(f.id, e.target.value)}
-                  placeholder={`Tu alias en ${f.nombre}`}
+                  placeholder={t("perfil.aliasPlaceholder").replace("{fabricante}", f.nombre)}
                 />
                 {/* Radikal Darts no tiene buscador general de jugadores: hace falta
                     además el nombre de un torneo/liga/campeonato en el que hayas
@@ -307,7 +308,7 @@ export default function SocioPerfil() {
                   <input
                     value={notasFabricantes[f.id] || ""}
                     onChange={(e) => cambiarNotaFabricante(f.id, e.target.value)}
-                    placeholder='Nombre de un torneo, liga o campeonato en el que hayas jugado (ej: "EL-033 Julio")'
+                    placeholder={t("perfil.notaRadikalPlaceholder")}
                     style={{ marginTop: ".3rem" }}
                   />
                 )}
@@ -323,7 +324,7 @@ export default function SocioPerfil() {
                       inputMode="decimal"
                       value={mediasFabricantes[f.id]?.mpr ?? ""}
                       onChange={(e) => cambiarMediaFabricante(f.id, "mpr", e.target.value)}
-                      placeholder="Tu MPR en Radikal Darts"
+                      placeholder={t("perfil.mprRadikalPlaceholder")}
                     />
                     <input
                       type="number"
@@ -331,15 +332,13 @@ export default function SocioPerfil() {
                       inputMode="decimal"
                       value={mediasFabricantes[f.id]?.ppd ?? ""}
                       onChange={(e) => cambiarMediaFabricante(f.id, "ppd", e.target.value)}
-                      placeholder="Tu PPD en Radikal Darts"
+                      placeholder={t("perfil.ppdRadikalPlaceholder")}
                     />
                   </span>
                 )}
                 {esRadikal && (
                   <span style={{ display: "block", fontSize: ".75em", opacity: 0.7, marginTop: ".2rem" }}>
-                    De momento Radikal Darts no se actualiza sola (su web bloquea el
-                    login automático): escribe aquí tu MPR/PPD tal como aparece en tu
-                    perfil de radikalplayers.com.
+                    {t("perfil.radikalManualHint")}
                   </span>
                 )}
                 {/* Bullshooter no tiene scraping automático: aquí solo tiene sentido el
@@ -348,21 +347,21 @@ export default function SocioPerfil() {
                     resumen de solo lectura sería redundante para él. */}
                 {guardado && !esBullshooter && !esConnection && !esRadikal && (
                   <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
-                    MPR {Number(guardado.mpr ?? 0).toFixed(2)} · PPD {Number(guardado.ppd ?? 0).toFixed(2)}
+                    {t("mediasFab.stats").replace("{mpr}", Number(guardado.mpr ?? 0).toFixed(2)).replace("{ppd}", Number(guardado.ppd ?? 0).toFixed(2))}
                   </span>
                 )}
                 {/* Connection distingue media Virtual y Presencial, cada una con su
                     propio MPR/PPD. */}
                 {guardado && esConnection && (
                   <span style={{ display: "block", fontSize: ".8em", opacity: .85 }}>
-                    Virtual: MPR {Number(guardado.mprVirtual ?? 0).toFixed(2)} · PPD {Number(guardado.ppdVirtual ?? 0).toFixed(2)}
+                    {t("mediasFab.virtual").replace("{mpr}", Number(guardado.mprVirtual ?? 0).toFixed(2)).replace("{ppd}", Number(guardado.ppdVirtual ?? 0).toFixed(2))}
                     <br />
-                    Presencial: MPR {Number(guardado.mprPresencial ?? 0).toFixed(2)} · PPD {Number(guardado.ppdPresencial ?? 0).toFixed(2)}
+                    {t("mediasFab.presencial").replace("{mpr}", Number(guardado.mprPresencial ?? 0).toFixed(2)).replace("{ppd}", Number(guardado.ppdPresencial ?? 0).toFixed(2))}
                   </span>
                 )}
                 {enlace && (
                   <a href={enlace} target="_blank" rel="noreferrer" style={{ fontSize: ".85em" }}>
-                    Ver mi media en {f.nombre} ↗
+                    {t("perfil.verMediaEn").replace("{fabricante}", f.nombre)}
                   </a>
                 )}
               </label>
@@ -372,7 +371,7 @@ export default function SocioPerfil() {
       )}
 
       <div style={{ display: "flex", gap: ".6rem" }}>
-        <button type="submit" disabled={guardando}>{guardando ? "Guardando…" : "Guardar perfil"}</button>
+        <button type="submit" disabled={guardando}>{guardando ? t("perfil.guardando") : t("perfil.guardarPerfil")}</button>
         <button
           type="button"
           className="admin-link-btn"
@@ -382,7 +381,7 @@ export default function SocioPerfil() {
             setEditando(false);
           }}
         >
-          Cancelar
+          {t("tablon.cancelar")}
         </button>
       </div>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
@@ -395,6 +394,7 @@ export default function SocioPerfil() {
     );
   }
 function CambioPasswordVoluntario() {
+  const { t } = useLang();
   const [abierto, setAbierto] = useState(false);
   const [passwordActual, setPasswordActual] = useState("");
   const [passwordNueva, setPasswordNueva] = useState("");
@@ -414,14 +414,14 @@ function CambioPasswordVoluntario() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMensaje({ tipo: "error", texto: data.error || "No se pudo cambiar la contraseña." });
+        setMensaje({ tipo: "error", texto: data.error || t("password.noSePudo") });
         return;
       }
-      setMensaje({ tipo: "ok", texto: "Contraseña actualizada." });
+      setMensaje({ tipo: "ok", texto: t("password.actualizada") });
       setPasswordActual("");
       setPasswordNueva("");
     } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión." });
+      setMensaje({ tipo: "error", texto: t("perfil.errorConexion") });
     } finally {
       setEnviando(false);
     }
@@ -430,19 +430,19 @@ function CambioPasswordVoluntario() {
   return (
     <div style={{ marginTop: "1.5rem" }}>
       <button type="button" className="admin-link-btn" onClick={() => setAbierto((a) => !a)}>
-        {abierto ? "Ocultar" : "Cambiar mi contraseña"}
+        {abierto ? t("password.ocultar") : t("password.cambiarMi")}
       </button>
       {abierto && (
         <form onSubmit={guardar} style={{ marginTop: ".8rem" }}>
           <label>
-            Contraseña actual
+            {t("password.actual")}
             <input type="password" value={passwordActual} onChange={(e) => setPasswordActual(e.target.value)} required />
           </label>
           <label>
-            Contraseña nueva
+            {t("password.nueva")}
             <input type="password" value={passwordNueva} onChange={(e) => setPasswordNueva(e.target.value)} required minLength={6} />
           </label>
-          <button type="submit" disabled={enviando}>{enviando ? "Guardando…" : "Cambiar contraseña"}</button>
+          <button type="submit" disabled={enviando}>{enviando ? t("perfil.guardando") : t("password.cambiar")}</button>
           {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
         </form>
       )}
@@ -456,6 +456,7 @@ function CambioPasswordVoluntario() {
 // aparte: al pulsar "Activar", el dispositivo queda vinculado directamente
 // a este jugador a través de la sesión ya iniciada.
 function AvisosPush() {
+  const { t } = useLang();
   const [soportado, setSoportado] = useState(true);
   const [esIOSSinInstalar, setEsIOSSinInstalar] = useState(false);
   const [activadoAqui, setActivadoAqui] = useState(false);
@@ -490,12 +491,12 @@ function AvisosPush() {
     try {
       const permiso = await Notification.requestPermission();
       if (permiso !== "granted") {
-        setMensaje({ tipo: "error", texto: "No has dado permiso para las notificaciones en el navegador." });
+        setMensaje({ tipo: "error", texto: t("avisosPush.sinPermiso") });
         return;
       }
       const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
       if (!resClave.ok) {
-        setMensaje({ tipo: "error", texto: "Los avisos todavía no están configurados en el servidor." });
+        setMensaje({ tipo: "error", texto: t("avisosPush.sinConfigurar") });
         return;
       }
       const { publicKey } = await resClave.json();
@@ -511,13 +512,13 @@ function AvisosPush() {
         body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
       });
       if (!res.ok) {
-        setMensaje({ tipo: "error", texto: "No se pudo activar el aviso en el servidor." });
+        setMensaje({ tipo: "error", texto: t("avisosPush.noActivoServidor") });
         return;
       }
       setActivadoAqui(true);
-      setMensaje({ tipo: "ok", texto: "Avisos activados en este dispositivo." });
+      setMensaje({ tipo: "ok", texto: t("avisosPush.activados") });
     } catch {
-      setMensaje({ tipo: "error", texto: "No se pudieron activar los avisos." });
+      setMensaje({ tipo: "error", texto: t("avisosPush.noPudoActivar") });
     } finally {
       setProcesando(false);
     }
@@ -538,9 +539,9 @@ function AvisosPush() {
         await suscripcion.unsubscribe();
       }
       setActivadoAqui(false);
-      setMensaje({ tipo: "ok", texto: "Avisos desactivados en este dispositivo." });
+      setMensaje({ tipo: "ok", texto: t("avisosPush.desactivados") });
     } catch {
-      setMensaje({ tipo: "error", texto: "No se pudieron desactivar los avisos." });
+      setMensaje({ tipo: "error", texto: t("avisosPush.noPudoDesactivar") });
     } finally {
       setProcesando(false);
     }
@@ -548,28 +549,28 @@ function AvisosPush() {
 
   return (
     <div style={{ marginTop: "1.5rem" }}>
-      <strong style={{ display: "block", marginBottom: ".4rem" }}>Avisos en este dispositivo</strong>
+      <strong style={{ display: "block", marginBottom: ".4rem" }}>{t("avisosPush.titulo")}</strong>
       {!soportado && (
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          Este navegador no admite notificaciones. Prueba desde Chrome, Firefox o Safari en tu móvil u ordenador.
+          {t("avisosPush.noSoportado")}
         </p>
       )}
       {esIOSSinInstalar && (
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          En iPhone hay que instalar la web antes de poder activar los avisos: pulsa Compartir
+          {t("avisosPush.iosParte1")}
           <span aria-hidden="true"> ⬆️ </span>
-          y luego "Añadir a pantalla de inicio". Después vuelve aquí desde el icono que se crea.
+          {t("avisosPush.iosParte2")}
         </p>
       )}
       {soportado && !esIOSSinInstalar && !cargando && (
         <>
           <p className="admin-hint" style={{ marginTop: 0 }}>
             {activadoAqui
-              ? "Recibirás aquí un aviso cuando tu capitán fije un partido, o cuando el club publique un anuncio con avisos."
-              : "Actívalos para recibir un aviso cuando tu capitán fije un partido, o cuando el club publique un anuncio con avisos."}
+              ? t("avisosPush.activadoTexto")
+              : t("avisosPush.desactivadoTexto")}
           </p>
           <button type="button" className="admin-link-btn" disabled={procesando} onClick={activadoAqui ? desactivar : activar}>
-            {procesando ? "Un momento…" : activadoAqui ? "Desactivar avisos aquí" : "Activar avisos en este dispositivo"}
+            {procesando ? t("avisosPush.unMomento") : activadoAqui ? t("avisosPush.desactivarAqui") : t("avisosPush.activarAqui")}
           </button>
         </>
       )}
@@ -585,6 +586,7 @@ function AvisosPush() {
 // puede mostrar la imagen grande de los avisos — Telegram sí la muestra
 // siempre, al ser una app nativa.
 function AvisosTelegram() {
+  const { t } = useLang();
   const [estado, setEstado] = useState(null); // null mientras carga
   const [error, setError] = useState(false);
 
@@ -599,34 +601,33 @@ function AvisosTelegram() {
 
   return (
     <div style={{ marginTop: "1.5rem" }}>
-      <strong style={{ display: "block", marginBottom: ".4rem" }}>Avisos por Telegram</strong>
+      <strong style={{ display: "block", marginBottom: ".4rem" }}>{t("avisosTelegram.titulo")}</strong>
 
       {error && (
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          No se ha podido comprobar el estado de tus avisos por Telegram ahora mismo.
+          {t("avisosTelegram.errorEstado")}
         </p>
       )}
-      {!error && !estado && <p className="admin-hint" style={{ marginTop: 0 }}>Comprobando…</p>}
+      {!error && !estado && <p className="admin-hint" style={{ marginTop: 0 }}>{t("avisosTelegram.comprobando")}</p>}
 
       {estado?.telegramVinculado && (
-        <p className="admin-msg admin-msg-ok">Ya tienes tus avisos activados por Telegram. ¡Todo listo!</p>
+        <p className="admin-msg admin-msg-ok">{t("avisosTelegram.yaActivado")}</p>
       )}
 
       {estado && !estado.telegramVinculado && estado.urlTelegram && (
         <>
           <p className="admin-hint" style={{ marginTop: 0 }}>
-            Alternativa a los avisos del navegador, útil sobre todo en iPhone (Safari no siempre puede mostrar la
-            imagen del aviso, Telegram sí).
+            {t("avisosTelegram.alternativaHint")}
           </p>
           <a href={estado.urlTelegram} target="_blank" rel="noreferrer">
-            <button type="button" className="admin-link-btn">Activar avisos por Telegram</button>
+            <button type="button" className="admin-link-btn">{t("avisosTelegram.activar")}</button>
           </a>
         </>
       )}
 
       {estado && !estado.telegramVinculado && !estado.urlTelegram && (
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          El club todavía no ha terminado de configurar los avisos por Telegram.
+          {t("avisosTelegram.sinConfigurar")}
         </p>
       )}
     </div>
@@ -639,6 +640,7 @@ function AvisosTelegram() {
 // también puede ponerlo/cambiarlo desde "Jugadores del club" (ver
 // AdminJugadores.jsx), por si a alguien se le olvida.
 function PinPartidas({ tienePin }) {
+  const { t } = useLang();
   const [editando, setEditando] = useState(false);
   const [pin, setPin] = useState("");
   const [confirmarPin, setConfirmarPin] = useState("");
@@ -656,11 +658,11 @@ function PinPartidas({ tienePin }) {
   async function guardar(e) {
     e.preventDefault();
     if (!/^\d{4}$/.test(pin)) {
-      setMensaje({ tipo: "error", texto: "El PIN tiene que ser de 4 dígitos." });
+      setMensaje({ tipo: "error", texto: t("pin.debeSer4") });
       return;
     }
     if (pin !== confirmarPin) {
-      setMensaje({ tipo: "error", texto: "Los dos PIN no coinciden." });
+      setMensaje({ tipo: "error", texto: t("pin.noCoinciden") });
       return;
     }
     setGuardando(true);
@@ -673,16 +675,16 @@ function PinPartidas({ tienePin }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setMensaje({ tipo: "error", texto: data.error || "No se pudo guardar el PIN." });
+        setMensaje({ tipo: "error", texto: data.error || t("pin.noSeGuardo") });
         return;
       }
       setYaPuesto(true);
       setEditando(false);
       setPin("");
       setConfirmarPin("");
-      setMensaje({ tipo: "ok", texto: "PIN actualizado." });
+      setMensaje({ tipo: "ok", texto: t("pin.actualizado") });
     } catch {
-      setMensaje({ tipo: "error", texto: "Error de conexión." });
+      setMensaje({ tipo: "error", texto: t("perfil.errorConexion") });
     } finally {
       setGuardando(false);
     }
@@ -690,19 +692,18 @@ function PinPartidas({ tienePin }) {
 
   return (
     <div style={{ marginTop: "1.5rem" }}>
-      <strong style={{ display: "block", marginBottom: ".4rem" }}>PIN de partidas</strong>
+      <strong style={{ display: "block", marginBottom: ".4rem" }}>{t("pin.titulo")}</strong>
       <p className="admin-hint" style={{ marginTop: 0 }}>
-        Para identificarte en la página pública de un torneo o liga cuando juegues un partido con la
-        herramienta de marcador, en el dispositivo compartido junto a la diana. No es tu contraseña.
+        {t("pin.hint")}
       </p>
       {!editando ? (
         <button type="button" className="admin-link-btn" onClick={() => setEditando(true)}>
-          {yaPuesto ? "Cambiar mi PIN" : "Crear mi PIN"}
+          {yaPuesto ? t("pin.cambiar") : t("pin.crear")}
         </button>
       ) : (
         <form onSubmit={guardar} className="admin-inline-form">
           <label>
-            PIN nuevo (4 dígitos)
+            {t("pin.nuevoLabel")}
             <input
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
@@ -712,7 +713,7 @@ function PinPartidas({ tienePin }) {
             />
           </label>
           <label>
-            Repite el PIN
+            {t("pin.repiteLabel")}
             <input
               value={confirmarPin}
               onChange={(e) => setConfirmarPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
@@ -721,8 +722,8 @@ function PinPartidas({ tienePin }) {
               placeholder="1234"
             />
           </label>
-          <button type="submit" disabled={guardando || pin.length !== 4}>{guardando ? "Guardando…" : "Guardar"}</button>
-          <button type="button" className="admin-link-btn" onClick={cancelar}>Cancelar</button>
+          <button type="submit" disabled={guardando || pin.length !== 4}>{guardando ? t("perfil.guardando") : t("pin.guardar")}</button>
+          <button type="button" className="admin-link-btn" onClick={cancelar}>{t("tablon.cancelar")}</button>
         </form>
       )}
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}

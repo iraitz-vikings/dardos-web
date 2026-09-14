@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLang } from "./i18n.jsx";
 import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
@@ -20,17 +21,18 @@ import {
 // Cricket hace falta saber exactamente qué número y con qué multiplicador se
 // ha marcado, algo que un total no permite deducir.
 function SelectorModoEntrada({ modo, onCambiar, permitirTotal }) {
+  const { t } = useLang();
   return (
     <div className="live-tournament-toggle">
       <button type="button" className={modo === "diana" ? "active" : ""} onClick={() => onCambiar("diana")}>
-        Diana
+        {t("marcador.diana")}
       </button>
       <button type="button" className={modo === "numeros" ? "active" : ""} onClick={() => onCambiar("numeros")}>
-        Números
+        {t("marcador.numeros")}
       </button>
       {permitirTotal && (
         <button type="button" className={modo === "total" ? "active" : ""} onClick={() => onCambiar("total")}>
-          Puntuación total
+          {t("marcador.puntuacionTotal")}
         </button>
       )}
     </div>
@@ -54,22 +56,32 @@ const ESTILO_BOTON_PRIMARIO = {
   letterSpacing: ".04em",
 };
 
-function etiquetaModalidad(modalidad) {
-  if (modalidad === "doble") return "Doble";
-  if (modalidad === "master") return "Master (doble o triple)";
-  return "Simple (cualquier dardo)";
+function etiquetaModalidad(modalidad, t) {
+  if (modalidad === "doble") return t("marcador.doble");
+  if (modalidad === "master") return t("marcador.master");
+  return t("marcador.simple");
+}
+
+// Traduce a texto visible las etiquetas fijas que puede llevar un resultado
+// de dardo (ver dardosLogica.js): la mayoría de etiquetas ("T20", "D16",
+// "25"...) son códigos numéricos que no dependen del idioma, así que solo
+// hace falta traducir "Fuera" (fallo/fuera de la diana).
+function etiquetaTiradaMostrar(etiqueta, t) {
+  if (etiqueta === "Fuera") return t("marcador.fuera");
+  return etiqueta;
 }
 
 // --- Selector de jugadores/parejas, compartido por 501 y Cricket ---------
 
 function SelectorModoJugadores({ onListo }) {
+  const { t } = useLang();
   const [modo, setModo] = useState("individual");
   const [cantidadIndividual, setCantidadIndividual] = useState(2);
-  const [nombresIndividual, setNombresIndividual] = useState(["Jugador 1", "Jugador 2"]);
+  const [nombresIndividual, setNombresIndividual] = useState([`${t("marcador.jugadorDefault")} 1`, `${t("marcador.jugadorDefault")} 2`]);
   const [cantidadEquipos, setCantidadEquipos] = useState(2);
   const [equipos, setEquipos] = useState([
-    { nombre: "Equipo 1", integrantes: ["Jugador 1", "Jugador 2"] },
-    { nombre: "Equipo 2", integrantes: ["Jugador 3", "Jugador 4"] },
+    { nombre: `${t("marcador.equipoDefault")} 1`, integrantes: [`${t("marcador.jugadorDefault")} 1`, `${t("marcador.jugadorDefault")} 2`] },
+    { nombre: `${t("marcador.equipoDefault")} 2`, integrantes: [`${t("marcador.jugadorDefault")} 3`, `${t("marcador.jugadorDefault")} 4`] },
   ]);
   const [marcadorCompartido, setMarcadorCompartido] = useState(true);
 
@@ -77,7 +89,7 @@ function SelectorModoJugadores({ onListo }) {
     setCantidadIndividual(n);
     setNombresIndividual((actual) => {
       const copia = actual.slice(0, n);
-      while (copia.length < n) copia.push(`Jugador ${copia.length + 1}`);
+      while (copia.length < n) copia.push(`${t("marcador.jugadorDefault")} ${copia.length + 1}`);
       return copia;
     });
   }
@@ -88,7 +100,7 @@ function SelectorModoJugadores({ onListo }) {
       const copia = actual.slice(0, n);
       while (copia.length < n) {
         const idx = copia.length;
-        copia.push({ nombre: `Equipo ${idx + 1}`, integrantes: [`Jugador ${idx * 2 + 1}`, `Jugador ${idx * 2 + 2}`] });
+        copia.push({ nombre: `${t("marcador.equipoDefault")} ${idx + 1}`, integrantes: [`${t("marcador.jugadorDefault")} ${idx * 2 + 1}`, `${t("marcador.jugadorDefault")} ${idx * 2 + 2}`] });
       }
       return copia;
     });
@@ -112,13 +124,13 @@ function SelectorModoJugadores({ onListo }) {
   return (
     <div className="admin-form" style={{ maxWidth: 460 }}>
       <label>
-        Modo
+        {t("marcador.modo")}
         <div className="live-tournament-toggle">
           <button type="button" className={modo === "individual" ? "active" : ""} onClick={() => setModo("individual")}>
-            Individual
+            {t("marcador.individual")}
           </button>
           <button type="button" className={modo === "parejas" ? "active" : ""} onClick={() => setModo("parejas")}>
-            Parejas
+            {t("marcador.parejas")}
           </button>
         </div>
       </label>
@@ -126,7 +138,7 @@ function SelectorModoJugadores({ onListo }) {
       {modo === "individual" ? (
         <>
           <label>
-            Jugadores
+            {t("marcador.jugadores")}
             <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
               {[2, 3, 4, 5, 6].map((n) => (
                 <button
@@ -142,7 +154,7 @@ function SelectorModoJugadores({ onListo }) {
           </label>
           {nombresIndividual.map((nombre, i) => (
             <label key={i}>
-              Nombre {i + 1}
+              {t("marcador.nombreN").replace("{n}", i + 1)}
               <input
                 type="text"
                 value={nombre}
@@ -155,7 +167,7 @@ function SelectorModoJugadores({ onListo }) {
       ) : (
         <>
           <label>
-            Parejas
+            {t("marcador.parejas")}
             <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
               {[2, 3].map((n) => (
                 <button
@@ -172,7 +184,7 @@ function SelectorModoJugadores({ onListo }) {
           {equipos.map((eq, i) => (
             <div key={i} style={{ border: "1px solid var(--line)", padding: ".7rem", display: "flex", flexDirection: "column", gap: ".5rem" }}>
               <label>
-                Nombre del equipo
+                {t("marcador.nombreEquipo")}
                 <input
                   type="text"
                   value={eq.nombre}
@@ -182,7 +194,7 @@ function SelectorModoJugadores({ onListo }) {
               </label>
               {eq.integrantes.map((nombre, j) => (
                 <label key={j}>
-                  Integrante {j + 1}
+                  {t("marcador.integranteN").replace("{n}", j + 1)}
                   <input
                     type="text"
                     value={nombre}
@@ -199,13 +211,13 @@ function SelectorModoJugadores({ onListo }) {
           ))}
           <label style={{ flexDirection: "row", alignItems: "center", gap: ".5rem", textTransform: "none" }}>
             <input type="checkbox" checked={marcadorCompartido} onChange={(e) => setMarcadorCompartido(e.target.checked)} style={{ width: "auto" }} />
-            Marcador compartido por pareja (si lo desmarcas, cada integrante lleva el suyo por separado)
+            {t("marcador.marcadorCompartido")}
           </label>
         </>
       )}
 
       <button type="button" onClick={continuar} style={ESTILO_BOTON_PRIMARIO}>
-        Continuar
+        {t("marcador.continuar")}
       </button>
     </div>
   );
@@ -214,12 +226,13 @@ function SelectorModoJugadores({ onListo }) {
 // --- Tarjetas de jugador/pareja, compartidas por 501 y Cricket -----------
 
 function TarjetaUnidad({ unidad, activa, esGanadora, children }) {
+  const { t } = useLang();
   return (
     <div className={`marcador-jugador ${activa ? "marcador-jugador-activo" : ""} ${esGanadora ? "marcador-jugador-ganador" : ""}`}>
       <strong>{unidad.etiqueta}</strong>
       {unidad.equipoEtiqueta && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>{unidad.equipoEtiqueta}</span>}
       {unidad.integrantes.length > 1 && (
-        <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(unidad)}</span>
+        <span style={{ fontSize: ".7em", color: "var(--steel)" }}>{t("marcador.tira")} {tiradorActual(unidad)}</span>
       )}
       {children}
     </div>
@@ -229,6 +242,7 @@ function TarjetaUnidad({ unidad, activa, esGanadora, children }) {
 // --- 501 -------------------------------------------------------------
 
 function Marcador501() {
+  const { t } = useLang();
   const [fase, setFase] = useState("jugadores"); // "jugadores" | "reglas" | "jugando"
   const [configBase, setConfigBase] = useState(null);
   const [apertura, setApertura] = useState("simple");
@@ -287,13 +301,13 @@ function Marcador501() {
     let gana = false;
 
     if (!yaAbierto && !cumpleModalidad(resultado, apertura)) {
-      nuevoMensaje = `No cuenta: falta abrir a ${etiquetaModalidad(apertura).toLowerCase()}.`;
+      nuevoMensaje = t("marcador.noCuentaAbrir").replace("{modalidad}", etiquetaModalidad(apertura, t).toLowerCase());
     } else {
       const abreEsteDardo = !yaAbierto;
       const nuevoRestante = unidad.restante - resultado.valor;
       if (nuevoRestante < 0 || nuevoRestante === 1) {
         bust = true;
-        nuevoMensaje = `Bust: la tirada no cuenta, sigue con ${restanteInicioVisita}.`;
+        nuevoMensaje = t("marcador.bustSigueCon").replace("{restante}", restanteInicioVisita);
         nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: u.abierto || abreEsteDardo } : u));
       } else if (nuevoRestante === 0) {
         if (cumpleModalidad(resultado, cierre)) {
@@ -301,7 +315,7 @@ function Marcador501() {
           nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
         } else {
           bust = true;
-          nuevoMensaje = `Bust: llegas a 0 pero ese dardo no vale para cerrar (hace falta ${etiquetaModalidad(cierre).toLowerCase()}).`;
+          nuevoMensaje = t("marcador.bustCierreInvalido").replace("{modalidad}", etiquetaModalidad(cierre, t).toLowerCase());
           nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: u.abierto || abreEsteDardo } : u));
         }
       } else {
@@ -334,21 +348,21 @@ function Marcador501() {
   function tirarVisitaTotal(valorTotal, { cierreValido }) {
     if (ganadorIdx !== null || finVisita) return;
     if (!Number.isFinite(valorTotal) || valorTotal < 0 || valorTotal > 180) {
-      setMensaje("La puntuación de una visita tiene que estar entre 0 y 180.");
+      setMensaje(t("marcador.visitaFueraRango"));
       return;
     }
 
     const unidad = unidades[turnoIdx];
     if (!unidad.abierto && apertura !== "simple") {
       setMensaje(
-        `Con este modo no se puede abrir a ${etiquetaModalidad(apertura).toLowerCase()}: usa la diana o el teclado de números para el dardo de apertura.`
+        t("marcador.noSePuedeAbrirModo").replace("{modalidad}", etiquetaModalidad(apertura, t).toLowerCase())
       );
       return;
     }
 
     setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita })]);
 
-    const resultado = { etiqueta: `${valorTotal} (visita)`, numero: null, multiplicador: null, valor: valorTotal, esDoble: false, esTriple: false, esBull: false };
+    const resultado = { etiqueta: `${valorTotal} ${t("marcador.visitaSufijo")}`, numero: null, multiplicador: null, valor: valorTotal, esDoble: false, esTriple: false, esBull: false };
     let nuevoMensaje = "";
     let nuevasUnidades = unidades;
     let bust = false;
@@ -358,7 +372,7 @@ function Marcador501() {
     const nuevoRestante = unidad.restante - valorTotal;
     if (nuevoRestante < 0 || nuevoRestante === 1) {
       bust = true;
-      nuevoMensaje = `Bust: la visita no cuenta, sigue con ${restanteInicioVisita}.`;
+      nuevoMensaje = t("marcador.bustVisitaSigueCon").replace("{restante}", restanteInicioVisita);
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
     } else if (nuevoRestante === 0) {
       if (cierreOk) {
@@ -366,7 +380,7 @@ function Marcador501() {
         nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
       } else {
         bust = true;
-        nuevoMensaje = `Bust: llegas a 0 pero hace falta marcar la casilla de cierre (${etiquetaModalidad(cierre).toLowerCase()}) para que cuente.`;
+        nuevoMensaje = t("marcador.bustCierreCasilla").replace("{modalidad}", etiquetaModalidad(cierre, t).toLowerCase());
         nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
       }
     } else {
@@ -416,27 +430,27 @@ function Marcador501() {
     return (
       <div className="admin-form" style={{ maxWidth: 420 }}>
         <label>
-          Apertura
+          {t("marcador.apertura")}
           <div className="live-tournament-toggle">
             {["simple", "doble", "master"].map((op) => (
               <button key={op} type="button" className={apertura === op ? "active" : ""} onClick={() => setApertura(op)}>
-                {etiquetaModalidad(op)}
+                {etiquetaModalidad(op, t)}
               </button>
             ))}
           </div>
         </label>
         <label>
-          Cierre
+          {t("marcador.cierre")}
           <div className="live-tournament-toggle">
             {["simple", "doble", "master"].map((op) => (
               <button key={op} type="button" className={cierre === op ? "active" : ""} onClick={() => setCierre(op)}>
-                {etiquetaModalidad(op)}
+                {etiquetaModalidad(op, t)}
               </button>
             ))}
           </div>
         </label>
         <button type="button" onClick={empezarPartida} style={ESTILO_BOTON_PRIMARIO}>
-          Empezar partida
+          {t("marcador.empezarPartida")}
         </button>
       </div>
     );
@@ -449,7 +463,7 @@ function Marcador501() {
           <TarjetaUnidad key={u.id} unidad={u} activa={turnoIdx === i && ganadorIdx === null} esGanadora={ganadorIdx === i}>
             <span className="marcador-restante">{u.restante}</span>
             {!u.abierto && apertura !== "simple" && (
-              <span style={{ fontSize: ".65em", color: "var(--ember)" }}>Sin abrir ({etiquetaModalidad(apertura)})</span>
+              <span style={{ fontSize: ".65em", color: "var(--ember)" }}>{t("marcador.sinAbrir").replace("{modalidad}", etiquetaModalidad(apertura, t))}</span>
             )}
           </TarjetaUnidad>
         ))}
@@ -457,22 +471,22 @@ function Marcador501() {
 
       {ganadorIdx !== null ? (
         <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem" }}>
-          🏆 ¡{unidades[ganadorIdx].etiqueta} gana la partida!
+          {t("marcador.ganaLaPartida").replace("{etiqueta}", unidades[ganadorIdx].etiqueta)}
         </p>
       ) : (
         <>
           <p>
-            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong>
-            {modoEntrada === "total" ? " — introduce el total de la visita" : ` — dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3`}
+            {t("marcador.turnoDe")} <strong>{tiradorActual(unidades[turnoIdx])}</strong>{" "}
+            {modoEntrada === "total" ? t("marcador.introduceTotal") : t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
           </p>
           <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal />
-          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />}
+          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((tv) => tv.pos).filter(Boolean)} deshabilitada={finVisita} />}
           {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />}
           {modoEntrada === "total" && <TecladoPuntuacion cierre={cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita} />}
           <p className="marcador-tiradas-visita">
-            Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
+            {t("marcador.estaVisita")} {tiradasVisita.length ? tiradasVisita.map((tv) => etiquetaTiradaMostrar(tv.resultado.etiqueta, t)).join(", ") : "—"}
           </p>
-          {sugerencia && <p className="admin-msg admin-msg-ok">Sugerencia de cierre: {sugerencia.join(" → ")}</p>}
+          {sugerencia && <p className="admin-msg admin-msg-ok">{t("marcador.sugerenciaCierre")} {sugerencia.join(" → ")}</p>}
           {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
           <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
             <button
@@ -480,17 +494,17 @@ function Marcador501() {
               className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
               onClick={() => finalizarVisita(unidades, turnoIdx)}
             >
-              {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
+              {finVisita ? t("marcador.siguienteJugador") : t("marcador.terminarTurno")}
             </button>
             <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-              Deshacer último dardo
+              {t("marcador.deshacerDardo")}
             </button>
           </div>
         </>
       )}
 
       <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={() => setFase("jugadores")}>
-        Nueva partida
+        {t("marcador.nuevaPartida")}
       </button>
     </div>
   );
@@ -509,6 +523,7 @@ function simboloMarcas(n) {
 }
 
 function MarcadorCricket() {
+  const { t } = useLang();
   const [fase, setFase] = useState("jugadores");
   const [configBase, setConfigBase] = useState(null);
   const [modoCricket, setModoCricket] = useState("normal"); // "normal" | "cutthroat"
@@ -566,7 +581,7 @@ function MarcadorCricket() {
         i === turnoIdx ? { ...u, marcas: { ...u.marcas, [info.clave]: u.marcas[info.clave] + info.marcas } } : u
       );
     } else {
-      nuevoMensaje = resultado.etiqueta === "Fuera" ? "Fuera de la diana, no cuenta." : `${resultado.etiqueta}: no juega en cricket, sin efecto.`;
+      nuevoMensaje = resultado.etiqueta === "Fuera" ? t("marcador.fueraNoCuenta") : t("marcador.noJuegaCricket").replace("{etiqueta}", resultado.etiqueta);
     }
 
     const nuevasTiradas = [...tiradasVisita, { resultado, pos }];
@@ -610,10 +625,10 @@ function MarcadorCricket() {
     return (
       <div className="admin-form" style={{ maxWidth: 460 }}>
         <label>
-          Modalidad
+          {t("marcador.modalidad")}
           <div className="live-tournament-toggle">
             <button type="button" className={modoCricket === "normal" ? "active" : ""} onClick={() => setModoCricket("normal")}>
-              Normal
+              {t("marcador.normal")}
             </button>
             <button type="button" className={modoCricket === "cutthroat" ? "active" : ""} onClick={() => setModoCricket("cutthroat")}>
               Cut-throat
@@ -622,11 +637,11 @@ function MarcadorCricket() {
         </label>
         <p className="chronicle-status">
           {modoCricket === "cutthroat"
-            ? "Cut-throat: los impactos de más en un número que ya tienes cerrado suman puntos a los rivales que aún no lo tengan cerrado (no a ti). Gana quien cierra todo con la puntuación MÁS BAJA."
-            : "Normal: los impactos de más en un número que ya tienes cerrado te suman puntos a ti, mientras algún rival no lo tenga cerrado todavía. Gana quien cierra todo con la puntuación más alta."}
+            ? t("marcador.cutthroatExplicacion")
+            : t("marcador.normalExplicacion")}
         </p>
         <button type="button" onClick={empezarPartida} style={ESTILO_BOTON_PRIMARIO}>
-          Empezar partida
+          {t("marcador.empezarPartida")}
         </button>
       </div>
     );
@@ -671,22 +686,23 @@ function MarcadorCricket() {
 
       {ganadorIdx !== null ? (
         <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem", marginTop: "1rem" }}>
-          🏆 ¡{unidades[ganadorIdx].etiqueta} gana la partida!
-          {modoCricket === "cutthroat" ? " (cut-throat: todo cerrado con la puntuación más baja)" : " (todo cerrado con la puntuación más alta)"}
+          {t("marcador.ganaLaPartida").replace("{etiqueta}", unidades[ganadorIdx].etiqueta)}
+          {" "}
+          {modoCricket === "cutthroat" ? t("marcador.cutthroatSufijo") : t("marcador.normalSufijo")}
         </p>
       ) : (
         <>
           <p style={{ marginTop: "1rem" }}>
-            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {Math.min(tiradasVisita.length + 1, 3)} de 3
+            {t("marcador.turnoDe")} <strong>{tiradorActual(unidades[turnoIdx])}</strong> {t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
           </p>
           <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal={false} />
           {modoEntrada === "diana" ? (
-            <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />
+            <Diana onTirada={tirar} marcas={tiradasVisita.map((tv) => tv.pos).filter(Boolean)} deshabilitada={finVisita} />
           ) : (
             <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />
           )}
           <p className="marcador-tiradas-visita">
-            Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
+            {t("marcador.estaVisita")} {tiradasVisita.length ? tiradasVisita.map((tv) => etiquetaTiradaMostrar(tv.resultado.etiqueta, t)).join(", ") : "—"}
           </p>
           {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
           <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
@@ -695,17 +711,17 @@ function MarcadorCricket() {
               className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
               onClick={() => finalizarVisita(unidades, turnoIdx)}
             >
-              {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
+              {finVisita ? t("marcador.siguienteJugador") : t("marcador.terminarTurno")}
             </button>
             <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-              Deshacer último dardo
+              {t("marcador.deshacerDardo")}
             </button>
           </div>
         </>
       )}
 
       <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={() => setFase("jugadores")}>
-        Nueva partida
+        {t("marcador.nuevaPartida")}
       </button>
     </div>
   );
@@ -714,15 +730,14 @@ function MarcadorCricket() {
 // --- Componente principal ----------------------------------------------
 
 export default function Marcadores() {
+  const { t } = useLang();
   const [juego, setJuego] = useState("501");
 
   return (
     <div>
-      <h3>Marcadores</h3>
+      <h3>{t("marcador.titulo")}</h3>
       <p className="chronicle-status" style={{ marginBottom: ".8rem" }}>
-        Para jugar en una diana sin contador electrónico. No se guarda nada al terminar la
-        partida — es solo una calculadora de apoyo mientras jugáis. Toca la diana en el punto
-        exacto donde ha caído cada dardo.
+        {t("marcador.intro")}
       </p>
 
       <div className="live-tournament-toggle">

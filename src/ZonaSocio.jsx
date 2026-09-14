@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLang } from "./i18n.jsx";
 import SocioPerfil from "./SocioPerfil.jsx";
 import TablonAnuncios from "./TablonAnuncios.jsx";
 import JugadoresClub from "./JugadoresClub.jsx";
@@ -11,21 +12,26 @@ import Competiciones from "./Competiciones.jsx";
 import CalendarioSocio from "./CalendarioSocio.jsx";
 import Marcadores from "./Marcadores.jsx";
 
-const SECCIONES = [
-  { id: "tablon", etiqueta: "Tablón de anuncios", lista: true },
-  { id: "perfil", etiqueta: "Mi perfil", lista: true },
-  { id: "historial", etiqueta: "Mi historial", lista: true },
-  { id: "historico-privado", etiqueta: "Histórico privado", lista: true },
-  { id: "competiciones", etiqueta: "Competiciones", lista: true },
-  { id: "calendario", etiqueta: "Calendario", lista: true },
-  { id: "marcadores", etiqueta: "Marcadores 501/Cricket", lista: true },
-  { id: "galeria-privada", etiqueta: "Galería privada", lista: true },
-  { id: "trofeos", etiqueta: "Sala de trofeos", lista: true },
-  { id: "equipos", etiqueta: "Equipos del club", lista: true },
-  { id: "jugadores", etiqueta: "Jugadores del club", lista: true },
-];
+function useSecciones() {
+  const { t } = useLang();
+  return [
+    { id: "tablon", etiqueta: t("zona.tablon"), lista: true },
+    { id: "perfil", etiqueta: t("zona.perfil"), lista: true },
+    { id: "historial", etiqueta: t("zona.historial"), lista: true },
+    { id: "historico-privado", etiqueta: t("zona.historicoPrivado"), lista: true },
+    { id: "competiciones", etiqueta: t("zona.competiciones"), lista: true },
+    { id: "calendario", etiqueta: t("zona.calendario"), lista: true },
+    { id: "marcadores", etiqueta: t("zona.marcadores"), lista: true },
+    { id: "galeria-privada", etiqueta: t("zona.galeriaPrivada"), lista: true },
+    { id: "trofeos", etiqueta: t("zona.trofeos"), lista: true },
+    { id: "equipos", etiqueta: t("zona.equipos"), lista: true },
+    { id: "jugadores", etiqueta: t("zona.jugadores"), lista: true },
+  ];
+}
 
 export default function ZonaSocio({ usuario, salir }) {
+  const { t } = useLang();
+  const SECCIONES = useSecciones();
   const [seccion, setSeccion] = useState("tablon");
   const [menuAbierto, setMenuAbierto] = useState(false);
   const actual = SECCIONES.find((s) => s.id === seccion);
@@ -39,8 +45,8 @@ export default function ZonaSocio({ usuario, salir }) {
   return (
     <div className="admin-form" style={{ maxWidth: 640, margin: "0 auto" }}>
       <div className="admin-header" style={{ background: "none", padding: 0, marginBottom: "1rem" }}>
-        <span>Hola, {usuario.nombre}</span>
-        <button className="admin-link-btn" onClick={salir}>Salir</button>
+        <span>{t("socios.bienvenida").replace("{nombre}", usuario.nombre)}</span>
+        <button className="admin-link-btn" onClick={salir}>{t("socios.salir")}</button>
       </div>
 
       <div className="socio-menu">
@@ -62,7 +68,7 @@ export default function ZonaSocio({ usuario, salir }) {
               className={`admin-tab ${seccion === s.id ? "admin-tab-active" : ""}`}
               disabled={!s.lista}
               onClick={() => elegirSeccion(s)}
-              title={s.lista ? "" : "Próximamente"}
+              title={s.lista ? "" : t("zona.proximamente")}
             >
               {s.etiqueta}{!s.lista && " 🔒"}
             </button>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLang } from "./i18n.jsx";
 
 // Entrada rápida para el 501: en vez de marcar cada dardo por separado, se
 // escribe de una vez el total de puntos conseguidos en la visita (hasta 3
@@ -12,6 +13,7 @@ import { useState } from "react";
 const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "C"];
 
 export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
+  const { t } = useLang();
   const [valor, setValor] = useState("");
   const [cierreValido, setCierreValido] = useState(false);
 
@@ -31,7 +33,7 @@ export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
 
   return (
     <div className="teclado-puntuacion">
-      <div className="teclado-puntuacion-visor">{valor === "" ? "Puntuación de la visita" : valor}</div>
+      <div className="teclado-puntuacion-visor">{valor === "" ? t("marcador.visorPlaceholder") : valor}</div>
 
       <div className="teclado-puntuacion-grid">
         {TECLAS.map((t) => (
@@ -50,13 +52,12 @@ export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
       {cierre !== "simple" && (
         <label className="teclado-puntuacion-cierre">
           <input type="checkbox" checked={cierreValido} disabled={deshabilitada} onChange={(e) => setCierreValido(e.target.checked)} />
-          El último dardo de esta visita ha sido {cierre === "master" ? "doble o triple" : "doble"} (solo hace falta marcarlo si con esta
-          visita se llega justo a 0)
+          {t("marcador.ultimoDardoFue").replace("{tipo}", cierre === "master" ? t("marcador.dobleOTriple") : t("marcador.dobleMin"))}
         </label>
       )}
 
       <button type="button" onClick={enviar} disabled={deshabilitada || valor === ""} className="admin-link-btn marcador-boton-destacado">
-        Enviar
+        {t("marcador.enviar")}
       </button>
     </div>
   );
