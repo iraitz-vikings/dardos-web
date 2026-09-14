@@ -170,7 +170,7 @@ export default function AdminJugadores({ token, salir }) {
   }
 
   async function borrar(id) {
-    if (!confirm("¿Borrar este jugador? Si tiene un socio vinculado, solo se borra la ficha de jugador, no la cuenta.")) return;
+    if (!confirm("¿Borrar este jugador? Si tiene un miembro vinculado, solo se borra la ficha de jugador, no la cuenta.")) return;
     setMensaje(null);
     const res = await fetch(`${API_URL}/api/jugadores/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
     if (!res.ok) {
@@ -185,17 +185,17 @@ export default function AdminJugadores({ token, salir }) {
     <section className="admin-form">
       <h2>Jugadores del club</h2>
       <p className="admin-hint">
-        Directorio de todos los jugadores, tengan cuenta de socio o no (invitados). Se usan para apuntar
-        participantes a los cuadrantes de torneos, individuales o en pareja. El nombre de un invitado se puede
-        corregir con "Editar nombre" (el de un socio se cambia desde su propia cuenta); ojo, el cambio no
+        Directorio de todos los jugadores, tengan cuenta de miembro o no (amigos). Se usan para apuntar
+        participantes a los cuadrantes de torneos, individuales o en pareja. El nombre de un amigo se puede
+        corregir con "Editar nombre" (el de un miembro se cambia desde su propia cuenta); ojo, el cambio no
         reescribe el nombre en los cuadrantes o calendarios ya generados con el nombre anterior, solo afecta a
         partir de ahora. El PIN de partidas (4 dígitos) es para identificarse en la página pública al jugar un
-        partido de torneo/liga con la herramienta de marcador; un socio también puede cambiárselo desde su perfil.
+        partido de torneo/liga con la herramienta de marcador; un miembro también puede cambiárselo desde su perfil.
       </p>
 
       <form onSubmit={crear} className="admin-inline-form">
         <label>
-          Nombre del jugador nuevo (invitado, sin cuenta)
+          Nombre del jugador nuevo (amigo, sin cuenta)
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Jon Errenteria" />
         </label>
         <button type="submit" disabled={creando || !nombre.trim()}>{creando ? "Creando…" : "Crear jugador"}</button>
@@ -257,7 +257,7 @@ export default function AdminJugadores({ token, salir }) {
                 {j.usuario?.email && <em style={{ display: "block", fontSize: ".8em" }}>{j.usuario.email}</em>}
                 {!j.usuario && (
                   <em style={{ display: "block", fontSize: ".8em" }}>
-                    Invitado (sin cuenta)
+                    Amigo (sin cuenta)
                     {enlaces[j.id] && (enlaces[j.id].telegramVinculado ? " · Avisos por Telegram activados" : " · Todavía no ha activado avisos")}
                   </em>
                 )}
@@ -283,13 +283,13 @@ export default function AdminJugadores({ token, salir }) {
           <>
             {socios.length > 0 && (
               <>
-                <h3 style={{ marginTop: "1rem" }}>Socios ({socios.length})</h3>
+                <h3 style={{ marginTop: "1rem" }}>Miembros ({socios.length})</h3>
                 <ul>{socios.map(filaJugador)}</ul>
               </>
             )}
             {invitados.length > 0 && (
               <>
-                <h3 style={{ marginTop: "1rem" }}>Invitados ({invitados.length})</h3>
+                <h3 style={{ marginTop: "1rem" }}>Amigos ({invitados.length})</h3>
                 <ul>{invitados.map(filaJugador)}</ul>
               </>
             )}

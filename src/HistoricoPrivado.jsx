@@ -32,7 +32,7 @@ export default function HistoricoPrivado() {
   return (
     <div>
       <h3>Histórico privado</h3>
-      <p className="admin-hint-bloque">Torneos y ligas del club ya finalizados, solo visibles para socios.</p>
+      <p className="admin-hint-bloque">Torneos y ligas del club ya finalizados, solo visibles para miembros.</p>
 
       {cargando && <p className="chronicle-status">Cargando…</p>}
       {!cargando && items.length === 0 && <p className="chronicle-status">Todavía no hay nada finalizado.</p>}

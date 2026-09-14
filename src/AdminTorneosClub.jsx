@@ -957,7 +957,7 @@ function ClasificacionGeneral({ torneo, onObtenerClasificacionGeneral, onGuardar
             {clasificacion.map((j, i) => (
               <tr key={j.jugadorId || `invitado-${j.nombre}`}>
                 <td>{i + 1}</td>
-                <td>{j.nombre}{j.invitado && <span className="admin-hint"> (invitado del torneo)</span>}</td>
+                <td>{j.nombre}{j.invitado && <span className="admin-hint"> (amigo del torneo)</span>}</td>
                 <td>{j.puntosTotales}</td>
                 <td className="admin-hint">
                   {j.jornadas.map((jn) => `${jn.cuadrante}: ${jn.posicion}º (${jn.puntos} pts)`).join(" · ")}
@@ -985,7 +985,7 @@ function JugadoresDelClub({ jugadores }) {
           {jugadores.length === 0 && <p className="chronicle-status">Todavía no hay ningún jugador dado de alta.</p>}
           {socios.length > 0 && (
             <>
-              <p className="admin-hint">Socios</p>
+              <p className="admin-hint">Miembros</p>
               <ul>
                 {socios.map((j) => (
                   <li key={j.id} className="admin-list-item">
@@ -997,7 +997,7 @@ function JugadoresDelClub({ jugadores }) {
           )}
           {invitados.length > 0 && (
             <>
-              <p className="admin-hint">Invitados</p>
+              <p className="admin-hint">Amigos</p>
               <ul>
                 {invitados.map((j) => (
                   <li key={j.id} className="admin-list-item">
@@ -1284,7 +1284,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
 
           <form onSubmit={anadirManualAlPool} className="admin-inline-form">
             <label>
-              Añadir invitado por nombre
+              Añadir amigo por nombre
               <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
             </label>
             <button type="submit" disabled={!nombreManual.trim()}>＋ Añadir a disponibles</button>
@@ -1295,7 +1295,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
               <p className="admin-hint">Añadir del plantel del club:</p>
               {disponiblesAgrupados.socios.length > 0 && (
                 <>
-                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Socios</p>
+                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.socios.map((j) => (
                       <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>
@@ -1307,7 +1307,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
               )}
               {disponiblesAgrupados.invitados.length > 0 && (
                 <>
-                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Invitados</p>
+                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Amigos</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.invitados.map((j) => (
                       <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>
@@ -1323,7 +1323,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
           <ul>
             {poolManual.map((p) => (
               <li key={p.key} className="admin-list-item">
-                <span>{p.nombre}{!p.jugadorId && " (invitado)"}</span>
+                <span>{p.nombre}{!p.jugadorId && " (amigo)"}</span>
                 <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
                   {esParejasCiegas && grupos.length > 0 && (
                     <select value={p.grupo || ""} onChange={(e) => cambiarGrupo(p.key, e.target.value)}>
@@ -1392,14 +1392,14 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
           <h5>Añadir participante</h5>
           <form onSubmit={anadirManualDirecto} className="admin-inline-form">
             <label>
-              Invitado por nombre
+              Amigo por nombre
               <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
             </label>
             <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
           </form>
           {disponiblesAgrupados.socios.length > 0 && (
             <>
-              <p className="admin-hint" style={{ fontSize: ".8em" }}>Socios</p>
+              <p className="admin-hint" style={{ fontSize: ".8em" }}>Miembros</p>
               <ul>
                 {disponiblesAgrupados.socios.map((j) => (
                   <li key={j.id} className="admin-list-item">
@@ -1414,7 +1414,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
           )}
           {disponiblesAgrupados.invitados.length > 0 && (
             <>
-              <p className="admin-hint" style={{ fontSize: ".8em" }}>Invitados</p>
+              <p className="admin-hint" style={{ fontSize: ".8em" }}>Amigos</p>
               <ul>
                 {disponiblesAgrupados.invitados.map((j) => (
                   <li key={j.id} className="admin-list-item">

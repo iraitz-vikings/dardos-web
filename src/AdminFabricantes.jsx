@@ -137,16 +137,16 @@ export default function AdminFabricantes({ token, salir }) {
       <p className="admin-hint">
         Dianas electrónicas u otros fabricantes en cuya web cada jugador tiene su propio alias (para
         consultar sus medias/estadísticas). Los que des de alta aquí aparecerán en "Mi perfil" para
-        que cada socio introduzca su alias.
+        que cada miembro introduzca su alias.
       </p>
 
       <section style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1.2rem" }}>
         <h3 style={{ marginTop: 0 }}>Medias de Connection y Phoenix Darts</h3>
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          Consulta automáticamente la media (MPR/PPD) de cada socio que tenga alias guardado en estos dos
+          Consulta automáticamente la media (MPR/PPD) de cada miembro que tenga alias guardado en estos dos
           fabricantes. Se ejecuta también sola cada noche. Bullshooter no se consulta aquí (se enlaza
           directamente desde el perfil). Radikal Darts tampoco: su web bloquea en silencio cualquier intento
-          de login automático (probado con varias técnicas), así que cada socio escribe su MPR/PPD de
+          de login automático (probado con varias técnicas), así que cada miembro escribe su MPR/PPD de
           Radikal a mano en "Mi perfil".
         </p>
         <button type="button" onClick={actualizarMedias} disabled={actualizando}>

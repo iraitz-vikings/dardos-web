@@ -10,6 +10,10 @@ export default function JugadoresClub() {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [seleccionado, setSeleccionado] = useState(null);
+  // "socios" (Miembros) e "invitados" (Amigos) son los nombres internos de
+  // siempre (agruparJugadores.js, sin cambios) — la etiqueta que ve el
+  // socio/miembro es la única cosa que cambia aquí.
+  const [pestana, setPestana] = useState("socios");
 
   useEffect(() => {
     const token = localStorage.getItem("socioToken");
@@ -22,6 +26,7 @@ export default function JugadoresClub() {
 
   const filtrados = jugadores.filter((j) => j.nombre.toLowerCase().includes(busqueda.toLowerCase()));
   const { socios, invitados } = agruparPorSocio(filtrados);
+  const listaActual = pestana === "socios" ? socios : invitados;
 
   const tarjeta = (j) => (
     <div
@@ -73,21 +78,33 @@ export default function JugadoresClub() {
       />
 
       {cargando && <p className="chronicle-status">Cargando…</p>}
-      {!cargando && filtrados.length === 0 && <p className="chronicle-status">No hay jugadores que coincidan.</p>}
 
-      {socios.length > 0 && (
+      {!cargando && (
         <>
-          <h4>Socios</h4>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-            {socios.map(tarjeta)}
+          <div className="admin-tabs" style={{ marginBottom: "1rem" }}>
+            <button
+              type="button"
+              className={`admin-tab ${pestana === "socios" ? "admin-tab-active" : ""}`}
+              onClick={() => setPestana("socios")}
+            >
+              Miembros ({socios.length})
+            </button>
+            <button
+              type="button"
+              className={`admin-tab ${pestana === "invitados" ? "admin-tab-active" : ""}`}
+              onClick={() => setPestana("invitados")}
+            >
+              Amigos ({invitados.length})
+            </button>
           </div>
-        </>
-      )}
-      {invitados.length > 0 && (
-        <>
-          <h4>Invitados</h4>
+
+          {listaActual.length === 0 && (
+            <p className="chronicle-status">
+              No hay {pestana === "socios" ? "miembros" : "amigos"} que coincidan.
+            </p>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "1rem" }}>
-            {invitados.map(tarjeta)}
+            {listaActual.map(tarjeta)}
           </div>
         </>
       )}
@@ -120,7 +137,7 @@ export default function JugadoresClub() {
                 <strong style={{ display: "block", fontSize: "1.15rem" }}>{seleccionado.nombre}</strong>
                 {seleccionado.apodo && <span style={{ display: "block", opacity: 0.85 }}>"{seleccionado.apodo}"</span>}
                 {seleccionado.usuarioId && (
-                  <span style={{ fontSize: ".7em", color: "var(--ember)" }}>Socio</span>
+                  <span style={{ fontSize: ".7em", color: "var(--ember)" }}>Miembro</span>
                 )}
               </div>
             </div>

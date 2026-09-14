@@ -257,7 +257,7 @@ export default function AdminEquiposClub({ token, salir }) {
                       <p className="admin-hint">Añadir del plantel del club:</p>
                       {disponiblesAgrupados.socios.length > 0 && (
                         <>
-                          <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Socios</p>
+                          <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                             {disponiblesAgrupados.socios.map((j) => (
                               <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirMiembro(eq.id, j.id)}>
@@ -269,7 +269,7 @@ export default function AdminEquiposClub({ token, salir }) {
                       )}
                       {disponiblesAgrupados.invitados.length > 0 && (
                         <>
-                          <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Invitados</p>
+                          <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Amigos</p>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                             {disponiblesAgrupados.invitados.map((j) => (
                               <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirMiembro(eq.id, j.id)}>
