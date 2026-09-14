@@ -21,8 +21,8 @@ self.addEventListener("push", (event) => {
   const titulo = datos.titulo || "Vikings Dardos";
   const opciones = {
     body: datos.cuerpo || "",
-    icon: "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png",
-    badge: "https://res.cloudinary.com/lodi1y1k/image/upload/v1786283841/vikings-logo-transparente_bjtv7c.png",
+    icon: "https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_192,w_192/f_png/v1789382604/vikings-logo-icono-2026.png",
+    badge: "https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_192,w_192/f_png/v1789382604/vikings-logo-icono-2026.png",
     data: { url: datos.url || "/" },
   };
   // Imagen grande opcional (p.ej. eliminación/campeón de un cuadrante). No
