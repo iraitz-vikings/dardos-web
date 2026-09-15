@@ -4,6 +4,7 @@ import Footer from "./Footer.jsx";
 import BracketView from "./BracketView.jsx";
 import AccesoHerramienta from "./JuegoHerramienta.jsx";
 import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
+import { useLang } from "./i18n.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
@@ -12,12 +13,12 @@ function formatFecha(iso) {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function TablaClasificacion({ filas }) {
+function TablaClasificacion({ filas, t }) {
   if (!filas || filas.length === 0) return null;
   return (
     <table className="admin-tabla-clasificacion">
       <thead>
-        <tr><th>#</th><th>Participante</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>+/−</th><th>Pts</th></tr>
+        <tr><th>#</th><th>{t("ligaPage.colParticipante")}</th><th>PJ</th><th>V</th><th>E</th><th>D</th><th>+</th><th>−</th><th>+/−</th><th>Pts</th></tr>
       </thead>
       <tbody>
         {filas.map((f, i) => {
@@ -45,15 +46,23 @@ function estadoJornada(partidos) {
   const empezada = partidos.some((p) => !!p.ganador || p.enCurso);
   return empezada ? "en_curso" : "pendiente";
 }
-const ETIQUETA_ESTADO_JORNADA = { terminada: "✓ Terminada", en_curso: "● En curso", pendiente: "Pendiente" };
+function etiquetaEstadoJornada(t, estado) {
+  if (estado === "terminada") return t("ligaPage.estadoTerminada");
+  if (estado === "en_curso") return t("ligaPage.estadoEnCurso");
+  return t("ligaPage.estadoPendiente");
+}
 
-function CalendarioGrupo({ grupo, porJornada, mostrarGrupo }) {
+function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t }) {
   const [jornadasManual, setJornadasManual] = useState({});
   const jornadas = Object.keys(porJornada).map(Number).sort((a, b) => a - b);
 
   return (
     <div style={{ marginBottom: "1.5rem" }}>
-      {mostrarGrupo && <h3>Grupo {grupo === "_sin_grupo" ? "sin asignar" : grupo}</h3>}
+      {mostrarGrupo && (
+        <h3>
+          {grupo === "_sin_grupo" ? t("ligaPage.grupo").replace("{letra}", t("ligaPage.sinGrupo")) : t("ligaPage.grupo").replace("{letra}", grupo)}
+        </h3>
+      )}
       {jornadas.map((j) => {
         const partidosJornada = porJornada[j];
         const estado = estadoJornada(partidosJornada);
@@ -62,16 +71,20 @@ function CalendarioGrupo({ grupo, porJornada, mostrarGrupo }) {
           <div key={j} className="admin-cuadro-maquina">
             <h4 className="admin-ronda-header" onClick={() => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada }))}>
               <span>
-                Jornada {j} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_JORNADA[estado]}</span>
+                {t("ligaPage.jornada").replace("{n}", j)} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{etiquetaEstadoJornada(t, estado)}</span>
               </span>
-              <span className="admin-ronda-toggle">{desplegada ? "Ocultar ▲" : "Ver ▼"}</span>
+              <span className="admin-ronda-toggle">{desplegada ? t("ligaPage.ocultar") : t("ligaPage.ver")}</span>
             </h4>
             {desplegada && (
               <ul>
                 {partidosJornada.map((p) => (
                   <li key={p.id}>
                     {p.participante1} vs {p.participante2}
-                    {p.resultado ? ` — ${p.resultado}` : p.ganador ? ` — ganó ${p.ganador}` : " — pendiente"}
+                    {p.resultado
+                      ? ` — ${p.resultado}`
+                      : p.ganador
+                      ? ` — ${t("ligaPage.partidoGano").replace("{nombre}", p.ganador)}`
+                      : ` — ${t("ligaPage.partidoPendiente")}`}
                   </li>
                 ))}
               </ul>
@@ -84,6 +97,7 @@ function CalendarioGrupo({ grupo, porJornada, mostrarGrupo }) {
 }
 
 export default function LigaPage({ id }) {
+  const { t } = useLang();
   const [liga, setLiga] = useState(null);
   const [estado, setEstado] = useState("cargando");
   const [vista, setVista] = useState("clasificacion");
@@ -140,21 +154,21 @@ export default function LigaPage({ id }) {
       <Nav />
       <main>
         <section className="torneo-pagina">
-          {estado === "cargando" && <p className="chronicle-status">Cargando…</p>}
-          {estado === "error" && <p className="chronicle-status">No hemos encontrado esta liga.</p>}
+          {estado === "cargando" && <p className="chronicle-status">{t("ligaPage.loading")}</p>}
+          {estado === "error" && <p className="chronicle-status">{t("ligaPage.notfound")}</p>}
           {estado === "ok" && liga && (
             <>
-              <p className="eyebrow">Liga del club</p>
+              <p className="eyebrow">{t("ligaPage.eyebrow")}</p>
               <h1 className="chronicle-title">{liga.nombre}</h1>
               <p className="torneo-pagina-fechas">
                 {formatFecha(liga.fechaInicio)} – {formatFecha(liga.fechaFin)}
-                {liga.finalizado ? " · Finalizada" : ""}
+                {liga.finalizado ? ` · ${t("ligaPage.finalizada")}` : ""}
               </p>
               {liga.insigniaUrl && <img src={liga.insigniaUrl} alt={`Insignia ${liga.nombre}`} className="torneo-pagina-insignia" />}
               {liga.descripcion && <p className="event-description">{liga.descripcion}</p>}
 
               <details className="torneo-pagina-qr">
-                <summary>Compartir / código QR</summary>
+                <summary>{t("torneoPage.share")}</summary>
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
                   alt="Código QR de esta página"
@@ -175,58 +189,58 @@ export default function LigaPage({ id }) {
 
               <div className="live-tournament-toggle">
                 <button className={vista === "clasificacion" ? "active" : ""} onClick={() => setVista("clasificacion")}>
-                  Clasificación
+                  {t("ligaPage.tabClasificacion")}
                 </button>
                 <button className={vista === "calendario" ? "active" : ""} onClick={() => setVista("calendario")}>
-                  Calendario
+                  {t("ligaPage.tabCalendario")}
                 </button>
                 {cuadrante && (
                   <button className={vista === "cuadrante" ? "active" : ""} onClick={() => setVista("cuadrante")}>
-                    Cuadrante final
+                    {t("ligaPage.tabCuadrante")}
                   </button>
                 )}
               </div>
 
               {vista === "clasificacion" && (
                 <>
-                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Clasificación</h2>
+                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>{t("ligaPage.tabClasificacion")}</h2>
                   {!clasificacion ? (
-                    <p className="chronicle-status">Cargando…</p>
+                    <p className="chronicle-status">{t("ligaPage.loading")}</p>
                   ) : (liga.numeroGrupos ? letrasGrupos.some((g) => (clasificacion.grupos[g] || []).length > 0) : (clasificacion.sinGrupo || []).length > 0) ? (
                     liga.numeroGrupos
                       ? letrasGrupos.map((g) => (
                           <div key={g} style={{ marginBottom: "1.5rem" }}>
-                            <h3>Grupo {g}</h3>
-                            <TablaClasificacion filas={clasificacion.grupos[g]} />
+                            <h3>{t("ligaPage.grupo").replace("{letra}", g)}</h3>
+                            <TablaClasificacion filas={clasificacion.grupos[g]} t={t} />
                           </div>
                         ))
-                      : <TablaClasificacion filas={clasificacion.sinGrupo} />
+                      : <TablaClasificacion filas={clasificacion.sinGrupo} t={t} />
                   ) : (
-                    <p className="chronicle-status">Todavía no hay clasificación.</p>
+                    <p className="chronicle-status">{t("ligaPage.sinClasificacion")}</p>
                   )}
                 </>
               )}
 
               {vista === "calendario" && (
                 <>
-                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Calendario</h2>
+                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>{t("ligaPage.tabCalendario")}</h2>
                   {gruposConCalendario.length > 0 ? (
                     gruposConCalendario.map((g) => (
-                      <CalendarioGrupo key={g} grupo={g} porJornada={porGrupoJornada[g]} mostrarGrupo={!!liga.numeroGrupos} />
+                      <CalendarioGrupo key={g} grupo={g} porJornada={porGrupoJornada[g]} mostrarGrupo={!!liga.numeroGrupos} t={t} />
                     ))
                   ) : (
-                    <p className="chronicle-status">Todavía no hay calendario.</p>
+                    <p className="chronicle-status">{t("ligaPage.sinCalendario")}</p>
                   )}
                 </>
               )}
 
               {vista === "cuadrante" && cuadrante && (
                 <>
-                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>Cuadrante final</h2>
+                  <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>{t("ligaPage.tabCuadrante")}</h2>
                   <input
                     type="text"
                     className="bracket-busqueda"
-                    placeholder="Buscar jugador…"
+                    placeholder={t("ligaPage.buscarJugador")}
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
                     style={{ marginBottom: "1rem" }}

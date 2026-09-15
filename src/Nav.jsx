@@ -41,6 +41,8 @@ export default function Nav() {
             <button type="button" className={lang === "es" ? "nav-lang-activo" : ""} onClick={() => setLang("es")}>ES</button>
             <span>/</span>
             <button type="button" className={lang === "eu" ? "nav-lang-activo" : ""} onClick={() => setLang("eu")}>EU</button>
+            <span>/</span>
+            <button type="button" className={lang === "fr" ? "nav-lang-activo" : ""} onClick={() => setLang("fr")}>FR</button>
           </div>
           <a
             href="https://www.facebook.com/Vikingsdartsclub/"
