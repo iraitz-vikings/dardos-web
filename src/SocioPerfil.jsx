@@ -225,6 +225,7 @@ export default function SocioPerfil() {
         <AceroJugador jugadorId={perfil.id} token={token()} />
         <AvisosPush />
         <AvisosTelegram />
+        <SelectorIdiomaAvisos perfil={perfil} token={token} onGuardado={setPerfil} />
         <PinPartidas tienePin={perfil.tienePinPartidas} />
       </div>
     );
@@ -390,6 +391,7 @@ export default function SocioPerfil() {
       <CambioPasswordVoluntario />
       <AvisosPush />
       <AvisosTelegram />
+      <SelectorIdiomaAvisos perfil={perfil} token={token} onGuardado={setPerfil} />
       </>
     );
   }
@@ -575,6 +577,63 @@ function AvisosPush() {
         </>
       )}
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
+// Idioma en el que este socio quiere recibir sus avisos de partidos (Web
+// Push/Telegram) — independiente del idioma de navegación de la web (ese es
+// solo de UI, por localStorage). Ver Jugador.idiomaAvisos en schema.prisma.
+// Solo tiene efecto en los avisos automáticos que llevan texto por idioma
+// (entrada en el cuadro, partido en curso/programado, eliminado, campeón);
+// los avisos de texto libre (tablón, etc.) siguen llegando en el idioma en
+// el que los escribe el admin, sea cual sea.
+const IDIOMAS_AVISOS = [
+  { id: "es", etiqueta: "Castellano" },
+  { id: "eu", etiqueta: "Euskara" },
+  { id: "fr", etiqueta: "Français" },
+];
+
+function SelectorIdiomaAvisos({ perfil, token, onGuardado }) {
+  const { t } = useLang();
+  const [guardando, setGuardando] = useState(false);
+
+  async function cambiar(idioma) {
+    if (idioma === perfil.idiomaAvisos || guardando) return;
+    setGuardando(true);
+    try {
+      const res = await fetch(`${API_URL}/api/perfil`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ idiomaAvisos: idioma }),
+      });
+      if (res.ok) onGuardado((prev) => ({ ...prev, idiomaAvisos: idioma }));
+    } catch {
+      // No crítico: si falla, se queda con el idioma anterior y puede
+      // volver a intentarlo.
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "1.5rem" }}>
+      <strong style={{ display: "block", marginBottom: ".4rem" }}>{t("avisosIdioma.titulo")}</strong>
+      <div className="nav-lang" style={{ justifyContent: "flex-start" }}>
+        {IDIOMAS_AVISOS.map((op, i) => (
+          <span key={op.id} style={{ display: "contents" }}>
+            {i > 0 && <span>/</span>}
+            <button
+              type="button"
+              className={(perfil.idiomaAvisos || "es") === op.id ? "nav-lang-activo" : ""}
+              disabled={guardando}
+              onClick={() => cambiar(op.id)}
+            >
+              {op.etiqueta}
+            </button>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
