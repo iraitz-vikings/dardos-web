@@ -777,7 +777,14 @@ const dic = {
     "socios.sesionCaducada": "Ta session a expiré. Reconnecte-toi.",
 
     "hero.eyebrow": "Vikings · Club de fléchettes",
+    "hero.title1": "L'incursion",
+    "hero.title2": "a déjà commencé",
     "hero.subtitle": "Actualités, photos d'événements et chroniques du club. Un seul endroit pour suivre tout ce qui se passe autour de la cible.",
+
+    "video.eyebrow": "Vikings TV",
+    "video.title": "Tout commence ici",
+    "video.play": "▶ Lire la vidéo",
+    "video.unmute": "🔊 Activer le son",
 
     "torneo.eyebrow": "Prochain événement",
     "torneo.title": "Prochain tournoi",
