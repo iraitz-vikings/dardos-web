@@ -281,6 +281,19 @@ useEffect(() => {
     return res.ok;
   }
 
+  // Guarda los mensajes de avisos personalizados (bienvenida/en curso/
+  // programado/eliminado/campeón, por idioma) de un torneo ya creado — ver
+  // MensajesAvisos más abajo y src/lib/mensajesAvisos.js en el backend.
+  async function guardarMensajesAvisos(torneo, mensajesAvisos) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, mensajesAvisos }),
+    });
+    cargarTorneos();
+    return res.ok;
+  }
+
   // Guarda (o quita, si se manda vacío) el enlace de YouTube en directo de
   // un torneo ya creado — ver VideoDirectoPanel.
   async function guardarVideoDirecto(torneo, videoDirectoUrl) {
@@ -480,6 +493,7 @@ async function programarCalendario(partidoId, datos) {
         onObtenerClasificacionGeneral={obtenerClasificacionGeneral}
         onGuardarPuntosPorPosicion={guardarPuntosPorPosicion}
         onGuardarImagenesAvisos={guardarImagenesAvisos}
+        onGuardarMensajesAvisos={guardarMensajesAvisos}
         onGuardarConfiguracionHerramienta={guardarConfiguracionHerramienta}
         onGuardarVideoDirecto={guardarVideoDirecto}
       />
@@ -727,7 +741,7 @@ function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
-  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto,
+  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -775,6 +789,13 @@ function TorneoGestion({
           onClick={() => setSubpestana("avisos")}
         >
           Imágenes de avisos
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "mensajes" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("mensajes")}
+        >
+          Mensajes de avisos
         </button>
         <button
           type="button"
@@ -844,6 +865,10 @@ function TorneoGestion({
 
       {subpestana === "avisos" && (
         <ImagenesAvisos torneo={torneo} token={token} onGuardar={onGuardarImagenesAvisos} />
+      )}
+
+      {subpestana === "mensajes" && (
+        <MensajesAvisos torneo={torneo} onGuardar={onGuardarMensajesAvisos} />
       )}
 
       {subpestana === "herramienta" && (
@@ -917,6 +942,117 @@ function ImagenesAvisos({ torneo, token, onGuardar }) {
       </label>
       <button type="button" disabled={guardando} onClick={guardar}>
         {guardando ? "Guardando…" : "Guardar imágenes"}
+      </button>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
+// Tipos de aviso automático que se pueden personalizar y los datos ({clave})
+// disponibles en cada uno para sustituir al enviarlo — ver
+// src/lib/mensajesAvisos.js en el backend (resolverMensaje/sustituir).
+const TIPOS_MENSAJE_AVISO = [
+  { clave: "bienvenida", etiqueta: "Bienvenida al sortear", placeholders: "{competicion}" },
+  { clave: "enCurso", etiqueta: "Partido en curso", placeholders: "{competicion}, {enfrentamiento}, {maquina}" },
+  { clave: "programado", etiqueta: "Partido programado", placeholders: "{competicion}, {enfrentamiento}, {fecha}, {maquina}" },
+  { clave: "eliminado", etiqueta: "Eliminado", placeholders: "{competicion}" },
+  { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
+];
+const IDIOMAS_MENSAJE_AVISO = [
+  { id: "es", etiqueta: "Castellano" },
+  { id: "eu", etiqueta: "Euskera" },
+  { id: "fr", etiqueta: "Francés" },
+];
+
+// Panel para sobreescribir, opcionalmente y en cualquier idioma, el texto de
+// los 5 avisos automáticos (bienvenida/en curso/programado/eliminado/
+// campeón) de un torneo o liga concreto — p.ej. un mensaje especial para el
+// Open. Un campo vacío sigue usando el texto por defecto del club en ese
+// idioma. Mismo patrón de guardado que ImagenesAvisos (PUT con el campo
+// mensajesAvisos), pero aquí el selector de idioma es un único interruptor
+// que cambia los 10 campos a la vez (5 tipos × título/cuerpo) en vez de
+// mostrar los 30 campos posibles de golpe.
+function MensajesAvisos({ torneo, onGuardar }) {
+  const [idioma, setIdioma] = useState("es");
+  const [mensajes, setMensajes] = useState(() => torneo.mensajesAvisos || {});
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  function valor(tipo, campo) {
+    return mensajes?.[tipo]?.[campo]?.[idioma] || "";
+  }
+
+  function cambiar(tipo, campo, texto) {
+    setMensajes((prev) => ({
+      ...prev,
+      [tipo]: {
+        ...prev[tipo],
+        [campo]: { ...(prev[tipo]?.[campo] || {}), [idioma]: texto },
+      },
+    }));
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const ok = await onGuardar(torneo, mensajes);
+      setMensaje(ok ? { tipo: "ok", texto: "Mensajes guardados." } : { tipo: "error", texto: "No se pudieron guardar." });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form">
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Personaliza, en el idioma que quieras, el texto de los avisos automáticos de este torneo. Deja un campo
+        vacío para usar el texto por defecto del club en ese idioma — no hace falta rellenar los tres idiomas si no
+        quieres. Los datos entre llaves de cada aviso se sustituyen solos al enviarlo.
+      </p>
+
+      <div className="nav-lang" style={{ marginBottom: "1.2rem" }}>
+        {IDIOMAS_MENSAJE_AVISO.map((i, idx) => (
+          <span key={i.id}>
+            {idx > 0 && <span> / </span>}
+            <button
+              type="button"
+              className={idioma === i.id ? "nav-lang-activo" : ""}
+              onClick={() => setIdioma(i.id)}
+            >
+              {i.etiqueta}
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {TIPOS_MENSAJE_AVISO.map((t) => (
+        <div key={t.clave} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
+          <h4 style={{ marginTop: 0 }}>{t.etiqueta}</h4>
+          <p className="admin-hint" style={{ marginTop: 0 }}>Datos disponibles: {t.placeholders}</p>
+          <label>
+            Título (opcional)
+            <input
+              type="text"
+              value={valor(t.clave, "titulo")}
+              onChange={(e) => cambiar(t.clave, "titulo", e.target.value)}
+              placeholder="Texto por defecto del club"
+            />
+          </label>
+          <label>
+            Cuerpo (opcional)
+            <textarea
+              rows={2}
+              value={valor(t.clave, "cuerpo")}
+              onChange={(e) => cambiar(t.clave, "cuerpo", e.target.value)}
+              placeholder="Texto por defecto del club"
+            />
+          </label>
+        </div>
+      ))}
+
+      <button type="button" disabled={guardando} onClick={guardar}>
+        {guardando ? "Guardando…" : "Guardar mensajes"}
       </button>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
     </div>

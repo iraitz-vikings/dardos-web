@@ -620,6 +620,9 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
         <button type="button" className={`admin-tab ${subpestana === "avisos" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("avisos")}>
           Imágenes de avisos
         </button>
+        <button type="button" className={`admin-tab ${subpestana === "mensajes" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("mensajes")}>
+          Mensajes de avisos
+        </button>
         <button type="button" className={`admin-tab ${subpestana === "herramienta" ? "admin-tab-active" : ""}`} onClick={() => setSubpestana("herramienta")}>
           Herramienta de marcador
         </button>
@@ -647,6 +650,7 @@ function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante,
       {subpestana === "clasificacion" && <ClasificacionLiga liga={liga} />}
       {subpestana === "final" && <CuadranteFinalLiga liga={liga} token={token} maquinas={maquinas} onRecargar={onRecargar} />}
       {subpestana === "avisos" && <ImagenesAvisosLiga liga={liga} token={token} onRecargar={onRecargar} />}
+      {subpestana === "mensajes" && <MensajesAvisosLiga liga={liga} token={token} onRecargar={onRecargar} />}
       {subpestana === "herramienta" && (
         <ConfiguracionHerramientaPanel entidad={liga} etiquetaRonda="jornada" onGuardar={(l, config) => guardarConfiguracionHerramientaLiga(l, config, token, onRecargar)} />
       )}
@@ -723,6 +727,123 @@ function ImagenesAvisosLiga({ liga, token, onRecargar }) {
       </label>
       <button type="button" disabled={guardando} onClick={guardar}>
         {guardando ? "Guardando…" : "Guardar imágenes"}
+      </button>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
+// Tipos de aviso automático que se pueden personalizar y los datos ({clave})
+// disponibles en cada uno para sustituir al enviarlo — ver
+// src/lib/mensajesAvisos.js en el backend (resolverMensaje/sustituir). Mismo
+// listado que en AdminTorneosClub.jsx.
+const TIPOS_MENSAJE_AVISO_LIGA = [
+  { clave: "bienvenida", etiqueta: "Bienvenida al sortear", placeholders: "{competicion}" },
+  { clave: "enCurso", etiqueta: "Partido en curso", placeholders: "{competicion}, {enfrentamiento}, {maquina}" },
+  { clave: "programado", etiqueta: "Partido programado", placeholders: "{competicion}, {enfrentamiento}, {fecha}, {maquina}" },
+  { clave: "eliminado", etiqueta: "Eliminado", placeholders: "{competicion}" },
+  { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
+];
+const IDIOMAS_MENSAJE_AVISO_LIGA = [
+  { id: "es", etiqueta: "Castellano" },
+  { id: "eu", etiqueta: "Euskera" },
+  { id: "fr", etiqueta: "Francés" },
+];
+
+// Igual que MensajesAvisos de AdminTorneosClub.jsx pero para el cuadrante
+// final de una liga: sobreescribe, opcionalmente y en cualquier idioma, el
+// texto de los 5 avisos automáticos. Un campo vacío sigue usando el texto
+// por defecto del club en ese idioma. Guarda directo con fetch (mismo
+// patrón que ImagenesAvisosLiga, justo arriba) en vez de recibir un
+// onGuardar genérico.
+function MensajesAvisosLiga({ liga, token, onRecargar }) {
+  const [idioma, setIdioma] = useState("es");
+  const [mensajes, setMensajes] = useState(() => liga.mensajesAvisos || {});
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  function valor(tipo, campo) {
+    return mensajes?.[tipo]?.[campo]?.[idioma] || "";
+  }
+
+  function cambiar(tipo, campo, texto) {
+    setMensajes((prev) => ({
+      ...prev,
+      [tipo]: {
+        ...prev[tipo],
+        [campo]: { ...(prev[tipo]?.[campo] || {}), [idioma]: texto },
+      },
+    }));
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ ...liga, mensajesAvisos: mensajes }),
+      });
+      setMensaje(res.ok ? { tipo: "ok", texto: "Mensajes guardados." } : { tipo: "error", texto: "No se pudieron guardar." });
+      onRecargar();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form">
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Personaliza, en el idioma que quieras, el texto de los avisos automáticos de esta liga. Deja un campo vacío
+        para usar el texto por defecto del club en ese idioma — no hace falta rellenar los tres idiomas si no
+        quieres. Los datos entre llaves de cada aviso se sustituyen solos al enviarlo.
+      </p>
+
+      <div className="nav-lang" style={{ marginBottom: "1.2rem" }}>
+        {IDIOMAS_MENSAJE_AVISO_LIGA.map((i, idx) => (
+          <span key={i.id}>
+            {idx > 0 && <span> / </span>}
+            <button
+              type="button"
+              className={idioma === i.id ? "nav-lang-activo" : ""}
+              onClick={() => setIdioma(i.id)}
+            >
+              {i.etiqueta}
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {TIPOS_MENSAJE_AVISO_LIGA.map((t) => (
+        <div key={t.clave} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
+          <h4 style={{ marginTop: 0 }}>{t.etiqueta}</h4>
+          <p className="admin-hint" style={{ marginTop: 0 }}>Datos disponibles: {t.placeholders}</p>
+          <label>
+            Título (opcional)
+            <input
+              type="text"
+              value={valor(t.clave, "titulo")}
+              onChange={(e) => cambiar(t.clave, "titulo", e.target.value)}
+              placeholder="Texto por defecto del club"
+            />
+          </label>
+          <label>
+            Cuerpo (opcional)
+            <textarea
+              rows={2}
+              value={valor(t.clave, "cuerpo")}
+              onChange={(e) => cambiar(t.clave, "cuerpo", e.target.value)}
+              placeholder="Texto por defecto del club"
+            />
+          </label>
+        </div>
+      ))}
+
+      <button type="button" disabled={guardando} onClick={guardar}>
+        {guardando ? "Guardando…" : "Guardar mensajes"}
       </button>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
     </div>
