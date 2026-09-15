@@ -391,6 +391,24 @@ async function programarCalendario(partidoId, datos) {
     return null;
   }
 
+  // Da de alta avisos de Telegram para un invitado puntual (sin ficha del
+  // club) en un solo paso: crea una ficha oculta, vincula el hueco y
+  // devuelve el enlace de check-in — ver POST
+  // /participantes/:id/invitado-telegram en torneosClub.js.
+  async function generarInvitadoTelegram(participanteId, lado) {
+    const res = await fetch(`${API_URL}/api/torneos-club/participantes/${participanteId}/invitado-telegram`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ lado }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.error || "No se pudo generar el enlace de avisos." };
+    }
+    return { datos: await res.json() };
+  }
+
   async function sortearParejas(cuadranteId, jugadorIds) {
     const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/sortear-parejas`, {
       method: "POST",
@@ -453,6 +471,7 @@ async function programarCalendario(partidoId, datos) {
         onCrearParticipante={crearParticipante}
         onBorrarParticipante={borrarParticipante}
         onActualizarParticipante={actualizarParticipante}
+        onGenerarInvitadoTelegram={generarInvitadoTelegram}
         onSortearParejas={sortearParejas}
         onSortearParejasGrupos={sortearParejasGrupos}
         onCambiarEstadoCuadrante={cambiarEstadoCuadrante}
@@ -706,7 +725,7 @@ async function programarCalendario(partidoId, datos) {
 
 function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
-  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSortearParejas, onSortearParejasGrupos,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto,
 }) {
@@ -789,6 +808,7 @@ function TorneoGestion({
                 onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
                 onBorrarParticipante={onBorrarParticipante}
                 onActualizarParticipante={onActualizarParticipante}
+                onGenerarInvitadoTelegram={onGenerarInvitadoTelegram}
                 onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
                 onSortearParejasGrupos={(entradas) => onSortearParejasGrupos(c.id, entradas)}
                 onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
@@ -1125,7 +1145,7 @@ function TorneoCuadrantes({
   );
 }
 
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSortearParejasGrupos, onSortear }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -1273,6 +1293,17 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     setMensaje(null);
     const error = await onActualizarParticipante(participanteId, datos);
     setMensaje(error ? { tipo: "error", texto: error } : { tipo: "ok", texto: "Participante vinculado." });
+  }
+
+  // Alta de avisos de Telegram para un invitado puntual (sin ficha del
+  // club) en un solo paso — ver comentario de generarInvitadoTelegram más
+  // arriba. Devuelve el resultado (o el error) para que FilaParticipante
+  // pueda mostrar directamente el enlace generado.
+  async function generarTelegramParticipante(participanteId, lado) {
+    setMensaje(null);
+    const { error, datos } = await onGenerarInvitadoTelegram(participanteId, lado);
+    if (error) setMensaje({ tipo: "error", texto: error });
+    return { error, datos };
   }
 
   return (
@@ -1441,6 +1472,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
             esParejas={esParejas}
             onQuitar={() => onBorrarParticipante(p.id)}
             onVincular={vincularParticipante}
+            onGenerarTelegram={generarTelegramParticipante}
           />
         ))}
       </ul>
@@ -1479,10 +1511,15 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
 // jugador1Id/jugador2Id tal cual; en el resto de casos la etiqueta puede
 // llevar el nombre de una pareja separado por " / " para mostrar a quién
 // corresponde cada botón.
-function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular }) {
+function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onGenerarTelegram }) {
   const [vinculando, setVinculando] = useState(null); // "jugador1" | "jugador2" | null
   const [seleccion, setSeleccion] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // Estado del alta de avisos de Telegram para invitados puntuales (sin
+  // ficha del club): null mientras no se ha pedido; "cargando" mientras se
+  // genera; { url, error } con el resultado, para mostrar el enlace o el
+  // fallo directamente bajo esta fila.
+  const [telegram, setTelegram] = useState(null);
 
   const nombres = p.etiqueta.split(" / ");
   const faltaJugador1 = !p.jugador1Id;
@@ -1495,6 +1532,26 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular }) {
     setEnviando(false);
     setVinculando(null);
     setSeleccion("");
+  }
+
+  async function generarTelegram(lado) {
+    setTelegram("cargando");
+    const { error, datos } = await onGenerarTelegram(p.id, lado);
+    if (error) {
+      setTelegram({ error });
+      return;
+    }
+    const url = datos.urlCheckIn || datos.urlTelegram;
+    if (!url) {
+      setTelegram({ error: "Faltan avisos por configurar en el servidor (FRONTEND_URL o el bot de Telegram)." });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setTelegram({ url, copiado: true });
+    } catch {
+      setTelegram({ url, copiado: false });
+    }
   }
 
   return (
@@ -1520,6 +1577,28 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular }) {
               Vincular "{nombres[1]}" a jugador del club
             </button>
           )}
+          {faltaJugador1 && (
+            <button
+              type="button"
+              className="admin-link-btn"
+              disabled={telegram === "cargando"}
+              onClick={() => generarTelegram("jugador1")}
+              title="Para un invitado puntual que solo quiere avisos por Telegram de este torneo, sin darlo de alta como jugador del club"
+            >
+              {telegram === "cargando" ? "Generando…" : `Avisos por Telegram${esParejas && nombres.length > 1 ? ` para "${nombres[0]}"` : ""}`}
+            </button>
+          )}
+          {faltaJugador2 && (
+            <button
+              type="button"
+              className="admin-link-btn"
+              disabled={telegram === "cargando"}
+              onClick={() => generarTelegram("jugador2")}
+              title="Para un invitado puntual que solo quiere avisos por Telegram de este torneo, sin darlo de alta como jugador del club"
+            >
+              {telegram === "cargando" ? "Generando…" : `Avisos por Telegram para "${nombres[1]}"`}
+            </button>
+          )}
           <button type="button" className="admin-link-btn" onClick={onQuitar}>Quitar</button>
         </div>
       </div>
@@ -1536,6 +1615,16 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular }) {
           </button>
           <button type="button" className="admin-link-btn" onClick={() => setVinculando(null)}>Cancelar</button>
         </div>
+      )}
+      {telegram && telegram !== "cargando" && (
+        telegram.error ? (
+          <p className="admin-msg admin-msg-error" style={{ margin: 0 }}>{telegram.error}</p>
+        ) : (
+          <p className="admin-hint" style={{ margin: 0 }}>
+            {telegram.copiado ? "Enlace de avisos copiado al portapapeles: " : "Enlace de avisos: "}
+            <a href={telegram.url} target="_blank" rel="noopener noreferrer">{telegram.url}</a>
+          </p>
+        )
       )}
     </li>
   );
