@@ -383,8 +383,17 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
   const [ultimaVisitaLado, setUltimaVisitaLado] = useState([null, null]);
   const [fase, setFase] = useState("jugando"); // jugando | enviando | error
   const [errorEnvio, setErrorEnvio] = useState("");
+  // Cuando una visita termina (gana, bust o 3 dardos) y al empezarla ya se
+  // podía cerrar en 3 dardos con la modalidad de cierre del partido, se le
+  // pregunta al jugador cuántos dardos de esa visita ha tirado al
+  // doble/máster antes de dar la visita por cerrada — dato que no se puede
+  // deducir solo de la puntuación (sobre todo en modo diana/números, donde
+  // puede haber dardos "de paso" antes del de cierre) y hace falta para el
+  // % de cierre real (ver CuadroJugador). Mientras haya una pregunta
+  // pendiente el teclado de entrada se deshabilita.
+  const [preguntaDoble, setPreguntaDoble] = useState(null);
 
-  function registrarVisita(jugadorId, dardos, puntos, esCheckout, intentoCierre) {
+  function registrarVisita(jugadorId, dardos, puntos, esCheckout, dardosAlDoble) {
     setEstadisticas((prev) => {
       const actual = prev[jugadorId] || { dardos: 0, puntos: 0, visitas100: 0, visitas140: 0, visitas180: 0, intentosCierre: 0, cierresConvertidos: 0 };
       const actualizado = {
@@ -394,16 +403,54 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
         visitas100: actual.visitas100 + (puntos >= 100 && puntos < 140 ? 1 : 0),
         visitas140: actual.visitas140 + (puntos >= 140 && puntos < 180 ? 1 : 0),
         visitas180: actual.visitas180 + (puntos >= 180 ? 1 : 0),
-        intentosCierre: actual.intentosCierre + (intentoCierre ? 1 : 0),
-        cierresConvertidos: actual.cierresConvertidos + (intentoCierre && esCheckout ? 1 : 0),
+        intentosCierre: actual.intentosCierre + (dardosAlDoble || 0),
+        cierresConvertidos: actual.cierresConvertidos + (esCheckout && dardosAlDoble > 0 ? 1 : 0),
       };
       if (esCheckout) actualizado.checkout = puntos;
       return { ...prev, [jugadorId]: actualizado };
     });
   }
 
+  function concluirVisita(jugadorId, ladoIdx, puntosVisita, dardosCount, gana, dardosAlDoble) {
+    registrarVisita(jugadorId, dardosCount, puntosVisita, gana, dardosAlDoble);
+    setUltimaVisitaLado((prev) => prev.map((v, i) => (i === ladoIdx ? puntosVisita : v)));
+    if (gana) {
+      setGanadorIdx(ladoIdx);
+    } else {
+      setFinVisita(true);
+    }
+  }
+
+  // Respuesta a la pregunta de "¿cuántos dardos al doble?" (ver
+  // preguntaDoble arriba): retoma el cierre de la visita que se había
+  // dejado a medias, ya con el dato de intentos de cierre.
+  function responderDardosDoble(dardosAlDoble) {
+    const p = preguntaDoble;
+    if (!p) return;
+    setPreguntaDoble(null);
+    if (p.origen === "total") {
+      registrarVisita(p.jugadorId, p.dardosCount, p.puntosVisita, p.gana, dardosAlDoble);
+      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === p.turnoIdx ? p.puntosVisita : v)));
+      if (p.gana) {
+        setUnidades(p.nuevasUnidades);
+        setTiradasVisita([{ resultado: p.resultado, pos: undefined }]);
+        setMensaje(p.nuevoMensaje);
+        setGanadorIdx(p.turnoIdx);
+        return;
+      }
+      setUnidades(p.avanzar.unidades);
+      setTurnoIdx(p.avanzar.turnoIdx);
+      setTiradasVisita([]);
+      setRestanteInicioVisita(p.avanzar.restante);
+      setMensaje("");
+      setFinVisita(false);
+      return;
+    }
+    concluirVisita(p.jugadorId, p.turnoIdx, p.puntosVisita, p.dardosCount, p.gana, dardosAlDoble);
+  }
+
   function tirar(resultado, pos) {
-    if (ganadorIdx !== null || finVisita) return;
+    if (ganadorIdx !== null || finVisita || preguntaDoble) return;
     setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita, estadisticas, ultimaVisitaLado })]);
 
     const unidad = unidades[turnoIdx];
@@ -442,36 +489,42 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
     setMensaje(nuevoMensaje);
 
     const jugadorId = idJugadorTirador(partida, turnoIdx, unidad);
-    // Se considera "intento de cierre" cuando el resto al empezar la visita
-    // ya se podía cerrar en 3 dardos con la modalidad de cierre del
-    // partido (y la unidad ya está abierta): así se puede calcular luego el
-    // % de cierre real del jugador (cierres convertidos / intentos), no solo
-    // si ha ganado o no.
-    const intentoCierre = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, partida.cierre);
+    // Si al empezar esta visita el resto ya se podía cerrar en 3 dardos con
+    // la modalidad de cierre del partido (y la unidad ya estaba abierta), al
+    // acabar la visita se pregunta cuántos dardos ha tirado al doble/máster
+    // (ver preguntaDoble) para el % de cierre real, en vez de darlo por
+    // "intentado" sin más.
+    const intentoPosible = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, partida.cierre);
 
     if (gana) {
       const puntosVisita = nuevasTiradas.reduce((s, t) => s + t.resultado.valor, 0);
-      registrarVisita(jugadorId, nuevasTiradas.length, puntosVisita, true, intentoCierre);
-      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? puntosVisita : v)));
-      setGanadorIdx(turnoIdx);
+      if (intentoPosible) {
+        setPreguntaDoble({ jugadorId, turnoIdx, puntosVisita, dardosCount: nuevasTiradas.length, gana: true, origen: "dardos" });
+      } else {
+        concluirVisita(jugadorId, turnoIdx, puntosVisita, nuevasTiradas.length, true, 0);
+      }
       return;
     }
     if (bust) {
-      registrarVisita(jugadorId, nuevasTiradas.length, 0, false, intentoCierre);
-      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? 0 : v)));
-      setFinVisita(true);
+      if (intentoPosible) {
+        setPreguntaDoble({ jugadorId, turnoIdx, puntosVisita: 0, dardosCount: nuevasTiradas.length, gana: false, origen: "dardos" });
+      } else {
+        concluirVisita(jugadorId, turnoIdx, 0, nuevasTiradas.length, false, 0);
+      }
       return;
     }
     if (nuevasTiradas.length >= 3) {
       const puntosVisita = nuevasTiradas.reduce((s, t) => s + t.resultado.valor, 0);
-      registrarVisita(jugadorId, 3, puntosVisita, false, intentoCierre);
-      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? puntosVisita : v)));
-      setFinVisita(true);
+      if (intentoPosible) {
+        setPreguntaDoble({ jugadorId, turnoIdx, puntosVisita, dardosCount: 3, gana: false, origen: "dardos" });
+      } else {
+        concluirVisita(jugadorId, turnoIdx, puntosVisita, 3, false, 0);
+      }
     }
   }
 
   function tirarVisitaTotal(valorTotal, { cierreValido }) {
-    if (ganadorIdx !== null || finVisita) return;
+    if (ganadorIdx !== null || finVisita || preguntaDoble) return;
     if (!Number.isFinite(valorTotal) || valorTotal < 0 || valorTotal > 180) {
       setMensaje("La puntuación de una visita tiene que estar entre 0 y 180.");
       return;
@@ -511,17 +564,8 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
     }
 
     const jugadorId = idJugadorTirador(partida, turnoIdx, unidad);
-    const intentoCierre = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, partida.cierre);
-    registrarVisita(jugadorId, 3, bust ? 0 : valorTotal, gana, intentoCierre);
-    setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? (bust ? 0 : valorTotal) : v)));
-
-    if (gana) {
-      setUnidades(nuevasUnidades);
-      setTiradasVisita([{ resultado, pos: undefined }]);
-      setMensaje(nuevoMensaje);
-      setGanadorIdx(turnoIdx);
-      return;
-    }
+    const intentoPosible = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, partida.cierre);
+    const puntosVisita = bust ? 0 : valorTotal;
 
     // En este modo cada envío ya es la visita entera (a diferencia de
     // diana/números, donde una visita puede quedar a medias antes de los 3
@@ -533,10 +577,34 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
         : u
     );
     const siguienteIdx = (turnoIdx + 1) % conIntegranteActualizado.length;
-    setUnidades(conIntegranteActualizado);
-    setTurnoIdx(siguienteIdx);
+    const avanzar = { unidades: conIntegranteActualizado, turnoIdx: siguienteIdx, restante: conIntegranteActualizado[siguienteIdx].restante };
+
+    if (intentoPosible) {
+      // Se deja ver el resultado de la visita (resto actualizado, mensaje de
+      // bust si lo hay) mientras se espera la respuesta, igual que en modo
+      // diana/números — solo se retrasa el registro de estadísticas y el
+      // avance de turno hasta responder.
+      setUnidades(nuevasUnidades);
+      setMensaje(nuevoMensaje);
+      setPreguntaDoble({ jugadorId, turnoIdx, puntosVisita, dardosCount: 3, gana, origen: "total", resultado, nuevoMensaje, nuevasUnidades, avanzar });
+      return;
+    }
+
+    registrarVisita(jugadorId, 3, puntosVisita, gana, 0);
+    setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? puntosVisita : v)));
+
+    if (gana) {
+      setUnidades(nuevasUnidades);
+      setTiradasVisita([{ resultado, pos: undefined }]);
+      setMensaje(nuevoMensaje);
+      setGanadorIdx(turnoIdx);
+      return;
+    }
+
+    setUnidades(avanzar.unidades);
+    setTurnoIdx(avanzar.turnoIdx);
     setTiradasVisita([]);
-    setRestanteInicioVisita(conIntegranteActualizado[siguienteIdx].restante);
+    setRestanteInicioVisita(avanzar.restante);
     // El mensaje de bust se descarta al pasar de turno (iría pegado al
     // jugador equivocado); el marcador ya deja ver que no se ha movido.
     setMensaje("");
@@ -544,7 +612,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
   }
 
   function deshacer() {
-    if (historial.length === 0) return;
+    if (historial.length === 0 || preguntaDoble) return;
     const previo = historial[historial.length - 1];
     setHistorial((h) => h.slice(0, -1));
     setUnidades(previo.unidades);
@@ -591,11 +659,11 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
 
   const unidadActual = unidades[turnoIdx];
   const sugerencia = useMemo(() => {
-    if (!unidadActual || ganadorIdx !== null || finVisita || !unidadActual.abierto) return null;
+    if (!unidadActual || ganadorIdx !== null || finVisita || preguntaDoble || !unidadActual.abierto) return null;
     const dardosDisponibles = 3 - tiradasVisita.length;
     if (dardosDisponibles <= 0) return null;
     return buscarCierre(unidadActual.restante, dardosDisponibles, partida.cierre);
-  }, [unidadActual, tiradasVisita.length, partida.cierre, ganadorIdx, finVisita]);
+  }, [unidadActual, tiradasVisita.length, partida.cierre, ganadorIdx, finVisita, preguntaDoble]);
 
   return (
     <div>
@@ -652,38 +720,54 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
 
       {fase === "jugando" && ganadorIdx === null && (
         <>
+          {preguntaDoble && (
+            <div className="admin-msg admin-msg-ok marcador-pregunta-doble">
+              <p style={{ margin: "0 0 .5rem" }}>
+                ¿Cuántos dardos de esta visita ha tirado <strong>{tiradorActual(unidades[preguntaDoble.turnoIdx])}</strong> al doble/máster?
+              </p>
+              <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+                {[0, 1, 2, 3].map((n) => (
+                  <button key={n} type="button" className="admin-tab" onClick={() => responderDardosDoble(n)}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="live-tournament-toggle">
             <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
             <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
             <button type="button" className={modoEntrada === "total" ? "active" : ""} onClick={() => setModoEntrada("total")}>Puntuación total</button>
           </div>
-          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />}
-          {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />}
-          {modoEntrada === "total" && <TecladoPuntuacion cierre={partida.cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita} />}
+          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
+          {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
+          {modoEntrada === "total" && <TecladoPuntuacion cierre={partida.cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
           <p className="marcador-tiradas-visita">
             Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
           </p>
           {sugerencia && <p className="admin-msg admin-msg-ok">Sugerencia de cierre: {sugerencia.join(" → ")}</p>}
           {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
-          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-            {/* En modo "total" cada envío ya avanza solo al siguiente jugador (ver
-                tirarVisitaTotal), así que este botón se oculta salvo que finVisita
-                se haya quedado a true de antes de cambiar a este modo a medio turno
-                — caso raro, pero si pasara no queremos dejar el teclado bloqueado
-                sin forma de continuar. */}
-            {(modoEntrada !== "total" || finVisita) && (
-              <button
-                type="button"
-                className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
-                onClick={() => finalizarVisita(unidades, turnoIdx)}
-              >
-                {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
+          {!preguntaDoble && (
+            <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+              {/* En modo "total" cada envío ya avanza solo al siguiente jugador (ver
+                  tirarVisitaTotal), así que este botón se oculta salvo que finVisita
+                  se haya quedado a true de antes de cambiar a este modo a medio turno
+                  — caso raro, pero si pasara no queremos dejar el teclado bloqueado
+                  sin forma de continuar. */}
+              {(modoEntrada !== "total" || finVisita) && (
+                <button
+                  type="button"
+                  className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+                  onClick={() => finalizarVisita(unidades, turnoIdx)}
+                >
+                  {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
+                </button>
+              )}
+              <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
+                Deshacer {modoEntrada === "total" ? "última visita" : "último dardo"}
               </button>
-            )}
-            <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-              Deshacer {modoEntrada === "total" ? "última visita" : "último dardo"}
-            </button>
-          </div>
+            </div>
+          )}
         </>
       )}
 
