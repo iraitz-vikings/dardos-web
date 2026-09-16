@@ -629,16 +629,16 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
                   titulo: "Esta partida",
                   filas: [
                     ["Promedio", fmtProm(promedio3Dardos(legActual.puntos, legActual.dardos))],
-                    ["Última entrada", ultimaVisitaLado[i] ?? "—"],
-                    ["Dardos usados", legActual.dardos || 0],
+                    ["Última", ultimaVisitaLado[i] ?? "—"],
+                    ["Dardos", legActual.dardos || 0],
                   ],
                 },
                 {
                   titulo: "Partido",
                   filas: [
-                    ["% de cierre", fmtPct(partidoTotal.cierresConvertidos, partidoTotal.intentosCierre)],
-                    ["Cierre más alto", partidoTotal.checkoutMax ?? "—"],
-                    ["Promedio partido", fmtProm(promedio3Dardos(partidoTotal.puntos, partidoTotal.dardos))],
+                    ["% cierre", fmtPct(partidoTotal.cierresConvertidos, partidoTotal.intentosCierre)],
+                    ["Cierre máx.", partidoTotal.checkoutMax ?? "—"],
+                    ["Prom. partido", fmtProm(promedio3Dardos(partidoTotal.puntos, partidoTotal.dardos))],
                   ],
                 },
               ]}
@@ -873,15 +873,15 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
                   titulo: "Esta partida",
                   filas: [
                     ["Marcas/visita", fmtProm(legActual.visitas ? legActual.marcas / legActual.visitas : null)],
-                    ["Última entrada", ultimaVisitaLado[i] ?? "—"],
-                    ["Visitas jugadas", legActual.visitas || 0],
+                    ["Última", ultimaVisitaLado[i] ?? "—"],
+                    ["Visitas", legActual.visitas || 0],
                   ],
                 },
                 {
                   titulo: "Partido",
                   filas: [
                     ["Mejor visita", partidoTotal.mejorVisita ?? "—"],
-                    ["Marcas/visita partido", fmtProm(partidoTotal.visitas ? partidoTotal.marcas / partidoTotal.visitas : null)],
+                    ["Marcas/visita", fmtProm(partidoTotal.visitas ? partidoTotal.marcas / partidoTotal.visitas : null)],
                     ["Total marcas", partidoTotal.marcas || 0],
                   ],
                 },
