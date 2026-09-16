@@ -750,6 +750,74 @@ const IDIOMAS_MENSAJE_AVISO_LIGA = [
   { id: "fr", etiqueta: "Francés" },
 ];
 
+// Texto por defecto del club para cada tipo de aviso, tal cual está escrito
+// en src/routes/torneosClub.js (resolverMensaje) — se muestra como ejemplo
+// de referencia en el panel, con un botón para copiarlo al campo y partir
+// de ahí en vez de escribir desde cero. Mismo contenido que
+// DEFECTOS_MENSAJE_AVISO de AdminTorneosClub.jsx.
+const DEFECTOS_MENSAJE_AVISO_LIGA = {
+  bienvenida: {
+    titulo: {
+      es: "¡Ya estás en el cuadro! {competicion}",
+      eu: "Jada koadroan zaude! {competicion}",
+      fr: "Tu es dans le tableau ! {competicion}",
+    },
+    cuerpo: {
+      es: "Se ha hecho el sorteo y ya tienes tu sitio en el cuadro. ¡Mucha suerte!",
+      eu: "Zozketa egin da eta jada baduzu zure lekua koadroan. Zorte on!",
+      fr: "Le tirage au sort a eu lieu et tu as déjà ta place dans le tableau. Bonne chance !",
+    },
+  },
+  enCurso: {
+    titulo: {
+      es: "¡Tu partido empieza ahora! {competicion}",
+      eu: "Zure partida orain hasten da! {competicion}",
+      fr: "Ton match commence maintenant ! {competicion}",
+    },
+    cuerpo: {
+      es: "{enfrentamiento} en {maquina}.",
+      eu: "{enfrentamiento} ({maquina} makinan).",
+      fr: "{enfrentamiento} sur {maquina}.",
+    },
+  },
+  programado: {
+    titulo: {
+      es: "Partido programado: {competicion}",
+      eu: "Partida programatuta: {competicion}",
+      fr: "Match programmé : {competicion}",
+    },
+    cuerpo: {
+      es: "{enfrentamiento} el {fecha} en {maquina}.",
+      eu: "{enfrentamiento} ({fecha}) — {maquina} makina.",
+      fr: "{enfrentamiento} le {fecha} sur {maquina}.",
+    },
+  },
+  eliminado: {
+    titulo: {
+      es: "Eliminado: {competicion}",
+      eu: "Kanporatuta: {competicion}",
+      fr: "Éliminé : {competicion}",
+    },
+    cuerpo: {
+      es: "Has quedado eliminado del cuadrante. ¡Gracias por participar!",
+      eu: "Koadrotik kanporatuta zaude. Eskerrik asko parte hartzeagatik!",
+      fr: "Tu as été éliminé du tableau. Merci d'avoir participé !",
+    },
+  },
+  campeon: {
+    titulo: {
+      es: "¡Campeón! {competicion}",
+      eu: "Txapelduna! {competicion}",
+      fr: "Champion ! {competicion}",
+    },
+    cuerpo: {
+      es: "¡Enhorabuena, has ganado el cuadrante!",
+      eu: "Zorionak, koadroa irabazi duzu!",
+      fr: "Félicitations, tu as remporté le tableau !",
+    },
+  },
+};
+
 // Igual que MensajesAvisos de AdminTorneosClub.jsx pero para el cuadrante
 // final de una liga: sobreescribe, opcionalmente y en cualquier idioma, el
 // texto de los 5 avisos automáticos. Un campo vacío sigue usando el texto
@@ -817,30 +885,46 @@ function MensajesAvisosLiga({ liga, token, onRecargar }) {
         ))}
       </div>
 
-      {TIPOS_MENSAJE_AVISO_LIGA.map((t) => (
-        <div key={t.clave} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
-          <h4 style={{ marginTop: 0 }}>{t.etiqueta}</h4>
-          <p className="admin-hint" style={{ marginTop: 0 }}>Datos disponibles: {t.placeholders}</p>
-          <label>
-            Título (opcional)
-            <input
-              type="text"
-              value={valor(t.clave, "titulo")}
-              onChange={(e) => cambiar(t.clave, "titulo", e.target.value)}
-              placeholder="Texto por defecto del club"
-            />
-          </label>
-          <label>
-            Cuerpo (opcional)
-            <textarea
-              rows={2}
-              value={valor(t.clave, "cuerpo")}
-              onChange={(e) => cambiar(t.clave, "cuerpo", e.target.value)}
-              placeholder="Texto por defecto del club"
-            />
-          </label>
-        </div>
-      ))}
+      {TIPOS_MENSAJE_AVISO_LIGA.map((t) => {
+        const defecto = DEFECTOS_MENSAJE_AVISO_LIGA[t.clave];
+        return (
+          <div key={t.clave} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
+            <h4 style={{ marginTop: 0 }}>{t.etiqueta}</h4>
+            <p className="admin-hint" style={{ marginTop: 0 }}>Datos disponibles: {t.placeholders}</p>
+            <p className="admin-hint" style={{ marginTop: 0, fontStyle: "italic" }}>
+              Mensaje por defecto del club: «{defecto.titulo[idioma]}» — «{defecto.cuerpo[idioma]}»
+            </p>
+            <label>
+              Título (opcional)
+              <input
+                type="text"
+                value={valor(t.clave, "titulo")}
+                onChange={(e) => cambiar(t.clave, "titulo", e.target.value)}
+                placeholder="Texto por defecto del club"
+              />
+            </label>
+            <label>
+              Cuerpo (opcional)
+              <textarea
+                rows={2}
+                value={valor(t.clave, "cuerpo")}
+                onChange={(e) => cambiar(t.clave, "cuerpo", e.target.value)}
+                placeholder="Texto por defecto del club"
+              />
+            </label>
+            <button
+              type="button"
+              className="admin-link-btn"
+              onClick={() => {
+                cambiar(t.clave, "titulo", defecto.titulo[idioma]);
+                cambiar(t.clave, "cuerpo", defecto.cuerpo[idioma]);
+              }}
+            >
+              Usar el mensaje por defecto como plantilla
+            </button>
+          </div>
+        );
+      })}
 
       <button type="button" disabled={guardando} onClick={guardar}>
         {guardando ? "Guardando…" : "Guardar mensajes"}
