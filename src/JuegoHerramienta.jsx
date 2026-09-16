@@ -12,6 +12,9 @@ import {
   marcasDelDardo,
   marcasVacias,
   NUMEROS_CRICKET,
+  promedio3Dardos,
+  sumarEstadisticas501,
+  sumarEstadisticasCricket,
   tiradorActual,
 } from "./dardosLogica.js";
 
@@ -288,14 +291,67 @@ function idJugadorTirador(partida, ladoIdx, unidad) {
   return ids[unidad.siguienteIntegranteIdx];
 }
 
-// --- Resumen de marcador de la partida (legs ganados) ----------------------
+// --- Cabecera de la partida (formato, sin repetir el resultado: eso ahora
+// va dentro de la tarjeta de cada jugador, ver CuadroJugador) --------------
 
-function MarcadorLegs({ partida, numeroLeg }) {
+function CabeceraPartida({ partida, numeroLeg }) {
   return (
-    <p className="marcador-tiradas-visita" style={{ fontSize: "1.1rem" }}>
-      <strong>{partida.etiqueta1}</strong> {partida.legsGanados1} — {partida.legsGanados2} <strong>{partida.etiqueta2}</strong>
-      {" "}(al mejor de {partida.alMejorDe}) · Leg {numeroLeg}
+    <p className="marcador-tiradas-visita" style={{ textAlign: "center" }}>
+      Al mejor de {partida.alMejorDe} · Leg {numeroLeg}
     </p>
+  );
+}
+
+function fmtProm(n) {
+  return n == null ? "—" : n.toFixed(1);
+}
+function fmtPct(convertidos, intentos) {
+  return intentos ? `${Math.round((convertidos / intentos) * 100)}%` : "—";
+}
+
+// --- Tarjeta de jugador/equipo, con el resultado del partido y las
+// estadísticas dentro del cuadro (a petición de Iraitz, 2026-09-16, en vez
+// del texto "Turno de X" que había debajo de los puntos: ahora quién tira
+// se ve rellenando el cuadro en naranja, ver .marcador-jugador-activo en
+// styles.css). Las estadísticas van en dos slides independientes por
+// jugador (navegación propia con los puntitos de abajo), pensadas para
+// verse sin más explicación: la 1ª es de este leg, la 2ª del partido
+// completo hasta ahora.
+function CuadroJugador({ unidad, esInicioLeg, activo, ganador, legsGanados, valorPrincipal, dardoInfo, slides }) {
+  const [slide, setSlide] = useState(0);
+  return (
+    <div className={`marcador-jugador ${activo ? "marcador-jugador-activo" : ""} ${ganador ? "marcador-jugador-ganador" : ""}`}>
+      <strong>
+        {esInicioLeg && <span className="marcador-punto-inicio" title="Ha empezado este leg">●</span>}
+        {unidad.etiqueta}
+      </strong>
+      {unidad.integrantes.length > 1 && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(unidad)}</span>}
+
+      <span className="marcador-resultado-partido">Legs: {legsGanados}</span>
+      <span className="marcador-restante">{valorPrincipal}</span>
+      {activo && dardoInfo && <span className="marcador-dardo-info">{dardoInfo}</span>}
+
+      <div className="marcador-stats-slide">
+        <p className="marcador-stats-titulo">{slides[slide].titulo}</p>
+        {slides[slide].filas.map(([etiqueta, valor]) => (
+          <p key={etiqueta} className="marcador-stats-fila">
+            <span>{etiqueta}</span>
+            <strong>{valor}</strong>
+          </p>
+        ))}
+        <div className="marcador-stats-dots">
+          {slides.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              className={`marcador-stats-dot ${slide === i ? "marcador-stats-dot-activo" : ""}`}
+              aria-label={s.titulo}
+              onClick={() => setSlide(i)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -318,12 +374,19 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
   const [modoEntrada, setModoEntrada] = useState("diana");
   const [finVisita, setFinVisita] = useState(false);
   const [estadisticas, setEstadisticas] = useState({});
+  // Puntos de la última visita de cada lado (0/1) EN ESTE LEG — no del
+  // jugador que le tocara tirar ahora, sino de quien acaba de tirar; se
+  // muestra en la tarjeta (slide "Esta partida"). Aparte de `estadisticas`
+  // (que va por jugadorId, para poder mandarlo tal cual al backend) porque
+  // aquí interesa por lado/tarjeta, no por persona (relevante en parejas con
+  // marcador compartido).
+  const [ultimaVisitaLado, setUltimaVisitaLado] = useState([null, null]);
   const [fase, setFase] = useState("jugando"); // jugando | enviando | error
   const [errorEnvio, setErrorEnvio] = useState("");
 
-  function registrarVisita(jugadorId, dardos, puntos, esCheckout) {
+  function registrarVisita(jugadorId, dardos, puntos, esCheckout, intentoCierre) {
     setEstadisticas((prev) => {
-      const actual = prev[jugadorId] || { dardos: 0, puntos: 0, visitas100: 0, visitas140: 0, visitas180: 0 };
+      const actual = prev[jugadorId] || { dardos: 0, puntos: 0, visitas100: 0, visitas140: 0, visitas180: 0, intentosCierre: 0, cierresConvertidos: 0 };
       const actualizado = {
         ...actual,
         dardos: actual.dardos + dardos,
@@ -331,6 +394,8 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
         visitas100: actual.visitas100 + (puntos >= 100 && puntos < 140 ? 1 : 0),
         visitas140: actual.visitas140 + (puntos >= 140 && puntos < 180 ? 1 : 0),
         visitas180: actual.visitas180 + (puntos >= 180 ? 1 : 0),
+        intentosCierre: actual.intentosCierre + (intentoCierre ? 1 : 0),
+        cierresConvertidos: actual.cierresConvertidos + (intentoCierre && esCheckout ? 1 : 0),
       };
       if (esCheckout) actualizado.checkout = puntos;
       return { ...prev, [jugadorId]: actualizado };
@@ -339,7 +404,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
 
   function tirar(resultado, pos) {
     if (ganadorIdx !== null || finVisita) return;
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita, estadisticas })]);
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita, estadisticas, ultimaVisitaLado })]);
 
     const unidad = unidades[turnoIdx];
     const yaAbierto = unidad.abierto;
@@ -377,21 +442,30 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
     setMensaje(nuevoMensaje);
 
     const jugadorId = idJugadorTirador(partida, turnoIdx, unidad);
+    // Se considera "intento de cierre" cuando el resto al empezar la visita
+    // ya se podía cerrar en 3 dardos con la modalidad de cierre del
+    // partido (y la unidad ya está abierta): así se puede calcular luego el
+    // % de cierre real del jugador (cierres convertidos / intentos), no solo
+    // si ha ganado o no.
+    const intentoCierre = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, partida.cierre);
 
     if (gana) {
       const puntosVisita = nuevasTiradas.reduce((s, t) => s + t.resultado.valor, 0);
-      registrarVisita(jugadorId, nuevasTiradas.length, puntosVisita, true);
+      registrarVisita(jugadorId, nuevasTiradas.length, puntosVisita, true, intentoCierre);
+      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? puntosVisita : v)));
       setGanadorIdx(turnoIdx);
       return;
     }
     if (bust) {
-      registrarVisita(jugadorId, nuevasTiradas.length, 0, false);
+      registrarVisita(jugadorId, nuevasTiradas.length, 0, false, intentoCierre);
+      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? 0 : v)));
       setFinVisita(true);
       return;
     }
     if (nuevasTiradas.length >= 3) {
       const puntosVisita = nuevasTiradas.reduce((s, t) => s + t.resultado.valor, 0);
-      registrarVisita(jugadorId, 3, puntosVisita, false);
+      registrarVisita(jugadorId, 3, puntosVisita, false, intentoCierre);
+      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? puntosVisita : v)));
       setFinVisita(true);
     }
   }
@@ -409,7 +483,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
       );
       return;
     }
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita, estadisticas })]);
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita, estadisticas, ultimaVisitaLado })]);
 
     const resultado = { etiqueta: `${valorTotal} (visita)`, numero: null, multiplicador: null, valor: valorTotal, esDoble: false, esTriple: false, esBull: false };
     let nuevoMensaje = "";
@@ -437,7 +511,9 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
     }
 
     const jugadorId = idJugadorTirador(partida, turnoIdx, unidad);
-    registrarVisita(jugadorId, 3, bust ? 0 : valorTotal, gana);
+    const intentoCierre = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, partida.cierre);
+    registrarVisita(jugadorId, 3, bust ? 0 : valorTotal, gana, intentoCierre);
+    setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? (bust ? 0 : valorTotal) : v)));
 
     if (gana) {
       setUnidades(nuevasUnidades);
@@ -479,6 +555,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
     setMensaje(previo.mensaje);
     setFinVisita(previo.finVisita);
     setEstadisticas(previo.estadisticas);
+    setUltimaVisitaLado(previo.ultimaVisitaLado);
   }
 
   function finalizarVisita(unidadesActualizadas, turnoQueTiro) {
@@ -522,18 +599,47 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
 
   return (
     <div>
-      <MarcadorLegs partida={partida} numeroLeg={partida.legs.length + 1} />
+      <CabeceraPartida partida={partida} numeroLeg={partida.legs.length + 1} />
       <div className="marcador-jugadores">
-        {unidades.map((u, i) => (
-          <div key={u.id} className={`marcador-jugador ${turnoIdx === i && ganadorIdx === null ? "marcador-jugador-activo" : ""} ${ganadorIdx === i ? "marcador-jugador-ganador" : ""}`}>
-            <strong>
-              {i === inicio.turnoIdx && <span className="marcador-punto-inicio" title="Ha empezado este leg">●</span>}
-              {u.etiqueta}
-            </strong>
-            {u.integrantes.length > 1 && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(u)}</span>}
-            <span className="marcador-restante">{u.restante}</span>
-          </div>
-        ))}
+        {unidades.map((u, i) => {
+          const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
+          const legActual = sumarEstadisticas501(...idsLado.map((id) => estadisticas[id]));
+          const partidoTotal = sumarEstadisticas501(
+            ...idsLado.map((id) => estadisticas[id]),
+            ...partida.legs.flatMap((leg) => idsLado.map((id) => leg.estadisticas?.[id]))
+          );
+          const activo = turnoIdx === i && ganadorIdx === null;
+          return (
+            <CuadroJugador
+              key={u.id}
+              unidad={u}
+              esInicioLeg={i === inicio.turnoIdx}
+              activo={activo}
+              ganador={ganadorIdx === i}
+              legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
+              valorPrincipal={u.restante}
+              dardoInfo={activo ? (modoEntrada === "total" ? "Introduce el total" : `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3`) : null}
+              slides={[
+                {
+                  titulo: "Esta partida",
+                  filas: [
+                    ["Promedio", fmtProm(promedio3Dardos(legActual.puntos, legActual.dardos))],
+                    ["Última entrada", ultimaVisitaLado[i] ?? "—"],
+                    ["Dardos usados", legActual.dardos || 0],
+                  ],
+                },
+                {
+                  titulo: "Partido",
+                  filas: [
+                    ["% de cierre", fmtPct(partidoTotal.cierresConvertidos, partidoTotal.intentosCierre)],
+                    ["Cierre más alto", partidoTotal.checkoutMax ?? "—"],
+                    ["Promedio partido", fmtProm(promedio3Dardos(partidoTotal.puntos, partidoTotal.dardos))],
+                  ],
+                },
+              ]}
+            />
+          );
+        })}
       </div>
 
       {fase === "enviando" && <p className="chronicle-status">Guardando el resultado del leg…</p>}
@@ -546,10 +652,6 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
 
       {fase === "jugando" && ganadorIdx === null && (
         <>
-          <p>
-            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong>
-            {modoEntrada === "total" ? " — introduce el total de la visita" : ` — dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3`}
-          </p>
           <div className="live-tournament-toggle">
             <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
             <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
@@ -617,6 +719,9 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
   const [finVisita, setFinVisita] = useState(false);
   const [modoEntrada, setModoEntrada] = useState("diana");
   const [estadisticas, setEstadisticas] = useState({});
+  // Marcas de la última visita de cada lado (0/1) EN ESTE LEG — ver el
+  // comentario equivalente en MarcadorPartida501.
+  const [ultimaVisitaLado, setUltimaVisitaLado] = useState([null, null]);
   const [fase, setFase] = useState("jugando");
   const [errorEnvio, setErrorEnvio] = useState("");
 
@@ -627,14 +732,17 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
 
   function registrarVisita(jugadorId, marcas) {
     setEstadisticas((prev) => {
-      const actual = prev[jugadorId] || { visitas: 0, marcas: 0 };
-      return { ...prev, [jugadorId]: { visitas: actual.visitas + 1, marcas: actual.marcas + marcas } };
+      const actual = prev[jugadorId] || { visitas: 0, marcas: 0, mejorVisita: 0 };
+      return {
+        ...prev,
+        [jugadorId]: { visitas: actual.visitas + 1, marcas: actual.marcas + marcas, mejorVisita: Math.max(actual.mejorVisita, marcas) },
+      };
     });
   }
 
   function tirar(resultado, pos) {
     if (ganadorIdx !== null || finVisita) return;
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, ganadorIdx, mensaje, finVisita, estadisticas })]);
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, ganadorIdx, mensaje, finVisita, estadisticas, ultimaVisitaLado })]);
 
     const info = marcasDelDardo(resultado);
     let nuevasUnidades = unidades;
@@ -662,6 +770,7 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
       const cumpleCondicion = partida.modoCricket === "cutthroat" ? puntosNuevos[turnoIdx] <= mejor : puntosNuevos[turnoIdx] >= mejor;
       if (cumpleCondicion) {
         registrarVisita(jugadorId, marcasVisita);
+        setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? marcasVisita : v)));
         setGanadorIdx(turnoIdx);
         return;
       }
@@ -669,6 +778,7 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
 
     if (nuevasTiradas.length >= 3) {
       registrarVisita(jugadorId, marcasVisita);
+      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === turnoIdx ? marcasVisita : v)));
       setFinVisita(true);
     }
   }
@@ -684,6 +794,7 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
     setMensaje(previo.mensaje);
     setFinVisita(previo.finVisita);
     setEstadisticas(previo.estadisticas);
+    setUltimaVisitaLado(previo.ultimaVisitaLado);
   }
 
   function finalizarVisita(unidadesActualizadas, turnoQueTiro) {
@@ -716,18 +827,47 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
 
   return (
     <div>
-      <MarcadorLegs partida={partida} numeroLeg={partida.legs.length + 1} />
+      <CabeceraPartida partida={partida} numeroLeg={partida.legs.length + 1} />
       <div className="marcador-jugadores">
-        {unidades.map((u, i) => (
-          <div key={u.id} className={`marcador-jugador ${turnoIdx === i && ganadorIdx === null ? "marcador-jugador-activo" : ""} ${ganadorIdx === i ? "marcador-jugador-ganador" : ""}`}>
-            <strong>
-              {i === inicio.turnoIdx && <span className="marcador-punto-inicio" title="Ha empezado este leg">●</span>}
-              {u.etiqueta}
-            </strong>
-            {u.integrantes.length > 1 && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(u)}</span>}
-            <span className="marcador-restante">{puntos[i]}</span>
-          </div>
-        ))}
+        {unidades.map((u, i) => {
+          const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
+          const legActual = sumarEstadisticasCricket(...idsLado.map((id) => estadisticas[id]));
+          const partidoTotal = sumarEstadisticasCricket(
+            ...idsLado.map((id) => estadisticas[id]),
+            ...partida.legs.flatMap((leg) => idsLado.map((id) => leg.estadisticas?.[id]))
+          );
+          const activo = turnoIdx === i && ganadorIdx === null;
+          return (
+            <CuadroJugador
+              key={u.id}
+              unidad={u}
+              esInicioLeg={i === inicio.turnoIdx}
+              activo={activo}
+              ganador={ganadorIdx === i}
+              legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
+              valorPrincipal={puntos[i]}
+              dardoInfo={activo ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
+              slides={[
+                {
+                  titulo: "Esta partida",
+                  filas: [
+                    ["Marcas/visita", fmtProm(legActual.visitas ? legActual.marcas / legActual.visitas : null)],
+                    ["Última entrada", ultimaVisitaLado[i] ?? "—"],
+                    ["Visitas jugadas", legActual.visitas || 0],
+                  ],
+                },
+                {
+                  titulo: "Partido",
+                  filas: [
+                    ["Mejor visita", partidoTotal.mejorVisita ?? "—"],
+                    ["Marcas/visita partido", fmtProm(partidoTotal.visitas ? partidoTotal.marcas / partidoTotal.visitas : null)],
+                    ["Total marcas", partidoTotal.marcas || 0],
+                  ],
+                },
+              ]}
+            />
+          );
+        })}
       </div>
 
       <div className="marcador-tabla-scroll">
@@ -763,10 +903,7 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
 
       {fase === "jugando" && ganadorIdx === null && (
         <>
-          <p style={{ marginTop: "1rem" }}>
-            Turno de <strong>{tiradorActual(unidades[turnoIdx])}</strong> — dardo {Math.min(tiradasVisita.length + 1, 3)} de 3
-          </p>
-          <div className="live-tournament-toggle">
+          <div className="live-tournament-toggle" style={{ marginTop: "1rem" }}>
             <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
             <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
           </div>

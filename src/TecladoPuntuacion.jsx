@@ -33,7 +33,12 @@ export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
 
   return (
     <div className="teclado-puntuacion">
-      <div className="teclado-puntuacion-visor">{valor === "" ? t("marcador.visorPlaceholder") : valor}</div>
+      <div className="teclado-puntuacion-visor-fila">
+        <div className="teclado-puntuacion-visor">{valor}</div>
+        <button type="button" onClick={enviar} disabled={deshabilitada || valor === ""} className="admin-link-btn marcador-boton-destacado teclado-puntuacion-enviar">
+          {t("marcador.enviar")}
+        </button>
+      </div>
 
       <div className="teclado-puntuacion-grid">
         {TECLAS.map((t) => (
@@ -55,10 +60,6 @@ export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
           {t("marcador.ultimoDardoFue").replace("{tipo}", cierre === "master" ? t("marcador.dobleOTriple") : t("marcador.dobleMin"))}
         </label>
       )}
-
-      <button type="button" onClick={enviar} disabled={deshabilitada || valor === ""} className="admin-link-btn marcador-boton-destacado">
-        {t("marcador.enviar")}
-      </button>
     </div>
   );
 }

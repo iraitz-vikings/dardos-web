@@ -476,7 +476,6 @@ function Marcador501() {
       ) : (
         <>
           <p>
-            {t("marcador.turnoDe")} <strong>{tiradorActual(unidades[turnoIdx])}</strong>{" "}
             {modoEntrada === "total" ? t("marcador.introduceTotal") : t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
           </p>
           <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal />
@@ -693,7 +692,7 @@ function MarcadorCricket() {
       ) : (
         <>
           <p style={{ marginTop: "1rem" }}>
-            {t("marcador.turnoDe")} <strong>{tiradorActual(unidades[turnoIdx])}</strong> {t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
+            {t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
           </p>
           <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal={false} />
           {modoEntrada === "diana" ? (
