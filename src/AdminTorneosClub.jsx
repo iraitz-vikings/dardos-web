@@ -67,6 +67,8 @@ export default function AdminTorneosClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  const [temporizadorActivo, setTemporizadorActivo] = useState(false);
+  const [temporizadorMinutos, setTemporizadorMinutos] = useState("");
   const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
   const [imagenCampeonUrl, setImagenCampeonUrl] = useState("");
   const [imagenBienvenidaUrl, setImagenBienvenidaUrl] = useState("");
@@ -125,6 +127,7 @@ useEffect(() => {
         body: JSON.stringify({
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl,
           afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
+          temporizadorActivo, temporizadorMinutos: temporizadorActivo ? temporizadorMinutos : undefined,
           modoJornadas, puntosPorPosicion: modoJornadas ? puntosPorPosicion : undefined,
         }),
       });
@@ -149,6 +152,8 @@ useEffect(() => {
       setInsigniaUrl("");
       setAfectaCalendario(true);
       setNotificaciones(true);
+      setTemporizadorActivo(false);
+      setTemporizadorMinutos("");
       setImagenEliminadoUrl("");
       setImagenCampeonUrl("");
       setImagenBienvenidaUrl("");
@@ -292,6 +297,22 @@ useEffect(() => {
     });
     cargarTorneos();
     return res.ok;
+  }
+
+  // Guarda el temporizador de partidos (activo/minutos) de un torneo ya
+  // creado — ver TemporizadorPanel.
+  async function guardarTemporizador(torneo, temporizadorActivo, temporizadorMinutos) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ ...torneo, temporizadorActivo, temporizadorMinutos: temporizadorActivo ? temporizadorMinutos : undefined }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error };
+    }
+    return { ok: true };
   }
 
   // Guarda (o quita, si se manda vacío) el enlace de YouTube en directo de
@@ -496,6 +517,7 @@ async function programarCalendario(partidoId, datos) {
         onGuardarMensajesAvisos={guardarMensajesAvisos}
         onGuardarConfiguracionHerramienta={guardarConfiguracionHerramienta}
         onGuardarVideoDirecto={guardarVideoDirecto}
+        onGuardarTemporizador={guardarTemporizador}
       />
     );
   }
@@ -580,6 +602,27 @@ async function programarCalendario(partidoId, datos) {
           <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
           Avisar a los socios de sus partidos de este torneo
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+          <input type="checkbox" checked={temporizadorActivo} onChange={(e) => setTemporizadorActivo(e.target.checked)} style={{ width: "auto" }} />
+          Dar un tiempo máximo para empezar cada partido
+        </label>
+        {temporizadorActivo && (
+          <label>
+            Minutos para empezar
+            <input
+              type="number"
+              min="1"
+              value={temporizadorMinutos}
+              onChange={(e) => setTemporizadorMinutos(e.target.value)}
+              placeholder="ej. 5"
+              required
+            />
+            <span className="admin-hint">
+              Al marcar un partido "en curso" se avisa a los jugadores de que tienen este tiempo para presentarse a
+              jugar (el aviso lo indica; no bloquea ni cierra nada automáticamente).
+            </span>
+          </label>
+        )}
         <label>
           Imagen de aviso de bienvenida al sortear (opcional)
           <SelectorImagen
@@ -706,6 +749,7 @@ async function programarCalendario(partidoId, datos) {
                     {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
                     {t.finalizado ? " · Finalizado" : ""}
                     {t.notificaciones === false ? " · Sin avisos" : ""}
+                    {t.temporizadorActivo && t.temporizadorMinutos ? ` · Temporizador ${t.temporizadorMinutos} min` : ""}
                   </time>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -741,7 +785,7 @@ function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
-  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto,
+  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -796,6 +840,13 @@ function TorneoGestion({
           onClick={() => setSubpestana("mensajes")}
         >
           Mensajes de avisos
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "temporizador" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("temporizador")}
+        >
+          Temporizador
         </button>
         <button
           type="button"
@@ -869,6 +920,10 @@ function TorneoGestion({
 
       {subpestana === "mensajes" && (
         <MensajesAvisos torneo={torneo} onGuardar={onGuardarMensajesAvisos} />
+      )}
+
+      {subpestana === "temporizador" && (
+        <TemporizadorPanel torneo={torneo} onGuardar={onGuardarTemporizador} />
       )}
 
       {subpestana === "herramienta" && (
@@ -953,7 +1008,7 @@ function ImagenesAvisos({ torneo, token, onGuardar }) {
 // src/lib/mensajesAvisos.js en el backend (resolverMensaje/sustituir).
 const TIPOS_MENSAJE_AVISO = [
   { clave: "bienvenida", etiqueta: "Bienvenida al sortear", placeholders: "{competicion}" },
-  { clave: "enCurso", etiqueta: "Partido en curso", placeholders: "{competicion}, {enfrentamiento}, {maquina}" },
+  { clave: "enCurso", etiqueta: "Partido en curso", placeholders: "{competicion}, {enfrentamiento}, {maquina}, {minutos}" },
   { clave: "programado", etiqueta: "Partido programado", placeholders: "{competicion}, {enfrentamiento}, {fecha}, {maquina}" },
   { clave: "eliminado", etiqueta: "Eliminado", placeholders: "{competicion}" },
   { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
@@ -989,9 +1044,9 @@ const DEFECTOS_MENSAJE_AVISO = {
       fr: "Ton match commence maintenant ! {competicion}",
     },
     cuerpo: {
-      es: "{enfrentamiento} en {maquina}.",
-      eu: "{enfrentamiento} ({maquina} makinan).",
-      fr: "{enfrentamiento} sur {maquina}.",
+      es: "{enfrentamiento} en {maquina}.{minutos}",
+      eu: "{enfrentamiento} ({maquina} makinan).{minutos}",
+      fr: "{enfrentamiento} sur {maquina}.{minutos}",
     },
   },
   programado: {
@@ -1137,6 +1192,65 @@ function MensajesAvisos({ torneo, onGuardar }) {
 
       <button type="button" disabled={guardando} onClick={guardar}>
         {guardando ? "Guardando…" : "Guardar mensajes"}
+      </button>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
+// Pestaña de admin ("Temporizador") para fijar, en un torneo ya creado, el
+// tiempo máximo (en minutos) que tiene un jugador para presentarse a jugar
+// desde que su partido se marca "en curso" (ver TorneoClub.temporizadorActivo/
+// temporizadorMinutos en schema.prisma). Cuando está activo, el aviso "tu
+// partido empieza ahora" (pestaña "Mensajes de avisos", tipo enCurso) añade
+// automáticamente el placeholder {minutos} con ese plazo — no hace falta
+// tocar nada más para que se muestre. Mismo patrón de guardado que
+// VideoDirectoPanel: el padre hace el PUT real y devuelve { ok } o
+// { ok: false, error }.
+function TemporizadorPanel({ torneo, onGuardar }) {
+  const [activo, setActivo] = useState(!!torneo.temporizadorActivo);
+  const [minutos, setMinutos] = useState(torneo.temporizadorMinutos ? String(torneo.temporizadorMinutos) : "");
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  async function guardar() {
+    if (activo && (!minutos || Number(minutos) < 1)) {
+      setMensaje({ tipo: "error", texto: "Indica un número de minutos válido (entero ≥ 1)." });
+      return;
+    }
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const resultado = await onGuardar(torneo, activo, minutos);
+      setMensaje(
+        resultado?.ok
+          ? { tipo: "ok", texto: activo ? "Temporizador guardado." : "Temporizador desactivado." }
+          : { tipo: "error", texto: resultado?.error || "No se pudo guardar." }
+      );
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form">
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Da un tiempo máximo para que un jugador empiece a jugar desde que su partido se marca "en curso" (botón
+        "Marcar en curso" en Cuadrantes). Es solo informativo: el aviso automático de "tu partido empieza ahora"
+        indicará estos minutos, pero nada se bloquea ni se cierra en automático al agotarse el plazo.
+      </p>
+      <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+        <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} style={{ width: "auto" }} />
+        Usar temporizador en este torneo
+      </label>
+      {activo && (
+        <label>
+          Minutos para empezar
+          <input type="number" min="1" value={minutos} onChange={(e) => setMinutos(e.target.value)} placeholder="ej. 5" />
+        </label>
+      )}
+      <button type="button" disabled={guardando} onClick={guardar}>
+        {guardando ? "Guardando…" : "Guardar"}
       </button>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
     </div>
