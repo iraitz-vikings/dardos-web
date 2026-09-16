@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLang } from "./i18n.jsx";
 import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
+import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
 import {
   buscarCierre,
   calcularPuntosCricket,
@@ -13,6 +14,9 @@ import {
   marcasDelDardo,
   marcasVacias,
   NUMEROS_CRICKET,
+  promedio3Dardos,
+  sumarEstadisticas501,
+  sumarEstadisticasCricket,
   tiradorActual,
 } from "./dardosLogica.js";
 
@@ -223,57 +227,83 @@ function SelectorModoJugadores({ onListo }) {
   );
 }
 
-// --- Tarjetas de jugador/pareja, compartidas por 501 y Cricket -----------
+// --- Selector de "al mejor de", compartido por 501 y Cricket --------------
 
-function TarjetaUnidad({ unidad, activa, esGanadora, children }) {
-  const { t } = useLang();
+const OPCIONES_AL_MEJOR_DE = [1, 3, 5, 7, 9];
+
+function SelectorAlMejorDe({ valor, onCambiar }) {
   return (
-    <div className={`marcador-jugador ${activa ? "marcador-jugador-activo" : ""} ${esGanadora ? "marcador-jugador-ganador" : ""}`}>
-      <strong>{unidad.etiqueta}</strong>
-      {unidad.equipoEtiqueta && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>{unidad.equipoEtiqueta}</span>}
-      {unidad.integrantes.length > 1 && (
-        <span style={{ fontSize: ".7em", color: "var(--steel)" }}>{t("marcador.tira")} {tiradorActual(unidad)}</span>
-      )}
-      {children}
-    </div>
+    <label>
+      Al mejor de
+      <div className="live-tournament-toggle">
+        {OPCIONES_AL_MEJOR_DE.map((n) => (
+          <button key={n} type="button" className={valor === n ? "active" : ""} onClick={() => onCambiar(n)}>
+            {n}
+          </button>
+        ))}
+      </div>
+    </label>
   );
 }
 
 // --- 501 -------------------------------------------------------------
 
-function Marcador501() {
+// Un leg de 501, sin guardar nada (todo en memoria): misma mecánica que
+// JuegoHerramienta.jsx (turno, sugerencia de cierre, pregunta de "¿cuántos
+// dardos al doble?" para el % de cierre), pero las estadísticas se guardan
+// por unidad.id en vez de por jugadorId (aquí no hay ficha de jugador real
+// detrás) y, al no haber "partido" que guardar en el backend, en modo
+// "puntuación total" se espera igual a "Terminar turno" en vez de avanzar
+// solo (así los 3 modos de entrada se comportan igual en esta calculadora).
+function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejorDe, onLegTerminado, onSalir }) {
   const { t } = useLang();
-  const [fase, setFase] = useState("jugadores"); // "jugadores" | "reglas" | "jugando"
-  const [configBase, setConfigBase] = useState(null);
-  const [apertura, setApertura] = useState("simple");
-  const [cierre, setCierre] = useState("doble");
-
-  const [unidades, setUnidades] = useState([]);
-  const [turnoIdx, setTurnoIdx] = useState(0);
-  const [tiradasVisita, setTiradasVisita] = useState([]); // [{ resultado, pos }]
-  const [restanteInicioVisita, setRestanteInicioVisita] = useState(0);
+  const numeroLeg = legs.length + 1;
+  const [unidades, setUnidades] = useState(() => unidadesBase.map((u) => ({ ...u, restante: 501, abierto: apertura === "simple" })));
+  const [turnoIdx, setTurnoIdx] = useState((numeroLeg - 1) % unidadesBase.length);
+  const [tiradasVisita, setTiradasVisita] = useState([]);
+  const [restanteInicioVisita, setRestanteInicioVisita] = useState(501);
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
-  const [modoEntrada, setModoEntrada] = useState("diana"); // "diana" | "numeros" | "total"
-  // true cuando la visita ya ha terminado (3 dardos o bust) pero todavía no
-  // se ha pulsado "Terminar turno ahora" — a petición de Iraitz, el turno ya
-  // NO pasa solo automáticamente al tercer dardo, para dar tiempo a leer el
-  // resultado antes de pasar al siguiente jugador.
+  const [modoEntrada, setModoEntrada] = useState("diana");
   const [finVisita, setFinVisita] = useState(false);
+  const [estadisticas, setEstadisticas] = useState({});
+  const [ultimaVisitaUnidad, setUltimaVisitaUnidad] = useState(() => unidadesBase.map(() => null));
+  const [preguntaDoble, setPreguntaDoble] = useState(null);
 
-  function empezarPartida() {
-    const base = construirUnidades(configBase);
-    const conEstado = base.map((u) => ({ ...u, restante: 501, abierto: apertura === "simple" }));
-    setUnidades(conEstado);
-    setTurnoIdx(0);
-    setTiradasVisita([]);
-    setRestanteInicioVisita(501);
-    setGanadorIdx(null);
-    setMensaje("");
-    setHistorial([]);
-    setFinVisita(false);
-    setFase("jugando");
+  function registrarVisita(unidadId, dardos, puntos, esCheckout, dardosAlDoble) {
+    setEstadisticas((prev) => {
+      const actual = prev[unidadId] || { dardos: 0, puntos: 0, visitas100: 0, visitas140: 0, visitas180: 0, intentosCierre: 0, cierresConvertidos: 0 };
+      const actualizado = {
+        ...actual,
+        dardos: actual.dardos + dardos,
+        puntos: actual.puntos + puntos,
+        visitas100: actual.visitas100 + (puntos >= 100 && puntos < 140 ? 1 : 0),
+        visitas140: actual.visitas140 + (puntos >= 140 && puntos < 180 ? 1 : 0),
+        visitas180: actual.visitas180 + (puntos >= 180 ? 1 : 0),
+        intentosCierre: actual.intentosCierre + (dardosAlDoble || 0),
+        cierresConvertidos: actual.cierresConvertidos + (esCheckout && dardosAlDoble > 0 ? 1 : 0),
+      };
+      if (esCheckout) actualizado.checkout = puntos;
+      return { ...prev, [unidadId]: actualizado };
+    });
+  }
+
+  function concluirVisita(unidadId, ladoIdx, puntosVisita, dardosCount, gana, dardosAlDoble) {
+    registrarVisita(unidadId, dardosCount, puntosVisita, gana, dardosAlDoble);
+    setUltimaVisitaUnidad((prev) => prev.map((v, i) => (i === ladoIdx ? puntosVisita : v)));
+    if (gana) {
+      setGanadorIdx(ladoIdx);
+    } else {
+      setFinVisita(true);
+    }
+  }
+
+  function responderDardosDoble(dardosAlDoble) {
+    const p = preguntaDoble;
+    if (!p) return;
+    setPreguntaDoble(null);
+    concluirVisita(p.unidadId, p.turnoIdx, p.puntosVisita, p.dardosCount, p.gana, dardosAlDoble);
   }
 
   function finalizarVisita(unidadesActualizadas, turnoQueTiro) {
@@ -290,8 +320,8 @@ function Marcador501() {
   }
 
   function tirar(resultado, pos) {
-    if (ganadorIdx !== null || finVisita) return;
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita })]);
+    if (ganadorIdx !== null || finVisita || preguntaDoble) return;
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita, estadisticas, ultimaVisitaUnidad })]);
 
     const unidad = unidades[turnoIdx];
     const yaAbierto = unidad.abierto;
@@ -328,12 +358,37 @@ function Marcador501() {
     setTiradasVisita(nuevasTiradas);
     setMensaje(nuevoMensaje);
 
+    const unidadId = unidad.id;
+    // Si al empezar esta visita el resto ya se podía cerrar en 3 dardos con
+    // la modalidad de cierre elegida (y la unidad ya estaba abierta), al
+    // acabar la visita se pregunta cuántos dardos se han tirado al
+    // doble/máster (ver preguntaDoble) para el % de cierre real.
+    const intentoPosible = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, cierre);
+
     if (gana) {
-      setGanadorIdx(turnoIdx);
+      const puntosVisita = nuevasTiradas.reduce((s, tv) => s + tv.resultado.valor, 0);
+      if (intentoPosible) {
+        setPreguntaDoble({ unidadId, turnoIdx, puntosVisita, dardosCount: nuevasTiradas.length, gana: true });
+      } else {
+        concluirVisita(unidadId, turnoIdx, puntosVisita, nuevasTiradas.length, true, 0);
+      }
       return;
     }
-    if (bust || nuevasTiradas.length >= 3) {
-      setFinVisita(true);
+    if (bust) {
+      if (intentoPosible) {
+        setPreguntaDoble({ unidadId, turnoIdx, puntosVisita: 0, dardosCount: nuevasTiradas.length, gana: false });
+      } else {
+        concluirVisita(unidadId, turnoIdx, 0, nuevasTiradas.length, false, 0);
+      }
+      return;
+    }
+    if (nuevasTiradas.length >= 3) {
+      const puntosVisita = nuevasTiradas.reduce((s, tv) => s + tv.resultado.valor, 0);
+      if (intentoPosible) {
+        setPreguntaDoble({ unidadId, turnoIdx, puntosVisita, dardosCount: 3, gana: false });
+      } else {
+        concluirVisita(unidadId, turnoIdx, puntosVisita, 3, false, 0);
+      }
     }
   }
 
@@ -346,7 +401,7 @@ function Marcador501() {
   // ahí se resuelve con la casilla "cierreValido" que rellena el propio
   // jugador en TecladoPuntuacion.
   function tirarVisitaTotal(valorTotal, { cierreValido }) {
-    if (ganadorIdx !== null || finVisita) return;
+    if (ganadorIdx !== null || finVisita || preguntaDoble) return;
     if (!Number.isFinite(valorTotal) || valorTotal < 0 || valorTotal > 180) {
       setMensaje(t("marcador.visitaFueraRango"));
       return;
@@ -360,7 +415,7 @@ function Marcador501() {
       return;
     }
 
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita })]);
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, restanteInicioVisita, ganadorIdx, mensaje, finVisita, estadisticas, ultimaVisitaUnidad })]);
 
     const resultado = { etiqueta: `${valorTotal} ${t("marcador.visitaSufijo")}`, numero: null, multiplicador: null, valor: valorTotal, esDoble: false, esTriple: false, esBull: false };
     let nuevoMensaje = "";
@@ -391,18 +446,30 @@ function Marcador501() {
     setTiradasVisita([{ resultado, pos: undefined }]);
     setMensaje(nuevoMensaje);
 
+    const unidadId = unidad.id;
+    const intentoPosible = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, cierre);
+    const puntosVisita = bust ? 0 : valorTotal;
+
     if (gana) {
-      setGanadorIdx(turnoIdx);
+      if (intentoPosible) {
+        setPreguntaDoble({ unidadId, turnoIdx, puntosVisita, dardosCount: 3, gana: true });
+      } else {
+        concluirVisita(unidadId, turnoIdx, puntosVisita, 3, true, 0);
+      }
       return;
     }
     // Aquí no hay "3 dardos" que contar: al escribir el total ya se ha
     // introducido la visita entera de una vez, así que pasa a fin de turno
     // directamente (salvo que ya se haya ganado, tratado arriba).
-    setFinVisita(true);
+    if (intentoPosible) {
+      setPreguntaDoble({ unidadId, turnoIdx, puntosVisita, dardosCount: 3, gana: false });
+    } else {
+      concluirVisita(unidadId, turnoIdx, puntosVisita, 3, false, 0);
+    }
   }
 
   function deshacer() {
-    if (historial.length === 0) return;
+    if (historial.length === 0 || preguntaDoble) return;
     const previo = historial[historial.length - 1];
     setHistorial((h) => h.slice(0, -1));
     setUnidades(previo.unidades);
@@ -412,15 +479,167 @@ function Marcador501() {
     setGanadorIdx(previo.ganadorIdx);
     setMensaje(previo.mensaje);
     setFinVisita(previo.finVisita);
+    setEstadisticas(previo.estadisticas);
+    setUltimaVisitaUnidad(previo.ultimaVisitaUnidad);
   }
 
-  const unidadActual = fase === "jugando" ? unidades[turnoIdx] : null;
+  const unidadActual = unidades[turnoIdx];
   const sugerencia = useMemo(() => {
-    if (!unidadActual || ganadorIdx !== null || finVisita || !unidadActual.abierto) return null;
+    if (!unidadActual || ganadorIdx !== null || finVisita || preguntaDoble || !unidadActual.abierto) return null;
     const dardosDisponibles = 3 - tiradasVisita.length;
     if (dardosDisponibles <= 0) return null;
     return buscarCierre(unidadActual.restante, dardosDisponibles, cierre);
-  }, [unidadActual, tiradasVisita.length, cierre, ganadorIdx, finVisita]);
+  }, [unidadActual, tiradasVisita.length, cierre, ganadorIdx, finVisita, preguntaDoble]);
+
+  // En cuanto hay ganador de leg, se avisa al padre (PartidaLocal501) con
+  // las estadísticas ya completas de este leg, para que decida si hace
+  // falta otro leg o si el partido ya está resuelto.
+  useEffect(() => {
+    if (ganadorIdx !== null) onLegTerminado(ganadorIdx, estadisticas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ganadorIdx]);
+
+  return (
+    <div>
+      <CabeceraPartida alMejorDe={alMejorDe} numeroLeg={numeroLeg} />
+      <div className="marcador-jugadores">
+        {unidades.map((u, i) => {
+          const legActual = sumarEstadisticas501(estadisticas[u.id]);
+          const partidoTotal = sumarEstadisticas501(estadisticas[u.id], ...legs.map((l) => l.estadisticas[u.id]));
+          const activo = turnoIdx === i && ganadorIdx === null;
+          return (
+            <CuadroJugador
+              key={u.id}
+              unidad={u}
+              esInicioLeg={i === (numeroLeg - 1) % unidadesBase.length}
+              activo={activo}
+              ganador={ganadorIdx === i}
+              legsGanados={legsGanados[i]}
+              valorPrincipal={u.restante}
+              dardoInfo={activo ? (modoEntrada === "total" ? t("marcador.introduceTotal") : `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3`) : null}
+              slides={[
+                {
+                  titulo: "Esta partida",
+                  filas: [
+                    ["Promedio", fmtProm(promedio3Dardos(legActual.puntos, legActual.dardos))],
+                    ["Última entrada", ultimaVisitaUnidad[i] ?? "—"],
+                    ["Dardos usados", legActual.dardos || 0],
+                  ],
+                },
+                {
+                  titulo: "Partido",
+                  filas: [
+                    ["% de cierre", fmtPct(partidoTotal.cierresConvertidos, partidoTotal.intentosCierre)],
+                    ["Cierre más alto", partidoTotal.checkoutMax ?? "—"],
+                    ["Promedio partido", fmtProm(promedio3Dardos(partidoTotal.puntos, partidoTotal.dardos))],
+                  ],
+                },
+              ]}
+            />
+          );
+        })}
+      </div>
+
+      {ganadorIdx === null && (
+        <>
+          {preguntaDoble && (
+            <div className="admin-msg admin-msg-ok marcador-pregunta-doble">
+              <p style={{ margin: "0 0 .5rem" }}>
+                ¿Cuántos dardos de esta visita ha tirado <strong>{tiradorActual(unidades[preguntaDoble.turnoIdx])}</strong> al doble/máster?
+              </p>
+              <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+                {[0, 1, 2, 3].map((n) => (
+                  <button key={n} type="button" className="admin-tab" onClick={() => responderDardosDoble(n)}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <p>
+            {modoEntrada === "total" ? t("marcador.introduceTotal") : t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
+          </p>
+          <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal />
+          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((tv) => tv.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
+          {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
+          {modoEntrada === "total" && <TecladoPuntuacion cierre={cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
+          <p className="marcador-tiradas-visita">
+            {t("marcador.estaVisita")} {tiradasVisita.length ? tiradasVisita.map((tv) => etiquetaTiradaMostrar(tv.resultado.etiqueta, t)).join(", ") : "—"}
+          </p>
+          {sugerencia && <p className="admin-msg admin-msg-ok">{t("marcador.sugerenciaCierre")} {sugerencia.join(" → ")}</p>}
+          {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
+          {!preguntaDoble && (
+            <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+              <button
+                type="button"
+                className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+                onClick={() => finalizarVisita(unidades, turnoIdx)}
+              >
+                {finVisita ? t("marcador.siguienteJugador") : t("marcador.terminarTurno")}
+              </button>
+              <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
+                {t("marcador.deshacerDardo")}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={onSalir}>
+        {t("marcador.nuevaPartida")}
+      </button>
+    </div>
+  );
+}
+
+// Envoltorio de la partida completa (varios legs hasta llegar a la mayoría
+// de "al mejor de N"), sin guardar nada — todo el estado vive aquí, en
+// memoria, y se pierde si se recarga la página (igual que antes).
+function PartidaLocal501({ configBase, apertura, cierre, alMejorDe, onNuevaPartida }) {
+  const unidadesBase = useMemo(() => construirUnidades(configBase), [configBase]);
+  const [legs, setLegs] = useState([]); // [{ ganadorIdx, estadisticas: {unidadId: {...}} }]
+
+  const legsGanados = useMemo(() => {
+    const arr = unidadesBase.map(() => 0);
+    legs.forEach((l) => { arr[l.ganadorIdx] += 1; });
+    return arr;
+  }, [legs, unidadesBase]);
+  const legsParaGanar = Math.floor(alMejorDe / 2) + 1;
+  const ganadorFinalIdx = legsGanados.findIndex((n) => n >= legsParaGanar);
+
+  if (ganadorFinalIdx !== -1) {
+    return (
+      <div className="admin-form" style={{ maxWidth: 460 }}>
+        <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem" }}>
+          🏆 {unidadesBase[ganadorFinalIdx].etiqueta} gana el partido ({legsGanados.join(" - ")})
+        </p>
+        <button type="button" onClick={onNuevaPartida}>Nueva partida</button>
+      </div>
+    );
+  }
+
+  return (
+    <LegLocal501
+      key={legs.length}
+      unidadesBase={unidadesBase}
+      legs={legs}
+      legsGanados={legsGanados}
+      apertura={apertura}
+      cierre={cierre}
+      alMejorDe={alMejorDe}
+      onLegTerminado={(ganadorIdx, estadisticas) => setLegs((prev) => [...prev, { ganadorIdx, estadisticas }])}
+      onSalir={onNuevaPartida}
+    />
+  );
+}
+
+function Marcador501() {
+  const { t } = useLang();
+  const [fase, setFase] = useState("jugadores"); // "jugadores" | "reglas" | "jugando"
+  const [configBase, setConfigBase] = useState(null);
+  const [apertura, setApertura] = useState("simple");
+  const [cierre, setCierre] = useState("doble");
+  const [alMejorDe, setAlMejorDe] = useState(5);
 
   if (fase === "jugadores") {
     return <SelectorModoJugadores onListo={(c) => { setConfigBase(c); setFase("reglas"); }} />;
@@ -449,7 +668,8 @@ function Marcador501() {
             ))}
           </div>
         </label>
-        <button type="button" onClick={empezarPartida} style={ESTILO_BOTON_PRIMARIO}>
+        <SelectorAlMejorDe valor={alMejorDe} onCambiar={setAlMejorDe} />
+        <button type="button" onClick={() => setFase("jugando")} style={ESTILO_BOTON_PRIMARIO}>
           {t("marcador.empezarPartida")}
         </button>
       </div>
@@ -457,55 +677,13 @@ function Marcador501() {
   }
 
   return (
-    <div>
-      <div className="marcador-jugadores">
-        {unidades.map((u, i) => (
-          <TarjetaUnidad key={u.id} unidad={u} activa={turnoIdx === i && ganadorIdx === null} esGanadora={ganadorIdx === i}>
-            <span className="marcador-restante">{u.restante}</span>
-            {!u.abierto && apertura !== "simple" && (
-              <span style={{ fontSize: ".65em", color: "var(--ember)" }}>{t("marcador.sinAbrir").replace("{modalidad}", etiquetaModalidad(apertura, t))}</span>
-            )}
-          </TarjetaUnidad>
-        ))}
-      </div>
-
-      {ganadorIdx !== null ? (
-        <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem" }}>
-          {t("marcador.ganaLaPartida").replace("{etiqueta}", unidades[ganadorIdx].etiqueta)}
-        </p>
-      ) : (
-        <>
-          <p>
-            {modoEntrada === "total" ? t("marcador.introduceTotal") : t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
-          </p>
-          <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal />
-          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((tv) => tv.pos).filter(Boolean)} deshabilitada={finVisita} />}
-          {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />}
-          {modoEntrada === "total" && <TecladoPuntuacion cierre={cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita} />}
-          <p className="marcador-tiradas-visita">
-            {t("marcador.estaVisita")} {tiradasVisita.length ? tiradasVisita.map((tv) => etiquetaTiradaMostrar(tv.resultado.etiqueta, t)).join(", ") : "—"}
-          </p>
-          {sugerencia && <p className="admin-msg admin-msg-ok">{t("marcador.sugerenciaCierre")} {sugerencia.join(" → ")}</p>}
-          {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
-          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-            <button
-              type="button"
-              className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
-              onClick={() => finalizarVisita(unidades, turnoIdx)}
-            >
-              {finVisita ? t("marcador.siguienteJugador") : t("marcador.terminarTurno")}
-            </button>
-            <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-              {t("marcador.deshacerDardo")}
-            </button>
-          </div>
-        </>
-      )}
-
-      <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={() => setFase("jugadores")}>
-        {t("marcador.nuevaPartida")}
-      </button>
-    </div>
+    <PartidaLocal501
+      configBase={configBase}
+      apertura={apertura}
+      cierre={cierre}
+      alMejorDe={alMejorDe}
+      onNuevaPartida={() => setFase("jugadores")}
+    />
   );
 }
 
@@ -521,39 +699,34 @@ function simboloMarcas(n) {
   return "⊗";
 }
 
-function MarcadorCricket() {
+// Un leg de Cricket, mismo patrón que LegLocal501: sin guardar nada, con
+// estadísticas por unidad.id y aviso al padre (PartidaLocalCricket) cuando
+// el leg se cierra. Cricket no tiene modalidades de apertura/cierre ni
+// pregunta de "dardos al doble" (no hay checkouts), así que es más simple.
+function LegLocalCricket({ unidadesBase, legs, legsGanados, modoCricket, alMejorDe, onLegTerminado, onSalir }) {
   const { t } = useLang();
-  const [fase, setFase] = useState("jugadores");
-  const [configBase, setConfigBase] = useState(null);
-  const [modoCricket, setModoCricket] = useState("normal"); // "normal" | "cutthroat"
-
-  const [unidades, setUnidades] = useState([]);
-  const [turnoIdx, setTurnoIdx] = useState(0);
+  const numeroLeg = legs.length + 1;
+  const [unidades, setUnidades] = useState(() => unidadesBase.map((u) => ({ ...u, marcas: marcasVacias() })));
+  const [turnoIdx, setTurnoIdx] = useState((numeroLeg - 1) % unidadesBase.length);
   const [tiradasVisita, setTiradasVisita] = useState([]);
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
-  // true cuando ya se han tirado los 3 dardos de la visita pero todavía no
-  // se ha pulsado "Terminar turno ahora" — el turno no pasa solo.
   const [finVisita, setFinVisita] = useState(false);
-  const [modoEntrada, setModoEntrada] = useState("diana"); // "diana" | "numeros" (sin "total": en cricket hace falta saber el número exacto)
+  const [modoEntrada, setModoEntrada] = useState("diana");
+  const [estadisticas, setEstadisticas] = useState({});
+  const [ultimaVisitaUnidad, setUltimaVisitaUnidad] = useState(() => unidadesBase.map(() => null));
 
   const puntos = useMemo(
     () => (modoCricket === "cutthroat" ? calcularPuntosCricketCutThroat(unidades) : calcularPuntosCricket(unidades)),
     [unidades, modoCricket]
   );
 
-  function empezarPartida() {
-    const base = construirUnidades(configBase);
-    const conEstado = base.map((u) => ({ ...u, marcas: marcasVacias() }));
-    setUnidades(conEstado);
-    setTurnoIdx(0);
-    setTiradasVisita([]);
-    setGanadorIdx(null);
-    setMensaje("");
-    setHistorial([]);
-    setFinVisita(false);
-    setFase("jugando");
+  function registrarVisita(unidadId, marcas) {
+    setEstadisticas((prev) => {
+      const actual = prev[unidadId] || { visitas: 0, marcas: 0, mejorVisita: 0 };
+      return { ...prev, [unidadId]: { visitas: actual.visitas + 1, marcas: actual.marcas + marcas, mejorVisita: Math.max(actual.mejorVisita, marcas) } };
+    });
   }
 
   function finalizarVisita(unidadesActualizadas, turnoQueTiro) {
@@ -570,7 +743,7 @@ function MarcadorCricket() {
 
   function tirar(resultado, pos) {
     if (ganadorIdx !== null || finVisita) return;
-    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, ganadorIdx, mensaje, finVisita })]);
+    setHistorial((h) => [...h, clonar({ unidades, turnoIdx, tiradasVisita, ganadorIdx, mensaje, finVisita, estadisticas, ultimaVisitaUnidad })]);
 
     const info = marcasDelDardo(resultado);
     let nuevasUnidades = unidades;
@@ -590,16 +763,23 @@ function MarcadorCricket() {
 
     const puntosNuevos = modoCricket === "cutthroat" ? calcularPuntosCricketCutThroat(nuevasUnidades) : calcularPuntosCricket(nuevasUnidades);
     const unidadQueTiro = nuevasUnidades[turnoIdx];
+    const unidadId = unidades[turnoIdx].id;
+    const marcasVisita = nuevasTiradas.reduce((s, tv) => s + (marcasDelDardo(tv.resultado)?.marcas || 0), 0);
+
     if (jugadorHaCerradoTodo(unidadQueTiro)) {
       const mejor = modoCricket === "cutthroat" ? Math.min(...puntosNuevos) : Math.max(...puntosNuevos);
       const cumpleCondicion = modoCricket === "cutthroat" ? puntosNuevos[turnoIdx] <= mejor : puntosNuevos[turnoIdx] >= mejor;
       if (cumpleCondicion) {
+        registrarVisita(unidadId, marcasVisita);
+        setUltimaVisitaUnidad((prev) => prev.map((v, i) => (i === turnoIdx ? marcasVisita : v)));
         setGanadorIdx(turnoIdx);
         return;
       }
     }
 
     if (nuevasTiradas.length >= 3) {
+      registrarVisita(unidadId, marcasVisita);
+      setUltimaVisitaUnidad((prev) => prev.map((v, i) => (i === turnoIdx ? marcasVisita : v)));
       setFinVisita(true);
     }
   }
@@ -614,46 +794,54 @@ function MarcadorCricket() {
     setGanadorIdx(previo.ganadorIdx);
     setMensaje(previo.mensaje);
     setFinVisita(previo.finVisita);
+    setEstadisticas(previo.estadisticas);
+    setUltimaVisitaUnidad(previo.ultimaVisitaUnidad);
   }
 
-  if (fase === "jugadores") {
-    return <SelectorModoJugadores onListo={(c) => { setConfigBase(c); setFase("reglas"); }} />;
-  }
-
-  if (fase === "reglas") {
-    return (
-      <div className="admin-form" style={{ maxWidth: 460 }}>
-        <label>
-          {t("marcador.modalidad")}
-          <div className="live-tournament-toggle">
-            <button type="button" className={modoCricket === "normal" ? "active" : ""} onClick={() => setModoCricket("normal")}>
-              {t("marcador.normal")}
-            </button>
-            <button type="button" className={modoCricket === "cutthroat" ? "active" : ""} onClick={() => setModoCricket("cutthroat")}>
-              Cut-throat
-            </button>
-          </div>
-        </label>
-        <p className="chronicle-status">
-          {modoCricket === "cutthroat"
-            ? t("marcador.cutthroatExplicacion")
-            : t("marcador.normalExplicacion")}
-        </p>
-        <button type="button" onClick={empezarPartida} style={ESTILO_BOTON_PRIMARIO}>
-          {t("marcador.empezarPartida")}
-        </button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (ganadorIdx !== null) onLegTerminado(ganadorIdx, estadisticas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ganadorIdx]);
 
   return (
     <div>
+      <CabeceraPartida alMejorDe={alMejorDe} numeroLeg={numeroLeg} />
       <div className="marcador-jugadores">
-        {unidades.map((u, i) => (
-          <TarjetaUnidad key={u.id} unidad={u} activa={turnoIdx === i && ganadorIdx === null} esGanadora={ganadorIdx === i}>
-            <span className="marcador-restante">{puntos[i]}</span>
-          </TarjetaUnidad>
-        ))}
+        {unidades.map((u, i) => {
+          const legActual = sumarEstadisticasCricket(estadisticas[u.id]);
+          const partidoTotal = sumarEstadisticasCricket(estadisticas[u.id], ...legs.map((l) => l.estadisticas[u.id]));
+          const activo = turnoIdx === i && ganadorIdx === null;
+          return (
+            <CuadroJugador
+              key={u.id}
+              unidad={u}
+              esInicioLeg={i === (numeroLeg - 1) % unidadesBase.length}
+              activo={activo}
+              ganador={ganadorIdx === i}
+              legsGanados={legsGanados[i]}
+              valorPrincipal={puntos[i]}
+              dardoInfo={activo ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
+              slides={[
+                {
+                  titulo: "Esta partida",
+                  filas: [
+                    ["Marcas/visita", fmtProm(legActual.visitas ? legActual.marcas / legActual.visitas : null)],
+                    ["Última entrada", ultimaVisitaUnidad[i] ?? "—"],
+                    ["Visitas jugadas", legActual.visitas || 0],
+                  ],
+                },
+                {
+                  titulo: "Partido",
+                  filas: [
+                    ["Mejor visita", partidoTotal.mejorVisita ?? "—"],
+                    ["Marcas/visita partido", fmtProm(partidoTotal.visitas ? partidoTotal.marcas / partidoTotal.visitas : null)],
+                    ["Total marcas", partidoTotal.marcas || 0],
+                  ],
+                },
+              ]}
+            />
+          );
+        })}
       </div>
 
       <div className="marcador-tabla-scroll">
@@ -683,13 +871,7 @@ function MarcadorCricket() {
         </table>
       </div>
 
-      {ganadorIdx !== null ? (
-        <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem", marginTop: "1rem" }}>
-          {t("marcador.ganaLaPartida").replace("{etiqueta}", unidades[ganadorIdx].etiqueta)}
-          {" "}
-          {modoCricket === "cutthroat" ? t("marcador.cutthroatSufijo") : t("marcador.normalSufijo")}
-        </p>
-      ) : (
+      {ganadorIdx === null && (
         <>
           <p style={{ marginTop: "1rem" }}>
             {t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
@@ -719,10 +901,97 @@ function MarcadorCricket() {
         </>
       )}
 
-      <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={() => setFase("jugadores")}>
+      <button type="button" className="admin-link-btn" style={{ marginTop: "1rem" }} onClick={onSalir}>
         {t("marcador.nuevaPartida")}
       </button>
     </div>
+  );
+}
+
+// Envoltorio de la partida completa de Cricket (varios legs hasta la
+// mayoría de "al mejor de N"), igual que PartidaLocal501.
+function PartidaLocalCricket({ configBase, modoCricket, alMejorDe, onNuevaPartida }) {
+  const unidadesBase = useMemo(() => construirUnidades(configBase), [configBase]);
+  const [legs, setLegs] = useState([]); // [{ ganadorIdx, estadisticas: {unidadId: {...}} }]
+
+  const legsGanados = useMemo(() => {
+    const arr = unidadesBase.map(() => 0);
+    legs.forEach((l) => { arr[l.ganadorIdx] += 1; });
+    return arr;
+  }, [legs, unidadesBase]);
+  const legsParaGanar = Math.floor(alMejorDe / 2) + 1;
+  const ganadorFinalIdx = legsGanados.findIndex((n) => n >= legsParaGanar);
+
+  if (ganadorFinalIdx !== -1) {
+    return (
+      <div className="admin-form" style={{ maxWidth: 460 }}>
+        <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem" }}>
+          🏆 {unidadesBase[ganadorFinalIdx].etiqueta} gana el partido ({legsGanados.join(" - ")})
+        </p>
+        <button type="button" onClick={onNuevaPartida}>Nueva partida</button>
+      </div>
+    );
+  }
+
+  return (
+    <LegLocalCricket
+      key={legs.length}
+      unidadesBase={unidadesBase}
+      legs={legs}
+      legsGanados={legsGanados}
+      modoCricket={modoCricket}
+      alMejorDe={alMejorDe}
+      onLegTerminado={(ganadorIdx, estadisticas) => setLegs((prev) => [...prev, { ganadorIdx, estadisticas }])}
+      onSalir={onNuevaPartida}
+    />
+  );
+}
+
+function MarcadorCricket() {
+  const { t } = useLang();
+  const [fase, setFase] = useState("jugadores"); // "jugadores" | "reglas" | "jugando"
+  const [configBase, setConfigBase] = useState(null);
+  const [modoCricket, setModoCricket] = useState("normal"); // "normal" | "cutthroat"
+  const [alMejorDe, setAlMejorDe] = useState(5);
+
+  if (fase === "jugadores") {
+    return <SelectorModoJugadores onListo={(c) => { setConfigBase(c); setFase("reglas"); }} />;
+  }
+
+  if (fase === "reglas") {
+    return (
+      <div className="admin-form" style={{ maxWidth: 460 }}>
+        <label>
+          {t("marcador.modalidad")}
+          <div className="live-tournament-toggle">
+            <button type="button" className={modoCricket === "normal" ? "active" : ""} onClick={() => setModoCricket("normal")}>
+              {t("marcador.normal")}
+            </button>
+            <button type="button" className={modoCricket === "cutthroat" ? "active" : ""} onClick={() => setModoCricket("cutthroat")}>
+              Cut-throat
+            </button>
+          </div>
+        </label>
+        <p className="chronicle-status">
+          {modoCricket === "cutthroat"
+            ? t("marcador.cutthroatExplicacion")
+            : t("marcador.normalExplicacion")}
+        </p>
+        <SelectorAlMejorDe valor={alMejorDe} onCambiar={setAlMejorDe} />
+        <button type="button" onClick={() => setFase("jugando")} style={ESTILO_BOTON_PRIMARIO}>
+          {t("marcador.empezarPartida")}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <PartidaLocalCricket
+      configBase={configBase}
+      modoCricket={modoCricket}
+      alMejorDe={alMejorDe}
+      onNuevaPartida={() => setFase("jugadores")}
+    />
   );
 }
 
