@@ -497,6 +497,39 @@ button {
 .admin-cuadro-resultado { max-width: 90px; flex: none !important; }
 .admin-cuadro-ronda { font-size: .68rem; text-transform: uppercase; color: var(--steel); min-width: 70px; }
 .admin-cuadro-en-curso { border-left: 2px solid var(--ember); padding-left: .5rem; }
+
+/* Temporizador de partidos (ver TorneoClub.temporizadorActivo/Minutos y
+   CuadroPartido.enCursoDesde/partidoIniciado): resalta la fila/caja entera
+   del partido "en curso" cuando queda <=1 min (parpadeo en el mismo tono
+   ámbar que ya usa "en curso", para que sea compatible con esa
+   señalización) y, al agotarse el tiempo, en rojo — más llamativo, para que
+   destaque claramente sobre el resto. Se suma a admin-cuadro-en-curso, no
+   la sustituye. */
+@keyframes admin-cuadro-temporizador-parpadeo {
+  0%, 100% { border-left-color: var(--ember); box-shadow: none; }
+  50% { border-left-color: #ffb066; box-shadow: -4px 0 10px -3px #ff8a3d99; }
+}
+.admin-cuadro-temporizador-urgente { animation: admin-cuadro-temporizador-parpadeo 1s ease-in-out infinite; }
+@keyframes admin-cuadro-temporizador-agotado {
+  0%, 100% { border-left-color: var(--blood); box-shadow: none; background: transparent; }
+  50% { border-left-color: #ff4d4d; box-shadow: -4px 0 12px -2px #ff000099; background: #9a2b2822; }
+}
+.admin-cuadro-temporizador-agotado { border-left-width: 3px; animation: admin-cuadro-temporizador-agotado .7s ease-in-out infinite; }
+
+.admin-temporizador-texto {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  padding: .15rem .55rem;
+  border-radius: 999px;
+  border: 1px solid var(--ember);
+  color: var(--ember);
+  white-space: nowrap;
+}
+.admin-temporizador-texto-iniciado { border-color: var(--steel); color: var(--steel); }
+.admin-temporizador-texto-urgente { border-color: #ffb066; color: #ffb066; animation: admin-temporizador-texto-parpadeo 1s ease-in-out infinite; }
+.admin-temporizador-texto-agotado { border-color: var(--blood); color: #ff8a80; background: #9a2b2833; animation: admin-temporizador-texto-parpadeo .7s ease-in-out infinite; }
+@keyframes admin-temporizador-texto-parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 .admin-ganador-activo { border-color: var(--ember) !important; color: var(--ember) !important; }
 .admin-cuadrante { border: 1px solid var(--line); padding: .8rem 1rem; margin-top: 1rem; }
 .admin-cuadrante-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; }
@@ -903,6 +936,20 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .bracket-match-reciente { animation: pulso-en-curso 1.4s ease-in-out infinite; }
 .bracket-box-reciente { animation: pulso-en-curso 1.4s ease-in-out infinite; }
+
+/* Temporizador de partidos en el cuadro gráfico (ver
+   admin-cuadro-temporizador-urgente/agotado más arriba, mismo criterio) —
+   parpadea en ámbar al quedar <=1 min y en rojo al agotarse el tiempo. */
+@keyframes bracket-box-temporizador-parpadeo {
+  0%, 100% { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember) inset; }
+  50% { border-color: #ffb066; box-shadow: 0 0 0 2px #ffb066 inset, 0 0 8px 1px #ff8a3d99; }
+}
+.bracket-box-temporizador-urgente { animation: bracket-box-temporizador-parpadeo 1s ease-in-out infinite; }
+@keyframes bracket-box-temporizador-agotado {
+  0%, 100% { border-color: var(--blood); box-shadow: 0 0 0 1px var(--blood) inset; }
+  50% { border-color: #ff4d4d; box-shadow: 0 0 0 2px #ff4d4d inset, 0 0 10px 2px #ff000099; }
+}
+.bracket-box-temporizador-agotado { animation: bracket-box-temporizador-agotado .7s ease-in-out infinite; }
 
 /* Sorteo de participantes dentro de un cuadrante */
 .admin-sorteo-form { display: flex; flex-direction: column; gap: .6rem; margin: .8rem 0 1.2rem; padding: .8rem; border: 1px dashed var(--line); }
