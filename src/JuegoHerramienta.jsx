@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
+import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
 import {
   buscarCierre,
   calcularPuntosCricket,
@@ -289,70 +290,6 @@ function construirUnidadesPartida(partida) {
 function idJugadorTirador(partida, ladoIdx, unidad) {
   const ids = ladoIdx === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
   return ids[unidad.siguienteIntegranteIdx];
-}
-
-// --- Cabecera de la partida (formato, sin repetir el resultado: eso ahora
-// va dentro de la tarjeta de cada jugador, ver CuadroJugador) --------------
-
-function CabeceraPartida({ partida, numeroLeg }) {
-  return (
-    <p className="marcador-tiradas-visita" style={{ textAlign: "center" }}>
-      Al mejor de {partida.alMejorDe} · Leg {numeroLeg}
-    </p>
-  );
-}
-
-function fmtProm(n) {
-  return n == null ? "—" : n.toFixed(1);
-}
-function fmtPct(convertidos, intentos) {
-  return intentos ? `${Math.round((convertidos / intentos) * 100)}%` : "—";
-}
-
-// --- Tarjeta de jugador/equipo, con el resultado del partido y las
-// estadísticas dentro del cuadro (a petición de Iraitz, 2026-09-16, en vez
-// del texto "Turno de X" que había debajo de los puntos: ahora quién tira
-// se ve rellenando el cuadro en naranja, ver .marcador-jugador-activo en
-// styles.css). Las estadísticas van en dos slides independientes por
-// jugador (navegación propia con los puntitos de abajo), pensadas para
-// verse sin más explicación: la 1ª es de este leg, la 2ª del partido
-// completo hasta ahora.
-function CuadroJugador({ unidad, esInicioLeg, activo, ganador, legsGanados, valorPrincipal, dardoInfo, slides }) {
-  const [slide, setSlide] = useState(0);
-  return (
-    <div className={`marcador-jugador ${activo ? "marcador-jugador-activo" : ""} ${ganador ? "marcador-jugador-ganador" : ""}`}>
-      <strong>
-        {esInicioLeg && <span className="marcador-punto-inicio" title="Ha empezado este leg">●</span>}
-        {unidad.etiqueta}
-      </strong>
-      {unidad.integrantes.length > 1 && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(unidad)}</span>}
-
-      <span className="marcador-resultado-partido">Legs: {legsGanados}</span>
-      <span className="marcador-restante">{valorPrincipal}</span>
-      {activo && dardoInfo && <span className="marcador-dardo-info">{dardoInfo}</span>}
-
-      <div className="marcador-stats-slide">
-        <p className="marcador-stats-titulo">{slides[slide].titulo}</p>
-        {slides[slide].filas.map(([etiqueta, valor]) => (
-          <p key={etiqueta} className="marcador-stats-fila">
-            <span>{etiqueta}</span>
-            <strong>{valor}</strong>
-          </p>
-        ))}
-        <div className="marcador-stats-dots">
-          {slides.map((s, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`marcador-stats-dot ${slide === i ? "marcador-stats-dot-activo" : ""}`}
-              aria-label={s.titulo}
-              onClick={() => setSlide(i)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // --- Marcador 501 -----------------------------------------------------------
@@ -667,7 +604,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
 
   return (
     <div>
-      <CabeceraPartida partida={partida} numeroLeg={partida.legs.length + 1} />
+      <CabeceraPartida alMejorDe={partida.alMejorDe} numeroLeg={partida.legs.length + 1} />
       <div className="marcador-jugadores">
         {unidades.map((u, i) => {
           const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
@@ -911,7 +848,7 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
 
   return (
     <div>
-      <CabeceraPartida partida={partida} numeroLeg={partida.legs.length + 1} />
+      <CabeceraPartida alMejorDe={partida.alMejorDe} numeroLeg={partida.legs.length + 1} />
       <div className="marcador-jugadores">
         {unidades.map((u, i) => {
           const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
