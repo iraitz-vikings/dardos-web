@@ -1254,6 +1254,7 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .marcador-jugador-activo .marcador-stats-dot { border-color: #ffffffa0; }
 .marcador-jugador-activo .marcador-stats-dot-activo { background: var(--bone); border-color: var(--bone); }
 .marcador-tiradas-visita { font-size: .82rem; color: var(--bone-dim); margin: .5rem 0; }
+.marcador-pregunta-doble { margin-bottom: .8rem; }
 .marcador-tabla-scroll { overflow-x: auto; }
 .marcador-tabla { border-collapse: collapse; width: 100%; min-width: 420px; }
 .marcador-tabla th, .marcador-tabla td {
