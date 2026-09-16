@@ -623,7 +623,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
               ganador={ganadorIdx === i}
               legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
               valorPrincipal={u.restante}
-              dardoInfo={activo ? (modoEntrada === "total" ? "Introduce el total" : `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3`) : null}
+              dardoInfo={activo && modoEntrada !== "total" ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
               slides={[
                 {
                   titulo: "Esta partida",

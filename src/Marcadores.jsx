@@ -516,7 +516,7 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
               ganador={ganadorIdx === i}
               legsGanados={legsGanados[i]}
               valorPrincipal={u.restante}
-              dardoInfo={activo ? (modoEntrada === "total" ? t("marcador.introduceTotal") : `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3`) : null}
+              dardoInfo={activo && modoEntrada !== "total" ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
               slides={[
                 {
                   titulo: "Esta partida",

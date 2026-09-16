@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { tiradorActual } from "./dardosLogica.js";
 
 // Tarjeta de jugador/equipo con el resultado (legs ganados) y las
@@ -25,6 +25,23 @@ export function CabeceraPartida({ alMejorDe, numeroLeg }) {
 
 export function CuadroJugador({ unidad, esInicioLeg, activo, ganador, legsGanados, valorPrincipal, dardoInfo, slides }) {
   const [slide, setSlide] = useState(0);
+  const inicioSwipe = useRef(null);
+
+  // Deslizar con el dedo sobre las estadísticas cambia de slide, además de
+  // los puntitos — el umbral de 30px evita que un tap accidental cuente
+  // como swipe.
+  function onTouchStart(e) {
+    inicioSwipe.current = e.touches[0].clientX;
+  }
+  function onTouchEnd(e) {
+    if (inicioSwipe.current == null) return;
+    const delta = e.changedTouches[0].clientX - inicioSwipe.current;
+    inicioSwipe.current = null;
+    if (Math.abs(delta) < 30) return;
+    const direccion = delta < 0 ? 1 : -1;
+    setSlide((s) => (s + direccion + slides.length) % slides.length);
+  }
+
   return (
     <div className={`marcador-jugador ${activo ? "marcador-jugador-activo" : ""} ${ganador ? "marcador-jugador-ganador" : ""}`}>
       <strong>
@@ -37,7 +54,7 @@ export function CuadroJugador({ unidad, esInicioLeg, activo, ganador, legsGanado
       <span className="marcador-restante">{valorPrincipal}</span>
       {activo && dardoInfo && <span className="marcador-dardo-info">{dardoInfo}</span>}
 
-      <div className="marcador-stats-slide">
+      <div className="marcador-stats-slide" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <p className="marcador-stats-titulo">{slides[slide].titulo}</p>
         {slides[slide].filas.map(([etiqueta, valor]) => (
           <p key={etiqueta} className="marcador-stats-fila">
