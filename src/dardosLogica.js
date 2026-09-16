@@ -283,3 +283,46 @@ export function numeroCerrado(jugador, clave) {
 export function jugadorHaCerradoTodo(jugador) {
   return NUMEROS_CRICKET.every((n) => numeroCerrado(jugador, n.clave));
 }
+
+// --- Estadísticas agregadas para las tarjetas de la herramienta de partidas
+// (JuegoHerramienta.jsx) --------------------------------------------------
+
+// Media estándar "por 3 dardos" (así se expresa siempre en dardos, aunque no
+// se hayan tirado exactamente múltiplos de 3). null si todavía no hay
+// dardos tirados, para no dividir por 0.
+export function promedio3Dardos(puntos, dardos) {
+  if (!dardos) return null;
+  return (puntos / dardos) * 3;
+}
+
+// Suma varias estadísticas de 501 (dardos, puntos, intentos/cierres
+// convertidos, checkout más alto) de un mismo jugador a lo largo de varios
+// legs de una PartidaHerramienta — cada entrada puede ser el objeto ya
+// guardado de un leg pasado o el estado en curso del leg que se está
+// jugando ahora. Entradas undefined (el jugador no llegó a tirar en ese
+// leg, p.ej. parejas con marcador individual) se ignoran sin más.
+export function sumarEstadisticas501(...entradas) {
+  const total = { dardos: 0, puntos: 0, intentosCierre: 0, cierresConvertidos: 0, checkoutMax: null };
+  for (const e of entradas) {
+    if (!e) continue;
+    total.dardos += e.dardos || 0;
+    total.puntos += e.puntos || 0;
+    total.intentosCierre += e.intentosCierre || 0;
+    total.cierresConvertidos += e.cierresConvertidos || 0;
+    if (e.checkout != null) total.checkoutMax = total.checkoutMax == null ? e.checkout : Math.max(total.checkoutMax, e.checkout);
+  }
+  return total;
+}
+
+// Igual que sumarEstadisticas501 pero para Cricket (visitas, marcas y mejor
+// visita en marcas).
+export function sumarEstadisticasCricket(...entradas) {
+  const total = { visitas: 0, marcas: 0, mejorVisita: null };
+  for (const e of entradas) {
+    if (!e) continue;
+    total.visitas += e.visitas || 0;
+    total.marcas += e.marcas || 0;
+    if (e.mejorVisita != null) total.mejorVisita = total.mejorVisita == null ? e.mejorVisita : Math.max(total.mejorVisita, e.mejorVisita);
+  }
+  return total;
+}
