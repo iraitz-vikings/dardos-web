@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import useResaltadoReciente from "./useResaltadoReciente.js";
+import useTemporizadorPartido from "./useTemporizadorPartido.js";
 
 const BOX_W = 176;
 const BOX_H = 50;
@@ -134,16 +135,24 @@ function esUltimaAparicion(nombre, partido, ultimaAparicion) {
 // públicas se omite y la caja se queda de solo lectura, como siempre.
 // `bloqueado` marca un enfrentamiento cuya ronda anterior todavía no ha
 // terminado, con un candado en la caja a modo de aviso.
-function Caja({ x, y, partido, busqueda, ultimaAparicion, onClick, bloqueado }) {
+function Caja({ x, y, partido, busqueda, ultimaAparicion, onClick, bloqueado, temporizadorActivo, temporizadorMinutos }) {
   const decidido = !!partido.ganador;
   const reciente = useResaltadoReciente(partido.enCurso, partido.actualizadoEn);
+  // Temporizador de partidos (ver TorneoClub.temporizadorActivo/Minutos):
+  // parpadea en el mismo tono que "en curso" al quedar <=1 min, y en rojo al
+  // agotarse — ver useTemporizadorPartido.js y styles.css. Solo se pasa
+  // temporizadorActivo/temporizadorMinutos desde el admin (AdminTorneosClub.jsx);
+  // en las vistas públicas no se pasan y aquí simplemente no hace nada.
+  const temporizador = useTemporizadorPartido(partido, temporizadorActivo, temporizadorMinutos);
   const coincideJ1 = coincide(partido.jugador1, busqueda) && esUltimaAparicion(partido.jugador1, partido, ultimaAparicion);
   const coincideJ2 = coincide(partido.jugador2, busqueda) && esUltimaAparicion(partido.jugador2, partido, ultimaAparicion);
   const encontrado = coincideJ1 || coincideJ2;
   return (
     <foreignObject x={x} y={y - BOX_H / 2} width={BOX_W} height={BOX_H}>
       <div
-        className={`bracket-box ${decidido ? "bracket-box-decidido" : ""} ${partido.enCurso ? "bracket-box-en-curso" : ""} ${reciente ? "bracket-box-reciente" : ""} ${encontrado ? "bracket-box-encontrado" : ""} ${onClick ? "bracket-box-clickable" : ""} ${bloqueado ? "bracket-box-bloqueado" : ""}`}
+        className={`bracket-box ${decidido ? "bracket-box-decidido" : ""} ${partido.enCurso ? "bracket-box-en-curso" : ""} ${reciente ? "bracket-box-reciente" : ""} ${
+          temporizador?.estado === "urgente" ? "bracket-box-temporizador-urgente" : ""
+        } ${temporizador?.estado === "agotado" ? "bracket-box-temporizador-agotado" : ""} ${encontrado ? "bracket-box-encontrado" : ""} ${onClick ? "bracket-box-clickable" : ""} ${bloqueado ? "bracket-box-bloqueado" : ""}`}
         onClick={onClick ? () => onClick(partido) : undefined}
         role={onClick ? "button" : undefined}
         tabIndex={onClick ? 0 : undefined}
@@ -188,7 +197,7 @@ function Linea({ origen, destino, activa }) {
   );
 }
 
-function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickPartido, partidosBloqueados }) {
+function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickPartido, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
   const posiciones = calcularLayout(partidos, 1, "ganadores");
   if (posiciones.length === 0) return null;
   const idPosicion = Object.fromEntries(posiciones.map((p) => [p.partido.id, p]));
@@ -233,6 +242,8 @@ function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickParti
                 ultimaAparicion={ultimaAparicion}
                 onClick={onClickPartido}
                 bloqueado={partidosBloqueados?.has(partido.id)}
+                temporizadorActivo={temporizadorActivo}
+                temporizadorMinutos={temporizadorMinutos}
               />
             ))}
           </svg>
@@ -246,7 +257,7 @@ function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickParti
 // una columna central compartida (la ronda 1 de ganadores, el sorteo inicial):
 // el cuadro de ganadores crece hacia la derecha y el de perdedores hacia la
 // izquierda, como un cuadro doble "en espejo".
-function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onClickPartido, partidosBloqueados }) {
+function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onClickPartido, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
   const posGanadores = calcularLayout(ganadores, 1, "ganadores");
   const posPerdedoresRaw = calcularLayout(perdedores, -1, "perdedores");
   if (posGanadores.length === 0 && posPerdedoresRaw.length === 0) return null;
@@ -334,6 +345,8 @@ function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onCli
                 ultimaAparicion={ultimaAparicion}
                 onClick={onClickPartido}
                 bloqueado={partidosBloqueados?.has(partido.id)}
+                temporizadorActivo={temporizadorActivo}
+                temporizadorMinutos={temporizadorMinutos}
               />
             ))}
           </svg>
@@ -349,7 +362,7 @@ function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onCli
 // pasan y el cuadrante se queda de solo lectura. `partidosBloqueados` es un
 // Set opcional de ids de partidos cuya ronda anterior no ha terminado, para
 // marcarlos con un candado.
-export default function BracketView({ cuadrante, busqueda, onClickPartido, partidosBloqueados }) {
+export default function BracketView({ cuadrante, busqueda, onClickPartido, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
   const ganadores = cuadrante.partidos.filter((p) => p.rama === "ganadores");
   const perdedores = cuadrante.partidos.filter((p) => p.rama === "perdedores");
   const finales = cuadrante.partidos.filter((p) => p.rama === "final").sort((a, b) => a.posicion - b.posicion);
@@ -365,6 +378,8 @@ export default function BracketView({ cuadrante, busqueda, onClickPartido, parti
           ultimaAparicion={ultimaAparicion}
           onClickPartido={onClickPartido}
           partidosBloqueados={partidosBloqueados}
+          temporizadorActivo={temporizadorActivo}
+          temporizadorMinutos={temporizadorMinutos}
         />
       ) : (
         <BracketRama
@@ -374,6 +389,8 @@ export default function BracketView({ cuadrante, busqueda, onClickPartido, parti
           ultimaAparicion={ultimaAparicion}
           onClickPartido={onClickPartido}
           partidosBloqueados={partidosBloqueados}
+          temporizadorActivo={temporizadorActivo}
+          temporizadorMinutos={temporizadorMinutos}
         />
       )}
       {finales.length > 0 && (

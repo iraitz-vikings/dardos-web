@@ -5,6 +5,7 @@ import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
+import useTemporizadorPartido, { formatoCuentaAtras } from "./useTemporizadorPartido.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
@@ -1465,6 +1466,8 @@ function TorneoCuadrantes({
           maquinas={maquinas}
           afectaCalendario={torneo.afectaCalendario !== false}
           modoJornadas={torneo.modoJornadas}
+          temporizadorActivo={torneo.temporizadorActivo}
+          temporizadorMinutos={torneo.temporizadorMinutos}
           onBorrar={() => onBorrarCuadrante(c.id)}
           onActualizarPartido={onActualizarPartido}
           onProgramarCalendario={onProgramarCalendario}
@@ -1967,7 +1970,7 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onGen
 const ETIQUETA_ESTADO_CUADRANTE = { pendiente: "Pendiente", activo: "Activo — jornada en juego", finalizado: "Finalizado" };
 
 function CuadranteDetalle({
-  cuadrante, numeroMaquinas, maquinas, afectaCalendario, modoJornadas, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
+  cuadrante, numeroMaquinas, maquinas, afectaCalendario, modoJornadas, temporizadorActivo, temporizadorMinutos, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
   onCambiarEstado, onObtenerClasificacion, onAsignarPuntos,
 }) {
   // El cuadrante se muestra visible por defecto (como en el cuadrante final
@@ -2133,6 +2136,8 @@ function CuadranteDetalle({
               busqueda={busqueda}
               onClickPartido={(p) => setPartidoSeleccionadoId(p.id)}
               partidosBloqueados={partidosBloqueados}
+              temporizadorActivo={temporizadorActivo}
+              temporizadorMinutos={temporizadorMinutos}
             />
           ) : (
             ramas.map((rama) => (
@@ -2164,6 +2169,8 @@ function CuadranteDetalle({
                             maquinasOpciones={maquinasOpciones}
                             maquinas={maquinas}
                             afectaCalendario={afectaCalendario}
+                            temporizadorActivo={temporizadorActivo}
+                            temporizadorMinutos={temporizadorMinutos}
                             onActualizar={(datos) => onActualizarPartido(p.id, datos)}
                             onProgramar={(datos) => onProgramarCalendario(p.id, datos)}
                             busqueda={busqueda}
@@ -2186,6 +2193,8 @@ function CuadranteDetalle({
           maquinas={maquinas}
           afectaCalendario={afectaCalendario}
           bloqueado={partidosBloqueados.has(partidoSeleccionado.id)}
+          temporizadorActivo={temporizadorActivo}
+          temporizadorMinutos={temporizadorMinutos}
           onActualizar={(datos) => onActualizarPartido(partidoSeleccionado.id, datos)}
           onProgramar={(datos) => onProgramarCalendario(partidoSeleccionado.id, datos)}
           onCerrar={() => setPartidoSeleccionadoId(null)}
@@ -2195,11 +2204,49 @@ function CuadranteDetalle({
   );
 }
 
+// Clase para resaltar (parpadeo) la caja/fila entera del partido cuando el
+// temporizador está apurado — se suma a admin-cuadro-en-curso, no la
+// sustituye, para que siga siendo compatible con esa señalización.
+function claseTemporizador(temporizador) {
+  if (temporizador?.estado === "urgente") return "admin-cuadro-temporizador-urgente";
+  if (temporizador?.estado === "agotado") return "admin-cuadro-temporizador-agotado";
+  return "";
+}
+
+// Indicador + botón del temporizador de un partido "en curso": mientras el
+// torneo tenga el temporizador activo y el partido no se haya marcado
+// "Empezado" todavía, muestra la cuenta atrás (o "¡Tiempo agotado!" al
+// llegar a 0) y el botón "Empezado" para pararla. Una vez pulsado, se
+// sustituye por un indicador fijo, sin parpadeo.
+function TemporizadorAviso({ p, temporizadorActivo, temporizador, onActualizar }) {
+  if (!temporizadorActivo || !p.enCurso) return null;
+  if (p.partidoIniciado) {
+    return <span className="admin-temporizador-texto admin-temporizador-texto-iniciado">▶ Iniciado</span>;
+  }
+  return (
+    <>
+      {temporizador && (
+        <span
+          className={`admin-temporizador-texto ${
+            temporizador.estado === "urgente" ? "admin-temporizador-texto-urgente" : ""
+          } ${temporizador.estado === "agotado" ? "admin-temporizador-texto-agotado" : ""}`}
+        >
+          ⏱ {temporizador.estado === "agotado" ? "¡Tiempo agotado!" : formatoCuentaAtras(temporizador.restanteSeg)}
+        </span>
+      )}
+      <button type="button" className="admin-link-btn" onClick={() => onActualizar({ iniciado: true })}>
+        Empezado
+      </button>
+    </>
+  );
+}
+
 // Ventanita de edición de un enfrentamiento del cuadrante visual: mismos
 // campos que antes tenía cada fila de la lista de texto (jugadores,
 // ganador, resultado, máquina, en curso y calendario), pero en un popup que
 // se abre al clicar la caja del enfrentamiento en el cuadrante.
-function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloqueado, onActualizar, onProgramar, onCerrar }) {
+function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloqueado, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, onCerrar }) {
+  const temporizador = useTemporizadorPartido(p, temporizadorActivo, temporizadorMinutos);
   return (
     <div className="admin-partido-modal" onClick={onCerrar}>
       <div className="admin-partido-panel" onClick={(e) => e.stopPropagation()}>
@@ -2212,7 +2259,7 @@ function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloquea
             🔒 Bloqueado hasta terminar la ronda anterior — "Marcar en curso" lo activa manualmente.
           </p>
         )}
-        <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""}`}>
+        <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${claseTemporizador(temporizador)}`}>
           <input
             defaultValue={p.jugador1 || ""}
             placeholder="Jugador 1"
@@ -2268,6 +2315,7 @@ function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloquea
           <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
             {p.enCurso ? "★ En curso" : "Marcar en curso"}
           </button>
+          <TemporizadorAviso p={p} temporizadorActivo={temporizadorActivo} temporizador={temporizador} onActualizar={onActualizar} />
           {afectaCalendario && p.jugador1 && p.jugador2 && (
             <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />
           )}
@@ -2280,11 +2328,12 @@ function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloquea
 // Fila de la vista de lista (con desplegables por ronda): mismos campos que
 // la ventanita, pero editables en línea directamente, tal y como estaba
 // antes de añadir el cuadro gráfico clicable.
-function PartidoRow({ p, maquinasOpciones, maquinas, afectaCalendario, onActualizar, onProgramar, busqueda, bloqueado }) {
+function PartidoRow({ p, maquinasOpciones, maquinas, afectaCalendario, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, busqueda, bloqueado }) {
   const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
   const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
+  const temporizador = useTemporizadorPartido(p, temporizadorActivo, temporizadorMinutos);
   return (
-    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${encontrado ? "admin-cuadro-encontrado" : ""} ${bloqueado ? "admin-cuadro-bloqueado" : ""}`}>
+    <div className={`admin-cuadro-partido ${p.enCurso ? "admin-cuadro-en-curso" : ""} ${claseTemporizador(temporizador)} ${encontrado ? "admin-cuadro-encontrado" : ""} ${bloqueado ? "admin-cuadro-bloqueado" : ""}`}>
       {bloqueado && <span className="admin-hint" style={{ display: "block" }}>🔒 Bloqueado hasta terminar la ronda anterior — "Marcar en curso" lo activa manualmente.</span>}
       <input
         defaultValue={p.jugador1 || ""}
@@ -2341,6 +2390,7 @@ function PartidoRow({ p, maquinasOpciones, maquinas, afectaCalendario, onActuali
       <button type="button" className="admin-link-btn" onClick={() => onActualizar({ enCurso: !p.enCurso })}>
         {p.enCurso ? "★ En curso" : "Marcar en curso"}
       </button>
+      <TemporizadorAviso p={p} temporizadorActivo={temporizadorActivo} temporizador={temporizador} onActualizar={onActualizar} />
       {afectaCalendario && p.jugador1 && p.jugador2 && <CalendarioPartido p={p} maquinas={maquinas} onProgramar={onProgramar} />}
     </div>
   );
