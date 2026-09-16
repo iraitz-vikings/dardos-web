@@ -556,9 +556,6 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
               </div>
             </div>
           )}
-          <p>
-            {modoEntrada === "total" ? t("marcador.introduceTotal") : t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
-          </p>
           <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal />
           {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((tv) => tv.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
           {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
@@ -873,9 +870,6 @@ function LegLocalCricket({ unidadesBase, legs, legsGanados, modoCricket, alMejor
 
       {ganadorIdx === null && (
         <>
-          <p style={{ marginTop: "1rem" }}>
-            {t("marcador.dardoDeTres").replace("{n}", Math.min(tiradasVisita.length + 1, 3))}
-          </p>
           <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal={false} />
           {modoEntrada === "diana" ? (
             <Diana onTirada={tirar} marcas={tiradasVisita.map((tv) => tv.pos).filter(Boolean)} deshabilitada={finVisita} />
