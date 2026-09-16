@@ -173,7 +173,7 @@ useEffect(() => {
     await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, visibilidad: nuevaVisibilidad }),
+      body: JSON.stringify({ visibilidad: nuevaVisibilidad }),
     });
     cargarTorneos();
   }
@@ -182,7 +182,7 @@ useEffect(() => {
     await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, finalizado: nuevoFinalizado }),
+      body: JSON.stringify({ finalizado: nuevoFinalizado }),
     });
     cargarTorneos();
   }
@@ -191,7 +191,7 @@ useEffect(() => {
     await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, notificaciones: nuevo }),
+      body: JSON.stringify({ notificaciones: nuevo }),
     });
     cargarTorneos();
   }
@@ -270,7 +270,7 @@ useEffect(() => {
     await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, puntosPorPosicion }),
+      body: JSON.stringify({ puntosPorPosicion }),
     });
     cargarTorneos();
   }
@@ -281,7 +281,7 @@ useEffect(() => {
     const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, ...imagenes }),
+      body: JSON.stringify(imagenes),
     });
     cargarTorneos();
     return res.ok;
@@ -294,7 +294,7 @@ useEffect(() => {
     const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, mensajesAvisos }),
+      body: JSON.stringify({ mensajesAvisos }),
     });
     cargarTorneos();
     return res.ok;
@@ -306,7 +306,7 @@ useEffect(() => {
     const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, temporizadorActivo, temporizadorMinutos: temporizadorActivo ? temporizadorMinutos : undefined }),
+      body: JSON.stringify({ temporizadorActivo, temporizadorMinutos: temporizadorActivo ? temporizadorMinutos : undefined }),
     });
     cargarTorneos();
     if (!res.ok) {
@@ -322,7 +322,7 @@ useEffect(() => {
     const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, videoDirectoUrl }),
+      body: JSON.stringify({ videoDirectoUrl }),
     });
     cargarTorneos();
     if (!res.ok) {
@@ -338,7 +338,7 @@ useEffect(() => {
     const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...torneo, configuracionHerramienta }),
+      body: JSON.stringify({ configuracionHerramienta }),
     });
     cargarTorneos();
     if (!res.ok) {

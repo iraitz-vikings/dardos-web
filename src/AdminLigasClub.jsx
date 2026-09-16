@@ -161,7 +161,7 @@ export default function AdminLigasClub({ token, salir }) {
     await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...liga, visibilidad: nueva }),
+      body: JSON.stringify({ visibilidad: nueva }),
     });
     cargarLigas();
   }
@@ -169,7 +169,7 @@ export default function AdminLigasClub({ token, salir }) {
     await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...liga, finalizado: nuevo }),
+      body: JSON.stringify({ finalizado: nuevo }),
     });
     cargarLigas();
   }
@@ -177,7 +177,7 @@ export default function AdminLigasClub({ token, salir }) {
     await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...liga, notificaciones: nuevo }),
+      body: JSON.stringify({ notificaciones: nuevo }),
     });
     cargarLigas();
   }
@@ -553,7 +553,7 @@ async function guardarConfiguracionHerramientaLiga(liga, configuracionHerramient
     const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...liga, configuracionHerramienta }),
+      body: JSON.stringify({ configuracionHerramienta }),
     });
     onRecargar();
     if (!res.ok) {
@@ -574,7 +574,7 @@ async function guardarVideoDirectoLiga(liga, videoDirectoUrl, token, onRecargar)
     const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ ...liga, videoDirectoUrl }),
+      body: JSON.stringify({ videoDirectoUrl }),
     });
     onRecargar();
     if (!res.ok) {
@@ -678,7 +678,7 @@ function ImagenesAvisosLiga({ liga, token, onRecargar }) {
       const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ ...liga, imagenBienvenidaUrl, imagenEliminadoUrl, imagenCampeonUrl }),
+        body: JSON.stringify({ imagenBienvenidaUrl, imagenEliminadoUrl, imagenCampeonUrl }),
       });
       setMensaje(res.ok ? { tipo: "ok", texto: "Imágenes guardadas." } : { tipo: "error", texto: "No se pudieron guardar." });
       onRecargar();
@@ -851,7 +851,7 @@ function MensajesAvisosLiga({ liga, token, onRecargar }) {
       const res = await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ ...liga, mensajesAvisos: mensajes }),
+        body: JSON.stringify({ mensajesAvisos: mensajes }),
       });
       setMensaje(res.ok ? { tipo: "ok", texto: "Mensajes guardados." } : { tipo: "error", texto: "No se pudieron guardar." });
       onRecargar();
