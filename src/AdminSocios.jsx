@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const ROLES = ["jugador", "capitan", "admin"];
@@ -19,6 +19,15 @@ export default function AdminSocios({ token, salir }) {
   const [password, setPassword] = useState("");
   const [rolManual, setRolManual] = useState("jugador");
   const [creando, setCreando] = useState(false);
+  const mensajeRef = useRef(null);
+
+  // El aviso (p.ej. la contraseña provisional al resetear) se pinta arriba
+  // del todo, lejos de botones como "Resetear contraseña" que están al
+  // final de una lista larga de miembros — sin este scroll, quedaba fuera
+  // de la vista y parecía que no pasaba nada.
+  useEffect(() => {
+    if (mensaje) mensajeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [mensaje]);
 
   function manejarAuthError(res) {
     if (res.status === 401) {
@@ -136,6 +145,8 @@ export default function AdminSocios({ token, salir }) {
 
   return (
     <section className="admin-form">
+      {mensaje && <p ref={mensajeRef} className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+
       <h2>Solicitudes pendientes</h2>
       {pendientes.length === 0 && <p className="chronicle-status">No hay solicitudes pendientes.</p>}
       <ul>
@@ -181,7 +192,6 @@ export default function AdminSocios({ token, salir }) {
         </label>
         <button type="submit" disabled={creando}>{creando ? "Creando…" : "Crear miembro"}</button>
       </form>
-      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
 
       <h2>Miembros ({socios.length})</h2>
       {socios.length === 0 && <p className="chronicle-status">Todavía no hay miembros aprobados.</p>}
