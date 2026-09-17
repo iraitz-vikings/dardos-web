@@ -5,17 +5,18 @@ import { useLang } from "./i18n.jsx";
 // escribe de una vez el total de puntos conseguidos en la visita (hasta 3
 // dardos), como en muchos contadores manuales de 501. Es más rápida pero se
 // pierde el detalle de qué dardo exacto se ha tirado — por eso, cuando la
-// modalidad de cierre exige doble o máster, hace falta confirmar aparte que
-// el dardo que ha dejado el marcador a 0 cumplía esa condición (no se puede
-// deducir solo del total). Ver Marcadores.jsx (tirarVisitaTotal) para cómo
-// se usa esa confirmación.
+// modalidad de cierre exige doble o máster y el total deja el resto a 0, no
+// se sabe si el dardo de cierre cumplía la modalidad: eso se confirma
+// después, con la pregunta "¿cuántos dardos ha tirado al doble/máster?"
+// (ver JuegoHerramienta.jsx / Marcadores.jsx, tirarVisitaTotal). Antes había
+// aquí una casilla aparte para confirmarlo antes de enviar, redundante con
+// esa pregunta y fácil de olvidar — se quitó, ahora hay un único paso.
 
 const TECLAS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "C"];
 
-export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
+export default function TecladoPuntuacion({ onEnviar, deshabilitada }) {
   const { t } = useLang();
   const [valor, setValor] = useState("");
-  const [cierreValido, setCierreValido] = useState(false);
 
   function pulsar(tecla) {
     if (deshabilitada) return;
@@ -26,9 +27,8 @@ export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
 
   function enviar() {
     if (deshabilitada || valor === "") return;
-    onEnviar(Number(valor), { cierreValido });
+    onEnviar(Number(valor));
     setValor("");
-    setCierreValido(false);
   }
 
   return (
@@ -53,13 +53,6 @@ export default function TecladoPuntuacion({ cierre, onEnviar, deshabilitada }) {
           </button>
         ))}
       </div>
-
-      {cierre !== "simple" && (
-        <label className="teclado-puntuacion-cierre">
-          <input type="checkbox" checked={cierreValido} disabled={deshabilitada} onChange={(e) => setCierreValido(e.target.checked)} />
-          {t("marcador.ultimoDardoFue").replace("{tipo}", cierre === "master" ? t("marcador.dobleOTriple") : t("marcador.dobleMin"))}
-        </label>
-      )}
     </div>
   );
 }
