@@ -1190,7 +1190,11 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .marcador-tablero-jugadores, .marcador-tablero-entrada { display: block; }
 .marcador-jugadores {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  /* auto-fit (no auto-fill): con solo 2 tarjetas, en pantallas anchas
+     auto-fill reservaba columnas vacías de sobra y las dos tarjetas se
+     quedaban pegadas a la izquierda en vez de repartirse el ancho — en
+     móvil no se notaba porque apenas cabían 1-2 columnas de todos modos. */
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: .7rem;
   margin-bottom: 1.2rem;
 }
