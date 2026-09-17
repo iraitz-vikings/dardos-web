@@ -605,46 +605,103 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
   return (
     <div>
       <CabeceraPartida alMejorDe={partida.alMejorDe} numeroLeg={partida.legs.length + 1} />
-      <div className="marcador-jugadores">
-        {unidades.map((u, i) => {
-          const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
-          const legActual = sumarEstadisticas501(...idsLado.map((id) => estadisticas[id]));
-          const partidoTotal = sumarEstadisticas501(
-            ...idsLado.map((id) => estadisticas[id]),
-            ...partida.legs.flatMap((leg) => idsLado.map((id) => leg.estadisticas?.[id]))
-          );
-          const activo = turnoIdx === i && ganadorIdx === null;
-          return (
-            <CuadroJugador
-              key={u.id}
-              unidad={u}
-              esInicioLeg={i === inicio.turnoIdx}
-              activo={activo}
-              ganador={ganadorIdx === i}
-              legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
-              valorPrincipal={u.restante}
-              dardoInfo={activo && modoEntrada !== "total" ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
-              slides={[
-                {
-                  titulo: "Esta partida",
-                  filas: [
-                    ["Promedio", fmtProm(promedio3Dardos(legActual.puntos, legActual.dardos))],
-                    ["Última", ultimaVisitaLado[i] ?? "—"],
-                    ["Dardos", legActual.dardos || 0],
-                  ],
-                },
-                {
-                  titulo: "Partido",
-                  filas: [
-                    ["% cierre", fmtPct(partidoTotal.cierresConvertidos, partidoTotal.intentosCierre)],
-                    ["Cierre máx.", partidoTotal.checkoutMax ?? "—"],
-                    ["Prom. partido", fmtProm(promedio3Dardos(partidoTotal.puntos, partidoTotal.dardos))],
-                  ],
-                },
-              ]}
-            />
-          );
-        })}
+      <div className="marcador-tablero">
+        <div className="marcador-tablero-jugadores">
+          <div className="marcador-jugadores">
+            {unidades.map((u, i) => {
+              const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
+              const legActual = sumarEstadisticas501(...idsLado.map((id) => estadisticas[id]));
+              const partidoTotal = sumarEstadisticas501(
+                ...idsLado.map((id) => estadisticas[id]),
+                ...partida.legs.flatMap((leg) => idsLado.map((id) => leg.estadisticas?.[id]))
+              );
+              const activo = turnoIdx === i && ganadorIdx === null;
+              return (
+                <CuadroJugador
+                  key={u.id}
+                  unidad={u}
+                  esInicioLeg={i === inicio.turnoIdx}
+                  activo={activo}
+                  ganador={ganadorIdx === i}
+                  legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
+                  valorPrincipal={u.restante}
+                  dardoInfo={activo && modoEntrada !== "total" ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
+                  slides={[
+                    {
+                      titulo: "Esta partida",
+                      filas: [
+                        ["Promedio", fmtProm(promedio3Dardos(legActual.puntos, legActual.dardos))],
+                        ["Última", ultimaVisitaLado[i] ?? "—"],
+                        ["Dardos", legActual.dardos || 0],
+                      ],
+                    },
+                    {
+                      titulo: "Partido",
+                      filas: [
+                        ["% cierre", fmtPct(partidoTotal.cierresConvertidos, partidoTotal.intentosCierre)],
+                        ["Cierre máx.", partidoTotal.checkoutMax ?? "—"],
+                        ["Prom. partido", fmtProm(promedio3Dardos(partidoTotal.puntos, partidoTotal.dardos))],
+                      ],
+                    },
+                  ]}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {fase === "jugando" && ganadorIdx === null && (
+          <div className="marcador-tablero-entrada">
+            {preguntaDoble && (
+              <div className="admin-msg admin-msg-ok marcador-pregunta-doble">
+                <p style={{ margin: "0 0 .5rem" }}>
+                  ¿Cuántos dardos de esta visita ha tirado <strong>{tiradorActual(unidades[preguntaDoble.turnoIdx])}</strong> al doble/máster?
+                </p>
+                <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
+                  {[0, 1, 2, 3].map((n) => (
+                    <button key={n} type="button" className="admin-tab" onClick={() => responderDardosDoble(n)}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="live-tournament-toggle">
+              <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
+              <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
+              <button type="button" className={modoEntrada === "total" ? "active" : ""} onClick={() => setModoEntrada("total")}>Puntuación total</button>
+            </div>
+            {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
+            {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
+            {modoEntrada === "total" && <TecladoPuntuacion cierre={partida.cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
+            <p className="marcador-tiradas-visita">
+              Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
+            </p>
+            {sugerencia && <p className="admin-msg admin-msg-ok">Sugerencia de cierre: {sugerencia.join(" → ")}</p>}
+            {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
+            {!preguntaDoble && (
+              <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+                {/* En modo "total" cada envío ya avanza solo al siguiente jugador (ver
+                    tirarVisitaTotal), así que este botón se oculta salvo que finVisita
+                    se haya quedado a true de antes de cambiar a este modo a medio turno
+                    — caso raro, pero si pasara no queremos dejar el teclado bloqueado
+                    sin forma de continuar. */}
+                {(modoEntrada !== "total" || finVisita) && (
+                  <button
+                    type="button"
+                    className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+                    onClick={() => finalizarVisita(unidades, turnoIdx)}
+                  >
+                    {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
+                  </button>
+                )}
+                <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
+                  Deshacer {modoEntrada === "total" ? "última visita" : "último dardo"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {fase === "enviando" && <p className="chronicle-status">Guardando el resultado del leg…</p>}
@@ -652,59 +709,6 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
         <>
           <p className="admin-msg admin-msg-error">{errorEnvio}</p>
           <button type="button" onClick={() => setFase("jugando")}>Reintentar</button>
-        </>
-      )}
-
-      {fase === "jugando" && ganadorIdx === null && (
-        <>
-          {preguntaDoble && (
-            <div className="admin-msg admin-msg-ok marcador-pregunta-doble">
-              <p style={{ margin: "0 0 .5rem" }}>
-                ¿Cuántos dardos de esta visita ha tirado <strong>{tiradorActual(unidades[preguntaDoble.turnoIdx])}</strong> al doble/máster?
-              </p>
-              <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
-                {[0, 1, 2, 3].map((n) => (
-                  <button key={n} type="button" className="admin-tab" onClick={() => responderDardosDoble(n)}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="live-tournament-toggle">
-            <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
-            <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
-            <button type="button" className={modoEntrada === "total" ? "active" : ""} onClick={() => setModoEntrada("total")}>Puntuación total</button>
-          </div>
-          {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
-          {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
-          {modoEntrada === "total" && <TecladoPuntuacion cierre={partida.cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
-          <p className="marcador-tiradas-visita">
-            Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
-          </p>
-          {sugerencia && <p className="admin-msg admin-msg-ok">Sugerencia de cierre: {sugerencia.join(" → ")}</p>}
-          {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
-          {!preguntaDoble && (
-            <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-              {/* En modo "total" cada envío ya avanza solo al siguiente jugador (ver
-                  tirarVisitaTotal), así que este botón se oculta salvo que finVisita
-                  se haya quedado a true de antes de cambiar a este modo a medio turno
-                  — caso raro, pero si pasara no queremos dejar el teclado bloqueado
-                  sin forma de continuar. */}
-              {(modoEntrada !== "total" || finVisita) && (
-                <button
-                  type="button"
-                  className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
-                  onClick={() => finalizarVisita(unidades, turnoIdx)}
-                >
-                  {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
-                </button>
-              )}
-              <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-                Deshacer {modoEntrada === "total" ? "última visita" : "último dardo"}
-              </button>
-            </div>
-          )}
         </>
       )}
 
@@ -849,69 +853,103 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
   return (
     <div>
       <CabeceraPartida alMejorDe={partida.alMejorDe} numeroLeg={partida.legs.length + 1} />
-      <div className="marcador-jugadores">
-        {unidades.map((u, i) => {
-          const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
-          const legActual = sumarEstadisticasCricket(...idsLado.map((id) => estadisticas[id]));
-          const partidoTotal = sumarEstadisticasCricket(
-            ...idsLado.map((id) => estadisticas[id]),
-            ...partida.legs.flatMap((leg) => idsLado.map((id) => leg.estadisticas?.[id]))
-          );
-          const activo = turnoIdx === i && ganadorIdx === null;
-          return (
-            <CuadroJugador
-              key={u.id}
-              unidad={u}
-              esInicioLeg={i === inicio.turnoIdx}
-              activo={activo}
-              ganador={ganadorIdx === i}
-              legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
-              valorPrincipal={puntos[i]}
-              dardoInfo={activo ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
-              slides={[
-                {
-                  titulo: "Esta partida",
-                  filas: [
-                    ["Marcas/visita", fmtProm(legActual.visitas ? legActual.marcas / legActual.visitas : null)],
-                    ["Última", ultimaVisitaLado[i] ?? "—"],
-                    ["Visitas", legActual.visitas || 0],
-                  ],
-                },
-                {
-                  titulo: "Partido",
-                  filas: [
-                    ["Mejor visita", partidoTotal.mejorVisita ?? "—"],
-                    ["Marcas/visita", fmtProm(partidoTotal.visitas ? partidoTotal.marcas / partidoTotal.visitas : null)],
-                    ["Total marcas", partidoTotal.marcas || 0],
-                  ],
-                },
-              ]}
-            />
-          );
-        })}
-      </div>
+      <div className="marcador-tablero">
+        <div className="marcador-tablero-jugadores">
+          <div className="marcador-jugadores">
+            {unidades.map((u, i) => {
+              const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
+              const legActual = sumarEstadisticasCricket(...idsLado.map((id) => estadisticas[id]));
+              const partidoTotal = sumarEstadisticasCricket(
+                ...idsLado.map((id) => estadisticas[id]),
+                ...partida.legs.flatMap((leg) => idsLado.map((id) => leg.estadisticas?.[id]))
+              );
+              const activo = turnoIdx === i && ganadorIdx === null;
+              return (
+                <CuadroJugador
+                  key={u.id}
+                  unidad={u}
+                  esInicioLeg={i === inicio.turnoIdx}
+                  activo={activo}
+                  ganador={ganadorIdx === i}
+                  legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
+                  valorPrincipal={puntos[i]}
+                  dardoInfo={activo ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
+                  slides={[
+                    {
+                      titulo: "Esta partida",
+                      filas: [
+                        ["Marcas/visita", fmtProm(legActual.visitas ? legActual.marcas / legActual.visitas : null)],
+                        ["Última", ultimaVisitaLado[i] ?? "—"],
+                        ["Visitas", legActual.visitas || 0],
+                      ],
+                    },
+                    {
+                      titulo: "Partido",
+                      filas: [
+                        ["Mejor visita", partidoTotal.mejorVisita ?? "—"],
+                        ["Marcas/visita", fmtProm(partidoTotal.visitas ? partidoTotal.marcas / partidoTotal.visitas : null)],
+                        ["Total marcas", partidoTotal.marcas || 0],
+                      ],
+                    },
+                  ]}
+                />
+              );
+            })}
+          </div>
 
-      <div className="marcador-tabla-scroll">
-        <table className="marcador-tabla">
-          <thead>
-            <tr>
-              <th></th>
-              {unidades.map((u, i) => (
-                <th key={u.id} className={ganadorIdx === i ? "marcador-jugador-ganador" : ""}>{u.etiqueta}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {NUMEROS_CRICKET.map((num) => (
-              <tr key={num.clave}>
-                <th scope="row">{num.etiqueta}</th>
-                {unidades.map((u, i) => (
-                  <td key={u.id} className={u.marcas[num.clave] >= 3 ? "marcador-celda-cerrada" : ""}>{simboloMarcas(u.marcas[num.clave])}</td>
+          <div className="marcador-tabla-scroll">
+            <table className="marcador-tabla">
+              <thead>
+                <tr>
+                  <th></th>
+                  {unidades.map((u, i) => (
+                    <th key={u.id} className={ganadorIdx === i ? "marcador-jugador-ganador" : ""}>{u.etiqueta}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {NUMEROS_CRICKET.map((num) => (
+                  <tr key={num.clave}>
+                    <th scope="row">{num.etiqueta}</th>
+                    {unidades.map((u, i) => (
+                      <td key={u.id} className={u.marcas[num.clave] >= 3 ? "marcador-celda-cerrada" : ""}>{simboloMarcas(u.marcas[num.clave])}</td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {fase === "jugando" && ganadorIdx === null && (
+          <div className="marcador-tablero-entrada">
+            <div className="live-tournament-toggle" style={{ marginTop: "1rem" }}>
+              <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
+              <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
+            </div>
+            {modoEntrada === "diana" ? (
+              <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />
+            ) : (
+              <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />
+            )}
+            <p className="marcador-tiradas-visita">
+              Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
+            </p>
+            {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
+            <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
+              <button
+                type="button"
+                className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+                onClick={() => finalizarVisita(unidades, turnoIdx)}
+              >
+                {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
+              </button>
+              <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
+                Deshacer último dardo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {fase === "enviando" && <p className="chronicle-status">Guardando el resultado del leg…</p>}
@@ -919,36 +957,6 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
         <>
           <p className="admin-msg admin-msg-error">{errorEnvio}</p>
           <button type="button" onClick={() => setFase("jugando")}>Reintentar</button>
-        </>
-      )}
-
-      {fase === "jugando" && ganadorIdx === null && (
-        <>
-          <div className="live-tournament-toggle" style={{ marginTop: "1rem" }}>
-            <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
-            <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
-          </div>
-          {modoEntrada === "diana" ? (
-            <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />
-          ) : (
-            <TecladoNumeros onTirada={tirar} deshabilitada={finVisita} />
-          )}
-          <p className="marcador-tiradas-visita">
-            Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
-          </p>
-          {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
-          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-            <button
-              type="button"
-              className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
-              onClick={() => finalizarVisita(unidades, turnoIdx)}
-            >
-              {finVisita ? "Siguiente jugador →" : "Terminar turno ahora"}
-            </button>
-            <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-              Deshacer último dardo
-            </button>
-          </div>
         </>
       )}
 
