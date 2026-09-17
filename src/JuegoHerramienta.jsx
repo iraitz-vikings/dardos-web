@@ -222,7 +222,16 @@ function SelectorPartidoPendiente({ token, entidadTipo, entidadId, onElegido, on
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiFetch(`/api/partidas-herramienta/pendientes?entidadTipo=${entidadTipo}&entidadId=${entidadId}`, { token })
+    // entidadTipo/entidadId son opcionales (ver AccesoHerramienta): la
+    // entrada pública nueva /partidas, sin torneo/liga concretos, no los
+    // pasa, y entonces trae TODOS los pendientes del jugador (torneo, liga y
+    // amistosos juntos) — ver plan "partido-amistoso-remoto" guardado en el
+    // proyecto.
+    const params = new URLSearchParams();
+    if (entidadTipo) params.set("entidadTipo", entidadTipo);
+    if (entidadId) params.set("entidadId", entidadId);
+    const query = params.toString();
+    apiFetch(`/api/partidas-herramienta/pendientes${query ? `?${query}` : ""}`, { token })
       .then(setPendientes)
       .catch((err) => setError(err.message || "No se han podido cargar tus partidos."));
   }, [token, entidadTipo, entidadId]);
@@ -237,11 +246,18 @@ function SelectorPartidoPendiente({ token, entidadTipo, entidadId, onElegido, on
       {pendientes && pendientes.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: ".5rem" }}>
           {pendientes.map((p) => (
-            <button key={p.partidoId} type="button" className="admin-tab" style={{ textAlign: "left" }} onClick={() => onElegido(p)}>
+            <button key={p.partidoId || p.partidaHerramientaId} type="button" className="admin-tab" style={{ textAlign: "left" }} onClick={() => onElegido(p)}>
               {p.etiquetaPropia} vs {p.etiquetaRival}
               <br />
               <small>
-                {p.tipo === "jornada" ? `Jornada ${p.jornada}` : p.rama === "final" ? "Final" : `Ronda ${p.ronda}`} ·{" "}
+                {p.tipo === "amistosa"
+                  ? "Amistoso"
+                  : p.tipo === "jornada"
+                  ? `Jornada ${p.jornada}`
+                  : p.rama === "final"
+                  ? "Final"
+                  : `Ronda ${p.ronda}`}{" "}
+                ·{" "}
                 {p.juegoConfigurado === "ambos" ? "501 o Cricket" : p.juegoConfigurado} · al mejor de {p.alMejorDe}
               </small>
             </button>
@@ -292,6 +308,52 @@ function idJugadorTirador(partida, ladoIdx, unidad) {
   return ids[unidad.siguienteIntegranteIdx];
 }
 
+// --- Sincronización remota (partido amistoso, plan "partido-amistoso-remoto"
+// guardado en el proyecto) -------------------------------------------------
+//
+// Cada visita completa (nunca dardo a dardo, ver decisión del plan) se manda
+// al backend justo cuando el turno pasa al rival, para que su dispositivo la
+// recoja haciendo polling. Solo tiene efecto si la partida es un amistoso
+// (partida.amistosa); en partidos de torneo/liga (dispositivo compartido) no
+// hace nada. Best-effort: si falla, no bloquea el juego local — el rival lo
+// verá igualmente en la próxima sincronización, o al terminar el leg (que sí
+// se guarda de forma síncrona).
+function sincronizarTurnoRemoto(partida, token, unidadesNuevas, turnoIdxNuevo) {
+  if (!partida.amistosa) return;
+  const turnoJugadorId = idJugadorTirador(partida, turnoIdxNuevo, unidadesNuevas[turnoIdxNuevo]);
+  apiFetch(`/api/partidas-herramienta/${partida.id}/visita`, {
+    token,
+    method: "PUT",
+    body: JSON.stringify({ turnoJugadorId, unidades: unidadesNuevas, turnoIdx: turnoIdxNuevo }),
+  }).catch(() => {});
+}
+
+// Sondea el estado de la partida cada 2.5s mientras se espera el turno del
+// rival (amistoso remoto, no aplica a torneo/liga). Si ha cambiado de leg o
+// ha terminado, se propaga tal cual (onActualizada ya sabe remontar el
+// marcador o mostrar "partido terminado"); si sigue en el mismo leg pero ya
+// es mi turno según `visitaEnCurso`, se adopta ese estado como el actual.
+function useSondeoTurnoRemoto({ partida, token, miJugadorId, esRemota, esMiTurno, activo, onEstadoRemoto, onActualizada }) {
+  useEffect(() => {
+    if (!esRemota || esMiTurno || !activo) return undefined;
+    const intervalo = setInterval(() => {
+      apiFetch(`/api/partidas-herramienta/${partida.id}`, { token })
+        .then((fresca) => {
+          if (fresca.finalizada || fresca.legs.length !== partida.legs.length) {
+            onActualizada(fresca);
+            return;
+          }
+          const v = fresca.visitaEnCurso;
+          if (v && v.turnoJugadorId === miJugadorId && Array.isArray(v.unidades)) {
+            onEstadoRemoto(v);
+          }
+        })
+        .catch(() => {});
+    }, 2500);
+    return () => clearInterval(intervalo);
+  }, [esRemota, esMiTurno, activo, partida.id, partida.legs.length, miJugadorId, token]);
+}
+
 // --- Marcador 501 -----------------------------------------------------------
 
 function nuevaLeg501(partida, numeroLeg) {
@@ -299,12 +361,24 @@ function nuevaLeg501(partida, numeroLeg) {
   return { unidades: base, turnoIdx: (numeroLeg - 1) % base.length };
 }
 
-function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
-  const inicio = useMemo(() => nuevaLeg501(partida, partida.legs.length + 1), [partida.id, partida.legs.length]);
+function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSalir }) {
+  // Si es un amistoso remoto y se retoma a media visita (recarga de página,
+  // vuelta a la app…), se arranca desde el último estado sincronizado
+  // (visitaEnCurso) en vez de desde el principio del leg — ver
+  // sincronizarTurnoRemoto más abajo y el plan "partido-amistoso-remoto"
+  // guardado en el proyecto.
+  const inicio = useMemo(() => {
+    const base = nuevaLeg501(partida, partida.legs.length + 1);
+    if (partida.amistosa && partida.visitaEnCurso?.unidades) {
+      return { unidades: partida.visitaEnCurso.unidades, turnoIdx: partida.visitaEnCurso.turnoIdx };
+    }
+    return base;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partida.id, partida.legs.length]);
   const [unidades, setUnidades] = useState(inicio.unidades);
   const [turnoIdx, setTurnoIdx] = useState(inicio.turnoIdx);
   const [tiradasVisita, setTiradasVisita] = useState([]);
-  const [restanteInicioVisita, setRestanteInicioVisita] = useState(501);
+  const [restanteInicioVisita, setRestanteInicioVisita] = useState(inicio.unidades[inicio.turnoIdx].restante);
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
@@ -381,6 +455,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
       setRestanteInicioVisita(p.avanzar.restante);
       setMensaje("");
       setFinVisita(false);
+      sincronizarTurnoRemoto(partida, token, p.avanzar.unidades, p.avanzar.turnoIdx);
       return;
     }
     concluirVisita(p.jugadorId, p.turnoIdx, p.puntosVisita, p.dardosCount, p.gana, dardosAlDoble);
@@ -546,6 +621,7 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
     // jugador equivocado); el marcador ya deja ver que no se ha movido.
     setMensaje("");
     setFinVisita(false);
+    sincronizarTurnoRemoto(partida, token, avanzar.unidades, avanzar.turnoIdx);
   }
 
   function deshacer() {
@@ -574,7 +650,30 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
     setRestanteInicioVisita(conIntegranteActualizado[siguienteIdx].restante);
     setMensaje("");
     setFinVisita(false);
+    sincronizarTurnoRemoto(partida, token, conIntegranteActualizado, siguienteIdx);
   }
+
+  const esRemota = !!partida.amistosa;
+  const turnoJugadorIdActual = idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]);
+  const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
+
+  useSondeoTurnoRemoto({
+    partida,
+    token,
+    miJugadorId,
+    esRemota,
+    esMiTurno,
+    activo: ganadorIdx === null && fase === "jugando",
+    onActualizada,
+    onEstadoRemoto: (v) => {
+      setUnidades(v.unidades);
+      setTurnoIdx(v.turnoIdx);
+      setTiradasVisita([]);
+      setRestanteInicioVisita(v.unidades[v.turnoIdx].restante);
+      setMensaje("");
+      setFinVisita(false);
+    },
+  });
 
   useEffect(() => {
     if (ganadorIdx === null || fase !== "jugando") return;
@@ -650,7 +749,14 @@ function MarcadorPartida501({ partida, token, onActualizada, onSalir }) {
           </div>
         </div>
 
-        {fase === "jugando" && ganadorIdx === null && (
+        {fase === "jugando" && ganadorIdx === null && !esMiTurno && (
+          <div className="marcador-tablero-entrada">
+            <p className="chronicle-status">
+              Esperando a que tire <strong>{tiradorActual(unidades[turnoIdx])}</strong>…
+            </p>
+          </div>
+        )}
+        {fase === "jugando" && ganadorIdx === null && esMiTurno && (
           <div className="marcador-tablero-entrada">
             {preguntaDoble && (
               <div className="admin-msg admin-msg-ok marcador-pregunta-doble">
@@ -733,8 +839,18 @@ function nuevaLegCricket(partida, numeroLeg) {
   return { unidades: base, turnoIdx: (numeroLeg - 1) % base.length };
 }
 
-function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
-  const inicio = useMemo(() => nuevaLegCricket(partida, partida.legs.length + 1), [partida.id, partida.legs.length]);
+function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, onSalir }) {
+  // Ver el comentario equivalente en MarcadorPartida501: al retomar un
+  // amistoso remoto a media visita se arranca desde visitaEnCurso, no desde
+  // el principio del leg.
+  const inicio = useMemo(() => {
+    const base = nuevaLegCricket(partida, partida.legs.length + 1);
+    if (partida.amistosa && partida.visitaEnCurso?.unidades) {
+      return { unidades: partida.visitaEnCurso.unidades, turnoIdx: partida.visitaEnCurso.turnoIdx };
+    }
+    return base;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partida.id, partida.legs.length]);
   const [unidades, setUnidades] = useState(inicio.unidades);
   const [turnoIdx, setTurnoIdx] = useState(inicio.turnoIdx);
   const [tiradasVisita, setTiradasVisita] = useState([]);
@@ -832,7 +948,29 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
     setTiradasVisita([]);
     setMensaje("");
     setFinVisita(false);
+    sincronizarTurnoRemoto(partida, token, conIntegranteActualizado, siguienteIdx);
   }
+
+  const esRemota = !!partida.amistosa;
+  const turnoJugadorIdActual = idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]);
+  const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
+
+  useSondeoTurnoRemoto({
+    partida,
+    token,
+    miJugadorId,
+    esRemota,
+    esMiTurno,
+    activo: ganadorIdx === null && fase === "jugando",
+    onActualizada,
+    onEstadoRemoto: (v) => {
+      setUnidades(v.unidades);
+      setTurnoIdx(v.turnoIdx);
+      setTiradasVisita([]);
+      setMensaje("");
+      setFinVisita(false);
+    },
+  });
 
   useEffect(() => {
     if (ganadorIdx === null || fase !== "jugando") return;
@@ -921,7 +1059,14 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
           </div>
         </div>
 
-        {fase === "jugando" && ganadorIdx === null && (
+        {fase === "jugando" && ganadorIdx === null && !esMiTurno && (
+          <div className="marcador-tablero-entrada">
+            <p className="chronicle-status">
+              Esperando a que tire <strong>{tiradorActual(unidades[turnoIdx])}</strong>…
+            </p>
+          </div>
+        )}
+        {fase === "jugando" && ganadorIdx === null && esMiTurno && (
           <div className="marcador-tablero-entrada">
             <div className="live-tournament-toggle" style={{ marginTop: "1rem" }}>
               <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
@@ -969,7 +1114,7 @@ function MarcadorPartidaCricket({ partida, token, onActualizada, onSalir }) {
 
 // --- Envoltorio: partida completa (varios legs hasta terminar) ------------
 
-function PartidaCompleta({ partida, token, onSalir }) {
+function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   const [partidaActual, setPartidaActual] = useState(partida);
 
   if (partidaActual.finalizada) {
@@ -994,6 +1139,7 @@ function PartidaCompleta({ partida, token, onSalir }) {
         key={partidaActual.legs.length}
         partida={partidaActual}
         token={token}
+        miJugadorId={miJugadorId}
         onActualizada={setPartidaActual}
         onSalir={onSalir}
       />
@@ -1004,6 +1150,7 @@ function PartidaCompleta({ partida, token, onSalir }) {
       key={partidaActual.legs.length}
       partida={partidaActual}
       token={token}
+      miJugadorId={miJugadorId}
       onActualizada={setPartidaActual}
       onSalir={onSalir}
     />
@@ -1015,8 +1162,8 @@ function PartidaCompleta({ partida, token, onSalir }) {
 const CLAVE_TOKEN = "herramientaPartidasToken";
 const CLAVE_JUGADOR = "herramientaPartidasJugador";
 
-export default function AccesoHerramienta({ activa, entidadTipo, entidadId, entidadNombre }) {
-  const [mostrar, setMostrar] = useState(false);
+export default function AccesoHerramienta({ activa, entidadTipo, entidadId, entidadNombre, autoAbrir }) {
+  const [mostrar, setMostrar] = useState(!!autoAbrir);
   const [token, setToken] = useState(() => {
     try { return sessionStorage.getItem(CLAVE_TOKEN) || ""; } catch { return ""; }
   });
@@ -1045,6 +1192,24 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
     } catch { /* almacenamiento no disponible, se queda solo en memoria */ }
     setToken(nuevoToken);
     setJugador(nuevoJugador);
+  }
+
+  // Los amistosos (plan "partido-amistoso-remoto", guardado en el proyecto)
+  // no pasan por /iniciar: la PartidaHerramienta ya existe entera desde que
+  // se creó (POST /amistosa, en la Zona de miembros), así que aquí solo hace
+  // falta pedirla por su id.
+  async function abrirAmistoso(pendiente) {
+    setErrorIniciar("");
+    try {
+      const data = await apiFetch(`/api/partidas-herramienta/${pendiente.partidaHerramientaId}`, { token });
+      setPartida(data);
+    } catch (err) {
+      if (err.status === 401) {
+        salirDeSesion();
+        return;
+      }
+      setErrorIniciar(err.message || "No se ha podido abrir el amistoso.");
+    }
   }
 
   async function iniciarPartido(pendiente, juegoElegido) {
@@ -1097,7 +1262,9 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
               entidadTipo={entidadTipo}
               entidadId={entidadId}
               onElegido={(p) => {
-                if (p.juegoConfigurado === "ambos") {
+                if (p.tipo === "amistosa") {
+                  abrirAmistoso(p);
+                } else if (p.juegoConfigurado === "ambos") {
                   setPendienteElegido(p);
                 } else {
                   iniciarPartido(p);
@@ -1119,6 +1286,7 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
         <PartidaCompleta
           partida={partida}
           token={token}
+          miJugadorId={jugador?.id}
           onSalir={() => {
             setPartida(null);
             setPendienteElegido(null);

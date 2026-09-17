@@ -8,6 +8,7 @@ import LigaPage from "./LigaPage.jsx";
 import Historico from "./Historico.jsx";
 import Socios from "./Socios.jsx";
 import AvisoCheckIn from "./AvisoCheckIn.jsx";
+import PaginaPartidas from "./PaginaPartidas.jsx";
 import { LanguageProvider } from "./i18n.jsx";
 import "./styles.css";
 
@@ -16,6 +17,10 @@ const isAdmin = path.startsWith("/admin");
 const isGaleria = path.startsWith("/galeria");
 const isHistorico = path.startsWith("/historico");
 const isSocios = path.startsWith("/socios");
+// /partidas: entrada pública para jugar en remoto (plan
+// "partido-amistoso-remoto", guardado en el proyecto), independiente de
+// cualquier torneo/liga concretos — ver PaginaPartidas.jsx.
+const isPartidas = path.startsWith("/partidas");
 const matchTorneo = path.match(/^\/torneo\/([^/]+)/);
 const matchLiga = path.match(/^\/liga\/([^/]+)/);
 const matchAviso = path.match(/^\/aviso\/([^/]+)/);
@@ -25,6 +30,7 @@ function Pagina() {
   if (isGaleria) return <Galeria />;
   if (isHistorico) return <Historico />;
   if (isSocios) return <Socios />;
+  if (isPartidas) return <PaginaPartidas />;
   if (matchTorneo) return <TorneoPage id={matchTorneo[1]} />;
   if (matchLiga) return <LigaPage id={matchLiga[1]} />;
   if (matchAviso) return <AvisoCheckIn token={matchAviso[1]} />;
