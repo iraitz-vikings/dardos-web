@@ -1162,8 +1162,8 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
 const CLAVE_TOKEN = "herramientaPartidasToken";
 const CLAVE_JUGADOR = "herramientaPartidasJugador";
 
-export default function AccesoHerramienta({ activa, entidadTipo, entidadId, entidadNombre, autoAbrir }) {
-  const [mostrar, setMostrar] = useState(!!autoAbrir);
+export default function AccesoHerramienta({ activa, entidadTipo, entidadId, entidadNombre, autoAbrir, partidaIdDirecta }) {
+  const [mostrar, setMostrar] = useState(!!autoAbrir || !!partidaIdDirecta);
   const [token, setToken] = useState(() => {
     try { return sessionStorage.getItem(CLAVE_TOKEN) || ""; } catch { return ""; }
   });
@@ -1197,20 +1197,35 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
   // Los amistosos (plan "partido-amistoso-remoto", guardado en el proyecto)
   // no pasan por /iniciar: la PartidaHerramienta ya existe entera desde que
   // se creó (POST /amistosa, en la Zona de miembros), así que aquí solo hace
-  // falta pedirla por su id.
-  async function abrirAmistoso(pendiente) {
+  // falta pedirla por su id. También se usa para el enlace directo del aviso
+  // de "te han retado" (partidaIdDirecta, ver más abajo).
+  async function abrirPartidaPorId(id) {
     setErrorIniciar("");
     try {
-      const data = await apiFetch(`/api/partidas-herramienta/${pendiente.partidaHerramientaId}`, { token });
+      const data = await apiFetch(`/api/partidas-herramienta/${id}`, { token });
       setPartida(data);
     } catch (err) {
       if (err.status === 401) {
         salirDeSesion();
         return;
       }
-      setErrorIniciar(err.message || "No se ha podido abrir el amistoso.");
+      setErrorIniciar(err.message || "No se ha podido abrir el partido.");
     }
   }
+
+  function abrirAmistoso(pendiente) {
+    abrirPartidaPorId(pendiente.partidaHerramientaId);
+  }
+
+  // Enlace directo del aviso de "te han retado a un amistoso" (?partida=id en
+  // /partidas, ver PaginaPartidas.jsx): en cuanto hay sesión (PIN metido), se
+  // abre esa partida sola, sin pasar por la lista de pendientes.
+  useEffect(() => {
+    if (token && partidaIdDirecta && !partida) {
+      abrirPartidaPorId(partidaIdDirecta);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, partidaIdDirecta]);
 
   async function iniciarPartido(pendiente, juegoElegido) {
     setErrorIniciar("");
