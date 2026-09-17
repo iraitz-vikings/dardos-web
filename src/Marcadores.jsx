@@ -299,10 +299,30 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
     }
   }
 
+  // Cuando `p.necesitaConfirmarCierre` es true (modo "puntuación total",
+  // cierre a doble/máster, el total llegaba justo a 0), esta respuesta
+  // decide además si la visita cuenta como cierre válido: 0 dardos al doble
+  // = no hubo cierre válido = bust, se revierte al resto inicial (la visita
+  // se había pintado provisionalmente a 0 mientras se esperaba respuesta).
+  // Antes había una casilla aparte para confirmar esto ANTES de enviar el
+  // total, redundante con esta pregunta y fácil de pasar por alto.
   function responderDardosDoble(dardosAlDoble) {
     const p = preguntaDoble;
     if (!p) return;
     setPreguntaDoble(null);
+    if (p.necesitaConfirmarCierre) {
+      const gana = dardosAlDoble > 0;
+      const puntosVisita = gana ? p.valorTotal : 0;
+      if (!gana) {
+        const unidadesRevertidas = p.unidadesAntes.map((u, i) =>
+          i === p.turnoIdx ? { ...u, restante: p.restanteInicioVisita, abierto: true } : u
+        );
+        setUnidades(unidadesRevertidas);
+        setMensaje(t("marcador.bustCierreCasilla").replace("{modalidad}", etiquetaModalidad(cierre, t).toLowerCase()));
+      }
+      concluirVisita(p.unidadId, p.turnoIdx, puntosVisita, p.dardosCount, gana, dardosAlDoble);
+      return;
+    }
     concluirVisita(p.unidadId, p.turnoIdx, p.puntosVisita, p.dardosCount, p.gana, dardosAlDoble);
   }
 
@@ -397,10 +417,11 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
   // hay forma de deducir del total solo si el dardo de apertura cumplía la
   // modalidad exigida, así que este modo se desactiva en pantalla mientras
   // la unidad no esté abierta y la apertura no sea simple (hay que abrir con
-  // la diana o el teclado de números). Para el cierre si pasa lo mismo, pero
-  // ahí se resuelve con la casilla "cierreValido" que rellena el propio
-  // jugador en TecladoPuntuacion.
-  function tirarVisitaTotal(valorTotal, { cierreValido }) {
+  // la diana o el teclado de números). Para el cierre pasa lo mismo cuando
+  // el total deja el resto justo a 0: se resuelve con la pregunta de
+  // después ("¿cuántos dardos ha tirado al doble/máster?", ver
+  // preguntaDoble/responderDardosDoble) — 0 dardos = cierre no válido.
+  function tirarVisitaTotal(valorTotal) {
     if (ganadorIdx !== null || finVisita || preguntaDoble) return;
     if (!Number.isFinite(valorTotal) || valorTotal < 0 || valorTotal > 180) {
       setMensaje(t("marcador.visitaFueraRango"));
@@ -422,7 +443,7 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
     let nuevasUnidades = unidades;
     let bust = false;
     let gana = false;
-    const cierreOk = cierre === "simple" || cierreValido;
+    let necesitaConfirmarCierre = false;
 
     const nuevoRestante = unidad.restante - valorTotal;
     if (nuevoRestante < 0 || nuevoRestante === 1) {
@@ -430,13 +451,14 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
       nuevoMensaje = t("marcador.bustVisitaSigueCon").replace("{restante}", restanteInicioVisita);
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
     } else if (nuevoRestante === 0) {
-      if (cierreOk) {
+      if (cierre === "simple") {
         gana = true;
         nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
       } else {
-        bust = true;
-        nuevoMensaje = t("marcador.bustCierreCasilla").replace("{modalidad}", etiquetaModalidad(cierre, t).toLowerCase());
-        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
+        necesitaConfirmarCierre = true;
+        // Provisional (se ve a 0 mientras se espera la respuesta); si la
+        // respuesta es 0 dardos al doble, se revierte al resto inicial.
+        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
       }
     } else {
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: nuevoRestante, abierto: true } : u));
@@ -461,8 +483,18 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
     // Aquí no hay "3 dardos" que contar: al escribir el total ya se ha
     // introducido la visita entera de una vez, así que pasa a fin de turno
     // directamente (salvo que ya se haya ganado, tratado arriba).
-    if (intentoPosible) {
-      setPreguntaDoble({ unidadId, turnoIdx, puntosVisita, dardosCount: 3, gana: false });
+    if (necesitaConfirmarCierre || intentoPosible) {
+      setPreguntaDoble({
+        unidadId,
+        turnoIdx,
+        puntosVisita,
+        dardosCount: 3,
+        gana: false,
+        necesitaConfirmarCierre,
+        valorTotal,
+        unidadesAntes: unidades,
+        restanteInicioVisita,
+      });
     } else {
       concluirVisita(unidadId, turnoIdx, puntosVisita, 3, false, 0);
     }
@@ -550,6 +582,11 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
                 <p style={{ margin: "0 0 .5rem" }}>
                   ¿Cuántos dardos de esta visita ha tirado <strong>{tiradorActual(unidades[preguntaDoble.turnoIdx])}</strong> al doble/máster?
                 </p>
+                {preguntaDoble.necesitaConfirmarCierre && (
+                  <p style={{ margin: "0 0 .5rem", fontSize: ".85em", opacity: .85 }}>
+                    Si ninguno ha sido un cierre válido, marca 0: la visita no contará y sigue con {preguntaDoble.restanteInicioVisita}.
+                  </p>
+                )}
                 <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
                   {[0, 1, 2, 3].map((n) => (
                     <button key={n} type="button" className="admin-tab" onClick={() => responderDardosDoble(n)}>
@@ -562,7 +599,7 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
             <SelectorModoEntrada modo={modoEntrada} onCambiar={setModoEntrada} permitirTotal />
             {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((tv) => tv.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
             {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
-            {modoEntrada === "total" && <TecladoPuntuacion cierre={cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
+            {modoEntrada === "total" && <TecladoPuntuacion onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
             <p className="marcador-tiradas-visita">
               {t("marcador.estaVisita")} {tiradasVisita.length ? tiradasVisita.map((tv) => etiquetaTiradaMostrar(tv.resultado.etiqueta, t)).join(", ") : "—"}
             </p>

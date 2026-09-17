@@ -472,24 +472,44 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
   // Respuesta a la pregunta de "¿cuántos dardos al doble?" (ver
   // preguntaDoble arriba): retoma el cierre de la visita que se había
   // dejado a medias, ya con el dato de intentos de cierre.
+  //
+  // Cuando `p.necesitaConfirmarCierre` es true (modo "puntuación total",
+  // cierre a doble/máster, el total llegaba justo a 0), esta misma
+  // respuesta decide además si la visita cuenta como cierre válido: 0
+  // dardos al doble = no hubo cierre válido = bust, se revierte al resto
+  // inicial. Antes había una casilla aparte para confirmar esto ANTES de
+  // enviar el total, redundante con esta pregunta y fácil de olvidar (se
+  // podía marcar 1+ dardos aquí sin que la casilla estuviera marcada, y la
+  // visita se quedaba en bust igualmente) — se unificó en una sola pregunta.
   function responderDardosDoble(dardosAlDoble) {
     const p = preguntaDoble;
     if (!p) return;
     setPreguntaDoble(null);
     if (p.origen === "total") {
-      registrarVisita(p.jugadorId, p.dardosCount, p.puntosVisita, p.gana, dardosAlDoble);
-      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === p.turnoIdx ? p.puntosVisita : v)));
-      if (p.gana) {
-        setUnidades(p.nuevasUnidades);
+      const gana = p.necesitaConfirmarCierre ? dardosAlDoble > 0 : p.gana;
+      const puntosVisita = gana ? p.valorTotal : 0;
+      const unidadesTrasVisita = p.unidadesAntes.map((u, i) =>
+        i === p.turnoIdx ? { ...u, restante: gana ? 0 : p.restanteInicioVisita, abierto: true } : u
+      );
+      registrarVisita(p.jugadorId, p.dardosCount, puntosVisita, gana, dardosAlDoble);
+      setUltimaVisitaLado((prev) => prev.map((v, i) => (i === p.turnoIdx ? puntosVisita : v)));
+      if (gana) {
+        setUnidades(unidadesTrasVisita);
         setTiradasVisita([{ resultado: p.resultado, pos: undefined }]);
-        setMensaje(p.nuevoMensaje);
+        setMensaje("");
         setGanadorIdx(p.turnoIdx);
         return;
       }
-      setUnidades(p.avanzar.unidades);
-      setTurnoIdx(p.avanzar.turnoIdx);
+      const conIntegranteActualizado = unidadesTrasVisita.map((u, i) =>
+        i === p.turnoIdx && u.integrantes.length > 1
+          ? { ...u, siguienteIntegranteIdx: (u.siguienteIntegranteIdx + 1) % u.integrantes.length }
+          : u
+      );
+      const siguienteIdx = (p.turnoIdx + 1) % conIntegranteActualizado.length;
+      setUnidades(conIntegranteActualizado);
+      setTurnoIdx(siguienteIdx);
       setTiradasVisita([]);
-      setRestanteInicioVisita(p.avanzar.restante);
+      setRestanteInicioVisita(conIntegranteActualizado[siguienteIdx].restante);
       setMensaje("");
       setFinVisita(false);
       return;
@@ -571,7 +591,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
     }
   }
 
-  function tirarVisitaTotal(valorTotal, { cierreValido }) {
+  function tirarVisitaTotal(valorTotal) {
     if (ganadorIdx !== null || finVisita || preguntaDoble) return;
     if (!Number.isFinite(valorTotal) || valorTotal < 0 || valorTotal > 180) {
       setMensaje("La puntuación de una visita tiene que estar entre 0 y 180.");
@@ -591,7 +611,12 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
     let nuevasUnidades = unidades;
     let bust = false;
     let gana = false;
-    const cierreOk = partida.cierre === "simple" || cierreValido;
+    // Si el cierre es a doble/máster y el total deja el resto justo a 0, no
+    // se puede saber solo con el número si el último dardo cumplía la
+    // modalidad — eso se confirma con la pregunta de después ("¿cuántos
+    // dardos ha tirado al doble/máster?", ver preguntaDoble): 0 dardos =
+    // cierre no válido = bust. Con cierre simple no hace falta preguntar.
+    let necesitaConfirmarCierre = false;
 
     const nuevoRestante = unidad.restante - valorTotal;
     if (nuevoRestante < 0 || nuevoRestante === 1) {
@@ -599,13 +624,14 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
       nuevoMensaje = `Bust: la visita no cuenta, sigue con ${restanteInicioVisita}.`;
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
     } else if (nuevoRestante === 0) {
-      if (cierreOk) {
+      if (partida.cierre === "simple") {
         gana = true;
         nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
       } else {
-        bust = true;
-        nuevoMensaje = `Bust: llegas a 0 pero hace falta marcar la casilla de cierre (${etiquetaModalidad(partida.cierre).toLowerCase()}) para que cuente.`;
-        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: restanteInicioVisita, abierto: true } : u));
+        necesitaConfirmarCierre = true;
+        // Provisional (se ve a 0 mientras se espera la respuesta); si la
+        // respuesta es 0 dardos al doble, se revierte al resto inicial.
+        nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: 0, abierto: true } : u));
       }
     } else {
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: nuevoRestante, abierto: true } : u));
@@ -627,14 +653,29 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
     const siguienteIdx = (turnoIdx + 1) % conIntegranteActualizado.length;
     const avanzar = { unidades: conIntegranteActualizado, turnoIdx: siguienteIdx, restante: conIntegranteActualizado[siguienteIdx].restante };
 
-    if (intentoPosible) {
+    if (necesitaConfirmarCierre || intentoPosible) {
       // Se deja ver el resultado de la visita (resto actualizado, mensaje de
       // bust si lo hay) mientras se espera la respuesta, igual que en modo
       // diana/números — solo se retrasa el registro de estadísticas y el
       // avance de turno hasta responder.
       setUnidades(nuevasUnidades);
       setMensaje(nuevoMensaje);
-      setPreguntaDoble({ jugadorId, turnoIdx, puntosVisita, dardosCount: 3, gana, origen: "total", resultado, nuevoMensaje, nuevasUnidades, avanzar });
+      setPreguntaDoble({
+        jugadorId,
+        turnoIdx,
+        puntosVisita,
+        dardosCount: 3,
+        gana,
+        origen: "total",
+        necesitaConfirmarCierre,
+        valorTotal,
+        unidadesAntes: unidades,
+        restanteInicioVisita,
+        resultado,
+        nuevoMensaje,
+        nuevasUnidades,
+        avanzar,
+      });
       return;
     }
 
@@ -801,6 +842,11 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
                 <p style={{ margin: "0 0 .5rem" }}>
                   ¿Cuántos dardos de esta visita ha tirado <strong>{tiradorActual(unidades[preguntaDoble.turnoIdx])}</strong> al doble/máster?
                 </p>
+                {preguntaDoble.necesitaConfirmarCierre && (
+                  <p style={{ margin: "0 0 .5rem", fontSize: ".85em", opacity: .85 }}>
+                    Si ninguno ha sido un cierre válido, marca 0: la visita no contará y sigue con {preguntaDoble.restanteInicioVisita}.
+                  </p>
+                )}
                 <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
                   {[0, 1, 2, 3].map((n) => (
                     <button key={n} type="button" className="admin-tab" onClick={() => responderDardosDoble(n)}>
@@ -817,7 +863,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
             </div>
             {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
             {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
-            {modoEntrada === "total" && <TecladoPuntuacion cierre={partida.cierre} onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
+            {modoEntrada === "total" && <TecladoPuntuacion onEnviar={tirarVisitaTotal} deshabilitada={finVisita || !!preguntaDoble} />}
             <p className="marcador-tiradas-visita">
               Esta visita: {tiradasVisita.length ? tiradasVisita.map((t) => t.resultado.etiqueta).join(", ") : "—"}
             </p>
