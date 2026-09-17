@@ -39,6 +39,26 @@ export default function Socios() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Al cargar la página, si hay una sesión guardada se refresca contra el
+  // servidor en vez de fiarse solo del usuario cacheado en localStorage: si
+  // el socio ya tenía sesión abierta (el token dura 30 días) y un admin le
+  // resetea la contraseña, sin esto se quedaría con debeCambiarPassword en
+  // falso hasta que volviera a hacer login por su cuenta. Si el token ya no
+  // es válido, el 401 lo captura vigilarSesionSocio() y cierra la sesión.
+  useEffect(() => {
+    const token = localStorage.getItem("socioToken");
+    if (!token) return;
+    fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((fresco) => {
+        if (!fresco) return;
+        localStorage.setItem("socioUsuario", JSON.stringify(fresco));
+        setUsuario(fresco);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function limpiarFormulario() {
     setNombre("");
     setEmail("");
