@@ -1396,3 +1396,10 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   .diana-svg, .teclado-numeros, .teclado-puntuacion { max-width: 230px; margin-top: .4rem; margin-bottom: .4rem; }
   .diana-numero { font-size: 12px; }
 }
+
+/* Evento del calendario del socio con página propia (torneo/liga): mismo
+   aspecto que un evento normal, pero con hover para que se note que es
+   clicable — ver CalendarioSocio.jsx. */
+.calendario-socio-evento-enlace:hover {
+  text-decoration: underline;
+}

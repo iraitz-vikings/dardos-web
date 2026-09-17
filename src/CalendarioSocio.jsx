@@ -92,13 +92,33 @@ export default function CalendarioSocio() {
                   <td><strong>{maquina}</strong></td>
                   {diasSemana.map((dia, i) => (
                     <td key={i} style={{ verticalAlign: "top", minWidth: "110px" }}>
-                      {eventosDe(maquina, dia).map((e) => (
-                        <div key={e.id} style={{ fontSize: ".78em", marginBottom: ".4rem", textAlign: "left" }}>
-                          <strong>{formatHora(e.fecha, lang)}</strong>
-                          <div>{e.titulo}</div>
-                          <em style={{ color: "var(--steel)" }}>{e.competicion}</em>
-                        </div>
-                      ))}
+                      {eventosDe(maquina, dia).map((e) => {
+                        const contenido = (
+                          <>
+                            <strong>{formatHora(e.fecha, lang)}</strong>
+                            <div>{e.titulo}</div>
+                            <em style={{ color: "var(--steel)" }}>{e.competicion}</em>
+                          </>
+                        );
+                        // Solo los partidos de torneo/liga del club tienen
+                        // página propia a la que llevar (ver enlace en
+                        // calendario.js) — las competiciones externas y los
+                        // eventos manuales se muestran igual pero sin enlace.
+                        return e.enlace ? (
+                          <a
+                            key={e.id}
+                            href={`/${e.enlace.tipo}/${e.enlace.id}`}
+                            style={{ display: "block", fontSize: ".78em", marginBottom: ".4rem", textAlign: "left", color: "inherit", textDecoration: "none" }}
+                            className="calendario-socio-evento-enlace"
+                          >
+                            {contenido}
+                          </a>
+                        ) : (
+                          <div key={e.id} style={{ fontSize: ".78em", marginBottom: ".4rem", textAlign: "left" }}>
+                            {contenido}
+                          </div>
+                        );
+                      })}
                     </td>
                   ))}
                 </tr>
