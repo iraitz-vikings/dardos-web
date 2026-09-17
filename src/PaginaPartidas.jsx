@@ -9,6 +9,12 @@ import AccesoHerramienta from "./JuegoHerramienta.jsx";
 // al retar a alguien a un amistoso (ver RetarAmistoso.jsx).
 
 export default function PaginaPartidas() {
+  // ?partida=<id> viene del aviso de "te han retado a un amistoso" (ver
+  // urlPublicaAmistoso en el backend): en cuanto se mete el PIN, esa partida
+  // se abre sola en vez de mostrar la lista de pendientes.
+  const params = new URLSearchParams(window.location.search);
+  const partidaIdDirecta = params.get("partida") || undefined;
+
   return (
     <div className="admin-form" style={{ maxWidth: 640, margin: "2rem auto" }}>
       <h2 style={{ marginTop: 0 }}>Tus partidos</h2>
@@ -16,7 +22,7 @@ export default function PaginaPartidas() {
         Identifícate con tu PIN para jugar cualquiera de tus partidos pendientes (torneo, liga o amistoso)
         desde este dispositivo.
       </p>
-      <AccesoHerramienta activa entidadNombre="tus partidos" autoAbrir />
+      <AccesoHerramienta activa entidadNombre="tus partidos" autoAbrir partidaIdDirecta={partidaIdDirecta} />
     </div>
   );
 }
