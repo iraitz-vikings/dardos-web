@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
@@ -318,21 +318,50 @@ function idJugadorTirador(partida, ladoIdx, unidad) {
 // hace nada. Best-effort: si falla, no bloquea el juego local — el rival lo
 // verá igualmente en la próxima sincronización, o al terminar el leg (que sí
 // se guarda de forma síncrona).
-function sincronizarTurnoRemoto(partida, token, unidadesNuevas, turnoIdxNuevo) {
+//
+// Manda TODO el estado del leg en curso, no solo el tablero: `estadisticas`
+// (por jugadorId, lo que alimenta las tarjetas "Promedio"/"% cierre" etc. y
+// lo que se manda a POST /legs al terminar) y `ultimaVisitaLado` también,
+// para que el dispositivo del rival vea sus propias estadísticas actualizadas
+// — si no, cada dispositivo solo acumula estadísticas de las visitas que ha
+// jugado ÉL, nunca las del rival (bug reportado por Iraitz el 2026-09-17: "me
+// salen mis estadísticas pero no las del rival, y al rival lo mismo").
+function sincronizarTurnoRemoto(partida, token, estado) {
   if (!partida.amistosa) return;
-  const turnoJugadorId = idJugadorTirador(partida, turnoIdxNuevo, unidadesNuevas[turnoIdxNuevo]);
+  const { unidades, turnoIdx, estadisticas, ultimaVisitaLado } = estado;
+  const turnoJugadorId = idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]);
   apiFetch(`/api/partidas-herramienta/${partida.id}/visita`, {
     token,
     method: "PUT",
-    body: JSON.stringify({ turnoJugadorId, unidades: unidadesNuevas, turnoIdx: turnoIdxNuevo }),
+    body: JSON.stringify({ turnoJugadorId, unidades, turnoIdx, estadisticas, ultimaVisitaLado }),
   }).catch(() => {});
+}
+
+// Dispara sincronizarTurnoRemoto justo cuando el turno pasa DE MÍ al rival
+// (turnoIdx cambia y, con el nuevo valor, esMiTurno pasa a false) — nunca al
+// revés (cuando lo recibo yo vía sondeo, no hay que reenviarlo). Se hace con
+// un efecto (no llamando a sincronizarTurnoRemoto directamente desde cada
+// sitio donde cambia el turno, como en la primera versión de esto) para leer
+// siempre el estado ya confirmado por React, no un `estadisticas`/
+// `ultimaVisitaLado` todavía no actualizado del mismo tick — ese era
+// precisamente el origen del bug de estadísticas que faltaban.
+function useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, turnoIdx, estadisticas, ultimaVisitaLado }) {
+  const turnoIdxAnterior = useRef(turnoIdx);
+  useEffect(() => {
+    const cambioDeTurno = turnoIdxAnterior.current !== turnoIdx;
+    turnoIdxAnterior.current = turnoIdx;
+    if (!esRemota || !cambioDeTurno || esMiTurno) return;
+    sincronizarTurnoRemoto(partida, token, { unidades, turnoIdx, estadisticas, ultimaVisitaLado });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnoIdx, esRemota, esMiTurno]);
 }
 
 // Sondea el estado de la partida cada 2.5s mientras se espera el turno del
 // rival (amistoso remoto, no aplica a torneo/liga). Si ha cambiado de leg o
 // ha terminado, se propaga tal cual (onActualizada ya sabe remontar el
 // marcador o mostrar "partido terminado"); si sigue en el mismo leg pero ya
-// es mi turno según `visitaEnCurso`, se adopta ese estado como el actual.
+// es mi turno según `visitaEnCurso`, se adopta ese estado como el actual
+// (tablero Y estadísticas — ver comentario de sincronizarTurnoRemoto).
 function useSondeoTurnoRemoto({ partida, token, miJugadorId, esRemota, esMiTurno, activo, onEstadoRemoto, onActualizada }) {
   useEffect(() => {
     if (!esRemota || esMiTurno || !activo) return undefined;
@@ -370,9 +399,14 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
   const inicio = useMemo(() => {
     const base = nuevaLeg501(partida, partida.legs.length + 1);
     if (partida.amistosa && partida.visitaEnCurso?.unidades) {
-      return { unidades: partida.visitaEnCurso.unidades, turnoIdx: partida.visitaEnCurso.turnoIdx };
+      return {
+        unidades: partida.visitaEnCurso.unidades,
+        turnoIdx: partida.visitaEnCurso.turnoIdx,
+        estadisticas: partida.visitaEnCurso.estadisticas || {},
+        ultimaVisitaLado: partida.visitaEnCurso.ultimaVisitaLado || [null, null],
+      };
     }
-    return base;
+    return { ...base, estadisticas: {}, ultimaVisitaLado: [null, null] };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partida.id, partida.legs.length]);
   const [unidades, setUnidades] = useState(inicio.unidades);
@@ -384,14 +418,17 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
   const [historial, setHistorial] = useState([]);
   const [modoEntrada, setModoEntrada] = useState("diana");
   const [finVisita, setFinVisita] = useState(false);
-  const [estadisticas, setEstadisticas] = useState({});
+  // Al retomar un amistoso remoto a media visita, se arranca desde las
+  // estadísticas ya sincronizadas (inicio.estadisticas), no desde cero — si
+  // no, al recargar la página se perderían las del rival otra vez.
+  const [estadisticas, setEstadisticas] = useState(inicio.estadisticas);
   // Puntos de la última visita de cada lado (0/1) EN ESTE LEG — no del
   // jugador que le tocara tirar ahora, sino de quien acaba de tirar; se
   // muestra en la tarjeta (slide "Esta partida"). Aparte de `estadisticas`
   // (que va por jugadorId, para poder mandarlo tal cual al backend) porque
   // aquí interesa por lado/tarjeta, no por persona (relevante en parejas con
   // marcador compartido).
-  const [ultimaVisitaLado, setUltimaVisitaLado] = useState([null, null]);
+  const [ultimaVisitaLado, setUltimaVisitaLado] = useState(inicio.ultimaVisitaLado);
   const [fase, setFase] = useState("jugando"); // jugando | enviando | error
   const [errorEnvio, setErrorEnvio] = useState("");
   // Cuando una visita termina (gana, bust o 3 dardos) y al empezarla ya se
@@ -455,7 +492,6 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
       setRestanteInicioVisita(p.avanzar.restante);
       setMensaje("");
       setFinVisita(false);
-      sincronizarTurnoRemoto(partida, token, p.avanzar.unidades, p.avanzar.turnoIdx);
       return;
     }
     concluirVisita(p.jugadorId, p.turnoIdx, p.puntosVisita, p.dardosCount, p.gana, dardosAlDoble);
@@ -621,7 +657,6 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
     // jugador equivocado); el marcador ya deja ver que no se ha movido.
     setMensaje("");
     setFinVisita(false);
-    sincronizarTurnoRemoto(partida, token, avanzar.unidades, avanzar.turnoIdx);
   }
 
   function deshacer() {
@@ -650,12 +685,13 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
     setRestanteInicioVisita(conIntegranteActualizado[siguienteIdx].restante);
     setMensaje("");
     setFinVisita(false);
-    sincronizarTurnoRemoto(partida, token, conIntegranteActualizado, siguienteIdx);
   }
 
   const esRemota = !!partida.amistosa;
   const turnoJugadorIdActual = idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]);
   const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
+
+  useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, turnoIdx, estadisticas, ultimaVisitaLado });
 
   useSondeoTurnoRemoto({
     partida,
@@ -672,6 +708,8 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
       setRestanteInicioVisita(v.unidades[v.turnoIdx].restante);
       setMensaje("");
       setFinVisita(false);
+      setEstadisticas(v.estadisticas || {});
+      setUltimaVisitaLado(v.ultimaVisitaLado || [null, null]);
     },
   });
 
@@ -846,9 +884,14 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
   const inicio = useMemo(() => {
     const base = nuevaLegCricket(partida, partida.legs.length + 1);
     if (partida.amistosa && partida.visitaEnCurso?.unidades) {
-      return { unidades: partida.visitaEnCurso.unidades, turnoIdx: partida.visitaEnCurso.turnoIdx };
+      return {
+        unidades: partida.visitaEnCurso.unidades,
+        turnoIdx: partida.visitaEnCurso.turnoIdx,
+        estadisticas: partida.visitaEnCurso.estadisticas || {},
+        ultimaVisitaLado: partida.visitaEnCurso.ultimaVisitaLado || [null, null],
+      };
     }
-    return base;
+    return { ...base, estadisticas: {}, ultimaVisitaLado: [null, null] };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partida.id, partida.legs.length]);
   const [unidades, setUnidades] = useState(inicio.unidades);
@@ -859,10 +902,13 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
   const [historial, setHistorial] = useState([]);
   const [finVisita, setFinVisita] = useState(false);
   const [modoEntrada, setModoEntrada] = useState("diana");
-  const [estadisticas, setEstadisticas] = useState({});
+  // Al retomar un amistoso remoto a media visita, se arranca desde las
+  // estadísticas ya sincronizadas, no desde cero (ver el comentario
+  // equivalente en MarcadorPartida501).
+  const [estadisticas, setEstadisticas] = useState(inicio.estadisticas);
   // Marcas de la última visita de cada lado (0/1) EN ESTE LEG — ver el
   // comentario equivalente en MarcadorPartida501.
-  const [ultimaVisitaLado, setUltimaVisitaLado] = useState([null, null]);
+  const [ultimaVisitaLado, setUltimaVisitaLado] = useState(inicio.ultimaVisitaLado);
   const [fase, setFase] = useState("jugando");
   const [errorEnvio, setErrorEnvio] = useState("");
 
@@ -948,12 +994,13 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
     setTiradasVisita([]);
     setMensaje("");
     setFinVisita(false);
-    sincronizarTurnoRemoto(partida, token, conIntegranteActualizado, siguienteIdx);
   }
 
   const esRemota = !!partida.amistosa;
   const turnoJugadorIdActual = idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]);
   const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
+
+  useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, turnoIdx, estadisticas, ultimaVisitaLado });
 
   useSondeoTurnoRemoto({
     partida,
@@ -969,6 +1016,8 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
       setTiradasVisita([]);
       setMensaje("");
       setFinVisita(false);
+      setEstadisticas(v.estadisticas || {});
+      setUltimaVisitaLado(v.ultimaVisitaLado || [null, null]);
     },
   });
 
