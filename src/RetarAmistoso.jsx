@@ -24,13 +24,52 @@ export default function RetarAmistoso() {
   const [error, setError] = useState("");
   const [creado, setCreado] = useState(null);
 
+  // Lista de "Tus amistosos" (pedido de Iraitz, 2026-09-17: poder borrar
+  // amistosos, típicamente pruebas o retos que ya no interesan). Se recarga
+  // sola al crear uno nuevo y al borrar uno de la lista.
+  const [misAmistosos, setMisAmistosos] = useState([]);
+  const [cargandoLista, setCargandoLista] = useState(true);
+  const [borrandoId, setBorrandoId] = useState("");
+
+  function cargarMisAmistosos() {
+    const token = localStorage.getItem("socioToken");
+    setCargandoLista(true);
+    fetch(`${API_URL}/api/partidas-herramienta/mis-amistosos`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((lista) => setMisAmistosos(lista))
+      .catch(() => {})
+      .finally(() => setCargandoLista(false));
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("socioToken");
     fetch(`${API_URL}/api/jugadores/directorio`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : []))
       .then((lista) => setJugadores(lista.slice().sort((a, b) => a.nombre.localeCompare(b.nombre))))
       .catch(() => {});
+    cargarMisAmistosos();
   }, []);
+
+  async function borrar(id) {
+    if (!window.confirm("¿Borrar este amistoso? No se puede deshacer.")) return;
+    setBorrandoId(id);
+    try {
+      const token = localStorage.getItem("socioToken");
+      const resp = await fetch(`${API_URL}/api/partidas-herramienta/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok && resp.status !== 204) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data.error || "No se ha podido borrar el amistoso.");
+      }
+      setMisAmistosos((lista) => lista.filter((p) => p.id !== id));
+    } catch (err) {
+      alert(err.message || "No se ha podido borrar el amistoso.");
+    } finally {
+      setBorrandoId("");
+    }
+  }
 
   async function crear(e) {
     e.preventDefault();
@@ -58,6 +97,7 @@ export default function RetarAmistoso() {
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(data.error || "No se ha podido crear el amistoso.");
       setCreado(data);
+      cargarMisAmistosos();
     } catch (err) {
       setError(err.message || "No se ha podido crear el amistoso.");
     } finally {
@@ -65,28 +105,64 @@ export default function RetarAmistoso() {
     }
   }
 
+  const listaAmistosos = (
+    <div className="admin-form" style={{ maxWidth: 460, marginBottom: "1.5rem" }}>
+      <h3 style={{ marginTop: 0 }}>Tus amistosos</h3>
+      {cargandoLista && <p className="chronicle-status">Cargando…</p>}
+      {!cargandoLista && misAmistosos.length === 0 && (
+        <p className="chronicle-status">Todavía no tienes ningún amistoso.</p>
+      )}
+      {!cargandoLista && misAmistosos.length > 0 && (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {misAmistosos.map((p) => (
+            <li
+              key={p.id}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.4rem 0", borderBottom: "1px solid var(--border-color, #ddd)" }}
+            >
+              <span>
+                {p.etiqueta1} vs {p.etiqueta2}
+                {" — "}
+                {p.finalizada
+                  ? `${p.legsGanados1}-${p.legsGanados2}`
+                  : "pendiente"}
+              </span>
+              <button type="button" onClick={() => borrar(p.id)} disabled={borrandoId === p.id}>
+                {borrandoId === p.id ? "Borrando…" : "Borrar"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   if (creado) {
     const enlace = `${ORIGEN}/partidas`;
     return (
-      <div className="admin-form" style={{ maxWidth: 460 }}>
-        <p className="admin-msg admin-msg-ok">
-          Amistoso creado: {creado.etiqueta1} vs {creado.etiqueta2}.
-        </p>
-        <p className="chronicle-status">
-          Comparte este enlace con tu rival para que juegue desde su móvil (se identifica con su PIN,
-          igual que en un partido de torneo/liga):
-        </p>
-        <p style={{ wordBreak: "break-all" }}>
-          <a href="/partidas">{enlace}</a>
-        </p>
-        <p className="chronicle-status">Tú también juegas desde ahí, con tu propio PIN.</p>
-        <button type="button" onClick={() => setCreado(null)}>Retar a otro amistoso</button>
-      </div>
+      <>
+        {listaAmistosos}
+        <div className="admin-form" style={{ maxWidth: 460 }}>
+          <p className="admin-msg admin-msg-ok">
+            Amistoso creado: {creado.etiqueta1} vs {creado.etiqueta2}.
+          </p>
+          <p className="chronicle-status">
+            Comparte este enlace con tu rival para que juegue desde su móvil (se identifica con su PIN,
+            igual que en un partido de torneo/liga):
+          </p>
+          <p style={{ wordBreak: "break-all" }}>
+            <a href="/partidas">{enlace}</a>
+          </p>
+          <p className="chronicle-status">Tú también juegas desde ahí, con tu propio PIN.</p>
+          <button type="button" onClick={() => setCreado(null)}>Retar a otro amistoso</button>
+        </div>
+      </>
     );
   }
 
   return (
-    <form className="admin-form" style={{ maxWidth: 460 }} onSubmit={crear}>
+    <>
+      {listaAmistosos}
+      <form className="admin-form" style={{ maxWidth: 460 }} onSubmit={crear}>
       <h3 style={{ marginTop: 0 }}>Retar a un amistoso</h3>
       <p className="chronicle-status">
         Fuera de liga/torneo, contra cualquier jugador del club. Cada uno juega desde su propio móvil.
@@ -156,6 +232,7 @@ export default function RetarAmistoso() {
       {error && <p className="admin-msg admin-msg-error">{error}</p>}
 
       <button type="submit" disabled={enviando}>{enviando ? "Creando…" : "Crear amistoso"}</button>
-    </form>
+      </form>
+    </>
   );
 }
