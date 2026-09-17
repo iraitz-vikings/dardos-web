@@ -1182,6 +1182,12 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 
 /* Marcadores manuales de 501 y Cricket (Marcadores.jsx) */
+/* Envoltorio de "cuadros de jugadores" + "controles de entrada (diana/
+   teclado)": en vertical se apilan uno debajo del otro (como siempre), y en
+   horizontal en móvil pasan a ir lado a lado — ver el media query de más
+   abajo. */
+.marcador-tablero { display: block; }
+.marcador-tablero-jugadores, .marcador-tablero-entrada { display: block; }
 .marcador-jugadores {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1363,3 +1369,26 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   margin-bottom: .6rem;
 }
 .teclado-puntuacion-cierre input { width: auto; }
+
+/* Móvil en horizontal (poca altura, ancho de sobra): en vertical la diana/
+   teclado y los cuadros de jugadores van apilados uno debajo del otro y
+   obligan a mucho scroll — aquí van lado a lado y se encoge lo que sobra
+   para aprovechar mejor el hueco. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .torneo-pagina, .gallery-page { padding-top: 1.4rem; padding-bottom: 2rem; }
+
+  .marcador-tablero { display: flex; align-items: flex-start; gap: 1rem; }
+  .marcador-tablero-jugadores, .marcador-tablero-entrada {
+    flex: 1 1 0;
+    min-width: 0;
+    max-height: calc(100vh - 3.5rem);
+    overflow-y: auto;
+  }
+
+  .marcador-jugadores { grid-template-columns: 1fr; gap: .5rem; margin-bottom: .6rem; }
+  .marcador-jugador { padding: .55rem; gap: .2rem; }
+  .marcador-restante { font-size: 1.4rem; }
+
+  .diana-svg, .teclado-numeros, .teclado-puntuacion { max-width: 230px; margin-top: .4rem; margin-bottom: .4rem; }
+  .diana-numero { font-size: 12px; }
+}
