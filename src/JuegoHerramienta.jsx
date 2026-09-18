@@ -3,6 +3,8 @@ import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
 import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
+import CamarasPartida from "./CamarasPartida.jsx";
+import { apiFetch } from "./apiHerramienta.js";
 import {
   buscarCierre,
   calcularPuntosCricket,
@@ -35,31 +37,15 @@ import {
 // - Quién empieza cada leg se alterna automáticamente (leg 1: etiqueta1,
 //   leg 2: etiqueta2, ...), no hay forma de fijarlo a mano.
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
+// apiFetch/API_URL se extrajeron a apiHerramienta.js (plan "camaras-partidas",
+// guardado en el proyecto) para que CamarasPartida.jsx pueda usarlos sin
+// depender en círculo de este fichero. Mismo comportamiento de siempre.
 const clonar = (x) => JSON.parse(JSON.stringify(x));
 
 function etiquetaModalidad(modalidad) {
   if (modalidad === "doble") return "Doble";
   if (modalidad === "master") return "Master (doble o triple)";
   return "Simple (cualquier dardo)";
-}
-
-async function apiFetch(path, { token, ...opciones } = {}) {
-  const resp = await fetch(`${API_URL}${path}`, {
-    ...opciones,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opciones.headers || {}),
-    },
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    const error = new Error(data.error || "Error de red");
-    error.status = resp.status;
-    throw error;
-  }
-  return data;
 }
 
 // --- Paso 1: identificación con PIN ---------------------------------------
@@ -1224,13 +1210,35 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
     );
   }
 
+  // CamarasPartida vive FUERA del marcador con key=legs.length (más abajo):
+  // así la emisión/recepción WebRTC no se corta ni se reconecta entre legs,
+  // solo cuando el partido entero empieza o termina — ver CamarasPartida.jsx
+  // (plan "camaras-partidas", guardado en el proyecto).
+  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} />;
+
   // key=legs.length fuerza que el marcador se remonte entero al empezar cada
   // leg nuevo (nuevas unidades a 501/marcas vacías, turno según toque) — si
   // no, el estado interno (unidades, turno, historial…) del leg anterior se
   // quedaría colgado al recibir la partida actualizada del backend.
   if (partidaActual.juego === "cricket") {
     return (
-      <MarcadorPartidaCricket
+      <>
+        {camaras}
+        <MarcadorPartidaCricket
+          key={partidaActual.legs.length}
+          partida={partidaActual}
+          token={token}
+          miJugadorId={miJugadorId}
+          onActualizada={setPartidaActual}
+          onSalir={onSalir}
+        />
+      </>
+    );
+  }
+  return (
+    <>
+      {camaras}
+      <MarcadorPartida501
         key={partidaActual.legs.length}
         partida={partidaActual}
         token={token}
@@ -1238,17 +1246,7 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
         onActualizada={setPartidaActual}
         onSalir={onSalir}
       />
-    );
-  }
-  return (
-    <MarcadorPartida501
-      key={partidaActual.legs.length}
-      partida={partidaActual}
-      token={token}
-      miJugadorId={miJugadorId}
-      onActualizada={setPartidaActual}
-      onSalir={onSalir}
-    />
+    </>
   );
 }
 
