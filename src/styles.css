@@ -1403,3 +1403,48 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .calendario-socio-evento-enlace:hover {
   text-decoration: underline;
 }
+
+/* Cámaras en directo durante un partido (plan "camaras-partidas", guardado
+   en el proyecto, ver CamarasPartida.jsx) — las dos miniaturas (diana +
+   lanzador) van pequeñas y juntas, ampliables a pantalla completa al
+   tocarlas, sin desplazar el resto del marcador. */
+.camaras-partida {
+  margin-bottom: 1rem;
+}
+.camaras-partida-selector {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  max-width: 380px;
+}
+.camaras-partida-videos {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.camaras-partida-video-caja {
+  position: relative;
+  width: 120px;
+  height: 90px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.camaras-partida-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.camaras-partida-video-etiqueta {
+  position: absolute;
+  left: .3rem;
+  bottom: .2rem;
+  font-size: .65rem;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
