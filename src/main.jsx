@@ -39,7 +39,11 @@ if (isAdmin) {
   setIcon('link[rel="icon"][type="image/x-icon"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_32,w_32/f_ico/${ADMIN_IMG}.ico`);
   setIcon('link[rel="icon"][sizes="16x16"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_16,w_16/f_png/${ADMIN_IMG}.png`);
   setIcon('link[rel="icon"][sizes="32x32"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_32,w_32/f_png/${ADMIN_IMG}.png`);
-  setIcon('link[rel="apple-touch-icon"]', `${CLOUD_BASE}/c_fill,g_auto,h_180,w_180/f_png/${ADMIN_IMG}.png`);
+  // La foto del admin trae mucho más margen de piedra alrededor de la
+  // moneda que el logo de la web principal (que ya la llena casi entera),
+  // así que recortamos primero al 70% central antes de encajarla en el
+  // icono, para que ambos iconos se vean del mismo tamaño relativo.
+  setIcon('link[rel="apple-touch-icon"]', `${CLOUD_BASE}/c_crop,g_center,h_0.7,w_0.7/c_fill,g_auto,h_180,w_180/f_png/${ADMIN_IMG}.png`);
 }
 const isGaleria = path.startsWith("/galeria");
 const isHistorico = path.startsWith("/historico");
