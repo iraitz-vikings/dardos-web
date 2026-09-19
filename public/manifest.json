@@ -2,6 +2,7 @@
   "name": "Vikings Club de Dardos",
   "short_name": "Vikings Dardos",
   "description": "Web del Vikings Club de Dardos — noticias, torneos y avisos del club.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

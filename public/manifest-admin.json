@@ -2,6 +2,7 @@
   "name": "Vikings Dardos — Admin",
   "short_name": "Vikings Admin",
   "description": "Panel de administración del Vikings Club de Dardos.",
+  "id": "/admin",
   "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",
