@@ -196,6 +196,15 @@ useEffect(() => {
     cargarTorneos();
   }
 
+  async function cambiarAnclarInicio(torneo, nuevo) {
+    await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ anclarInicio: nuevo }),
+    });
+    cargarTorneos();
+  }
+
   async function borrarTorneo(id) {
     if (!confirm("¿Enviar este torneo a la papelera? Se podrá restaurar durante 7 días; pasado ese plazo se borrará ya del todo, con sus cuadrantes y enfrentamientos.")) return;
     await fetch(`${API_URL}/api/torneos-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
@@ -750,6 +759,7 @@ async function programarCalendario(partidoId, datos) {
                     {t.numeroMaquinas ? ` · ${t.numeroMaquinas} máquinas` : ""}
                     {t.finalizado ? " · Finalizado" : ""}
                     {t.notificaciones === false ? " · Sin avisos" : ""}
+                    {t.anclarInicio ? " · Anclado a inicio" : ""}
                     {t.temporizadorActivo && t.temporizadorMinutos ? ` · Temporizador ${t.temporizadorMinutos} min` : ""}
                   </time>
                 </div>
@@ -766,6 +776,9 @@ async function programarCalendario(partidoId, datos) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarNotificaciones(t, !t.notificaciones)}>
                     {t.notificaciones === false ? "Activar avisos" : "Desactivar avisos"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarAnclarInicio(t, !t.anclarInicio)}>
+                    {t.anclarInicio ? "Desanclar de inicio" : "Anclar a inicio"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(t.id)}>Gestionar</button>
                   <a className="admin-link-btn" href={`${window.location.origin}/torneo/${t.id}`} target="_blank" rel="noopener noreferrer">
