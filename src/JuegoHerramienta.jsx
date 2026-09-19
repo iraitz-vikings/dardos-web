@@ -1234,7 +1234,7 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   // Streams de las cámaras del rival (los guarda aquí, fuera del marcador, para
   // que sobrevivan al remontaje de cada leg) y se pintan en el hueco del
   // teclado cuando le toca tirar al rival.
-  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} miJugadorId={miJugadorId} onRivalEstado={alCambiarRival} />;
+  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} miJugadorId={miJugadorId} onRivalEstado={alCambiarRival} rivalIds={partidaActual.amistosa ? Object.keys(nombresPorId).filter((id) => id !== miJugadorId) : []} nombresPorId={nombresPorId} />;
   const camarasRival = <CamarasRival rivales={rivales} nombresPorId={nombresPorId} />;
 
   // key=legs.length fuerza que el marcador se remonte entero al empezar cada

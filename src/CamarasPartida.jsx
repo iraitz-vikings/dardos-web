@@ -58,7 +58,17 @@ function SelectorCamaras({ partidaId, token }) {
   // "Visto bueno": tras comprobar la orientación de las cámaras propias, la
   // vista previa se oculta (siguen emitiendo al rival) — pedido de Iraitz
   // 2026-09-19: solo interesa ver las tuyas para orientarlas.
-  const [revisada, setRevisada] = useState(false);
+  const [revisada, setRevisadaLocal] = useState(false);
+  // Además de guardarlo en local, se avisa al backend para que el rival vea
+  // si ya hemos dado el visto bueno (best-effort).
+  function setRevisada(valor) {
+    setRevisadaLocal(valor);
+    apiFetch(`/api/partidas-herramienta/${partidaId}/camara/revisada`, {
+      token,
+      method: "POST",
+      body: JSON.stringify({ revisada: valor }),
+    }).catch(() => {});
+  }
   const [dispositivos, setDispositivos] = useState([]);
   const [dianaId, setDianaId] = useState(() => {
     try { return localStorage.getItem(CLAVE_DIANA) || ""; } catch { return ""; }
@@ -127,7 +137,7 @@ function SelectorCamaras({ partidaId, token }) {
         localStorage.setItem(CLAVE_LANZADOR, lanzadorId);
       } catch { /* almacenamiento no disponible, no pasa nada */ }
       await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/activar`, { token, method: "POST" });
-      setRevisada(false);
+      setRevisadaLocal(false);
       setActiva(true);
     } catch {
       cerrarTodo();
@@ -140,7 +150,7 @@ function SelectorCamaras({ partidaId, token }) {
   async function desactivar() {
     cerrarTodo();
     setActiva(false);
-    setRevisada(false);
+    setRevisadaLocal(false);
     try {
       await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/desactivar`, { token, method: "POST" });
     } catch { /* best-effort: si falla, el propio backend la dará por caducada */ }
@@ -495,16 +505,16 @@ export function CamarasRival({ rivales, nombresPorId = {} }) {
 // que el turno de juego) — así el otro lado se entera si el rival enciende
 // o apaga las suyas, sin recargar la página.
 function useEstadoCamaras(partidaId) {
-  const [emisores, setEmisores] = useState([]);
+  const [estado, setEstado] = useState({ emisores: [], estados: {} });
   useEffect(() => {
     let cancelado = false;
     function sondear() {
       apiFetch(`/api/partidas-herramienta/${partidaId}/camara/estado`)
-        .then(({ emisores: ids }) => {
+        .then((data) => {
           if (cancelado) return;
-          const nuevos = ids || [];
-          // Solo se actualiza si cambia la lista, para no re-renderizar en cada sondeo.
-          setEmisores((actual) => (actual.join(",") === nuevos.join(",") ? actual : nuevos));
+          const nuevo = { emisores: data.emisores || [], estados: data.estados || {} };
+          // Solo se actualiza si cambia algo, para no re-renderizar en cada sondeo.
+          setEstado((actual) => (JSON.stringify(actual) === JSON.stringify(nuevo) ? actual : nuevo));
         })
         .catch(() => {});
     }
@@ -512,7 +522,7 @@ function useEstadoCamaras(partidaId) {
     const intervalo = setInterval(sondear, 4000);
     return () => { cancelado = true; clearInterval(intervalo); };
   }, [partidaId]);
-  return emisores;
+  return estado;
 }
 
 // Punto de entrada montado desde JuegoHerramienta.jsx (PartidaCompleta).
@@ -521,14 +531,24 @@ function useEstadoCamaras(partidaId) {
 // (una ConexionRival por cada otro emisor activo) — antes eran excluyentes.
 // Las del rival no se pintan aquí sino en el hueco del teclado cuando le toca
 // tirar a él (CamarasRival, usado desde el marcador).
-export default function CamarasPartida({ partidaId, token, miJugadorId, onRivalEstado }) {
-  const emisores = useEstadoCamaras(partidaId);
+export default function CamarasPartida({ partidaId, token, miJugadorId, onRivalEstado, rivalIds = [], nombresPorId = {} }) {
+  const { emisores, estados } = useEstadoCamaras(partidaId);
   const [reintentos, setReintentos] = useState({});
   const ajenos = emisores.filter((id) => id !== miJugadorId);
 
   return (
     <div className="camaras-partida-doble">
       <SelectorCamaras partidaId={partidaId} token={token} />
+      {rivalIds.map((id) => {
+        const activo = emisores.includes(id);
+        const revisada = activo && estados[id]?.revisada;
+        return (
+          <p key={id} className="chronicle-status" style={{ margin: ".3rem 0 0" }}>
+            {nombresPorId[id] || "Tu rival"}:{" "}
+            {!activo ? "⏳ cámaras sin activar" : revisada ? "✅ cámaras activas y revisadas" : "🎥 cámaras activas, revisando la orientación…"}
+          </p>
+        );
+      })}
       {ajenos.map((id) => (
         <ConexionRival
           key={`${id}-${reintentos[id] || 0}`}
