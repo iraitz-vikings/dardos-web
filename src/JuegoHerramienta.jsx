@@ -3,7 +3,7 @@ import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
 import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
-import CamarasPartida from "./CamarasPartida.jsx";
+import CamarasPartida, { CamarasRival } from "./CamarasPartida.jsx";
 import { apiFetch } from "./apiHerramienta.js";
 import {
   buscarCierre,
@@ -376,7 +376,7 @@ function nuevaLeg501(partida, numeroLeg) {
   return { unidades: base, turnoIdx: (numeroLeg - 1) % base.length };
 }
 
-function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSalir }) {
+function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSalir, camarasRival }) {
   // Si es un amistoso remoto y se retoma a media visita (recarga de página,
   // vuelta a la app…), se arranca desde el último estado sincronizado
   // (visitaEnCurso) en vez de desde el principio del leg — ver
@@ -819,6 +819,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
             <p className="chronicle-status">
               Esperando a que tire <strong>{tiradorActual(unidades[turnoIdx])}</strong>…
             </p>
+            {camarasRival}
           </div>
         )}
         {fase === "jugando" && ganadorIdx === null && esMiTurno && (
@@ -909,7 +910,7 @@ function nuevaLegCricket(partida, numeroLeg) {
   return { unidades: base, turnoIdx: (numeroLeg - 1) % base.length };
 }
 
-function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, onSalir }) {
+function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, onSalir, camarasRival }) {
   // Ver el comentario equivalente en MarcadorPartida501: al retomar un
   // amistoso remoto a media visita se arranca desde visitaEnCurso, no desde
   // el principio del leg.
@@ -1145,6 +1146,7 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
             <p className="chronicle-status">
               Esperando a que tire <strong>{tiradorActual(unidades[turnoIdx])}</strong>…
             </p>
+            {camarasRival}
           </div>
         )}
         {fase === "jugando" && ganadorIdx === null && esMiTurno && (
@@ -1197,6 +1199,14 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
 
 function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   const [partidaActual, setPartidaActual] = useState(partida);
+  const [rivales, setRivales] = useState({});
+  function alCambiarRival(id, datos) {
+    setRivales((r) => {
+      if (datos) return { ...r, [id]: datos };
+      const { [id]: _quitado, ...resto } = r;
+      return resto;
+    });
+  }
 
   if (partidaActual.finalizada) {
     return (
@@ -1221,7 +1231,11 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
       nombresPorId[id] = (partidaActual[`nombres${lado}`] || [])[i] || partidaActual[`etiqueta${lado}`];
     });
   });
-  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} miJugadorId={miJugadorId} nombresPorId={nombresPorId} />;
+  // Streams de las cámaras del rival (los guarda aquí, fuera del marcador, para
+  // que sobrevivan al remontaje de cada leg) y se pintan en el hueco del
+  // teclado cuando le toca tirar al rival.
+  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} miJugadorId={miJugadorId} onRivalEstado={alCambiarRival} />;
+  const camarasRival = <CamarasRival rivales={rivales} nombresPorId={nombresPorId} />;
 
   // key=legs.length fuerza que el marcador se remonte entero al empezar cada
   // leg nuevo (nuevas unidades a 501/marcas vacías, turno según toque) — si
@@ -1238,6 +1252,7 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
           miJugadorId={miJugadorId}
           onActualizada={setPartidaActual}
           onSalir={onSalir}
+          camarasRival={camarasRival}
         />
       </>
     );
@@ -1252,6 +1267,7 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
         miJugadorId={miJugadorId}
         onActualizada={setPartidaActual}
         onSalir={onSalir}
+        camarasRival={camarasRival}
       />
     </>
   );

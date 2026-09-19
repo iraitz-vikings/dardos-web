@@ -55,6 +55,10 @@ function VideoCamara({ videoRef, etiqueta }) {
 
 function SelectorCamaras({ partidaId, token }) {
   const [abierto, setAbierto] = useState(false);
+  // "Visto bueno": tras comprobar la orientación de las cámaras propias, la
+  // vista previa se oculta (siguen emitiendo al rival) — pedido de Iraitz
+  // 2026-09-19: solo interesa ver las tuyas para orientarlas.
+  const [revisada, setRevisada] = useState(false);
   const [dispositivos, setDispositivos] = useState([]);
   const [dianaId, setDianaId] = useState(() => {
     try { return localStorage.getItem(CLAVE_DIANA) || ""; } catch { return ""; }
@@ -123,6 +127,7 @@ function SelectorCamaras({ partidaId, token }) {
         localStorage.setItem(CLAVE_LANZADOR, lanzadorId);
       } catch { /* almacenamiento no disponible, no pasa nada */ }
       await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/activar`, { token, method: "POST" });
+      setRevisada(false);
       setActiva(true);
     } catch {
       cerrarTodo();
@@ -135,6 +140,7 @@ function SelectorCamaras({ partidaId, token }) {
   async function desactivar() {
     cerrarTodo();
     setActiva(false);
+    setRevisada(false);
     try {
       await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/desactivar`, { token, method: "POST" });
     } catch { /* best-effort: si falla, el propio backend la dará por caducada */ }
@@ -145,14 +151,14 @@ function SelectorCamaras({ partidaId, token }) {
   // asignaba dentro de activar(), cuando los refs todavía eran null, y las
   // miniaturas propias se quedaban en negro).
   useEffect(() => {
-    if (!activa) return;
+    if (!activa || revisada) return;
     for (const [ref, stream] of [[videoDianaRef, streamsRef.current.diana], [videoLanzadorRef, streamsRef.current.lanzador]]) {
       if (ref.current && stream) {
         ref.current.srcObject = stream;
         ref.current.play?.().catch(() => {});
       }
     }
-  }, [activa]);
+  }, [activa, revisada]);
 
   // Si se sale de la pantalla (o se cambia de partido) con las cámaras
   // encendidas, se apagan solas — no debe quedar una emisión huérfana. Un
@@ -282,46 +288,75 @@ function SelectorCamaras({ partidaId, token }) {
           </div>
         </div>
       )}
-      {activa && (
+      {activa && !revisada && (
         <>
+          <p className="chronicle-status" style={{ margin: "0 0 .4rem" }}>
+            Comprueba que la diana y el lanzador se ven bien y pulsa el visto bueno.
+          </p>
           <div className="camaras-partida-videos">
             <VideoCamara videoRef={videoDianaRef} etiqueta="Diana" />
             <VideoCamara videoRef={videoLanzadorRef} etiqueta="Lanzador" />
           </div>
-          <button type="button" className="admin-link-btn" onClick={desactivar}>
-            Apagar mis cámaras
-          </button>
+          <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".5rem" }}>
+            <button type="button" onClick={() => setRevisada(true)}>✓ Todo correcto</button>
+            <button type="button" className="admin-link-btn" onClick={desactivar}>
+              Apagar mis cámaras
+            </button>
+          </div>
         </>
+      )}
+      {activa && revisada && (
+        <p className="chronicle-status" style={{ margin: 0 }}>
+          🎥 Mis cámaras: activas ✓{" "}
+          <button type="button" className="admin-link-btn" onClick={() => setRevisada(false)}>Revisar</button>{" "}
+          <button type="button" className="admin-link-btn" onClick={desactivar}>Apagar</button>
+        </p>
       )}
     </div>
   );
 }
 
-// --- Lado espectador: rival remoto (o, en el futuro, público) -------------
+// --- Lado receptor: cámaras del rival (sin pintar nada aquí) ---------------
 
-function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
+// Mantiene la conexión WebRTC con las cámaras de UN rival y avisa al padre de
+// los streams recibidos (onEstado(emisorId, { estado, diana, lanzador }), o
+// null al desmontar). NO pinta vídeo: las cámaras del rival solo se muestran
+// cuando le toca tirar a él, en el hueco del teclado (ver CamarasRival y el
+// marcador en JuegoHerramienta.jsx); la conexión, en cambio, se mantiene
+// abierta para no tener que renegociar en cada turno ni a cada leg.
+function ConexionRival({ partidaId, emisorId, onEstado, onCaducado }) {
   const [viewerId, setViewerId] = useState("");
-  const [conectado, setConectado] = useState(false);
-  const [error, setError] = useState("");
-  const videoDianaRef = useRef(null);
-  const videoLanzadorRef = useRef(null);
+  const onEstadoRef = useRef(onEstado);
+  onEstadoRef.current = onEstado;
+  const onCaducadoRef = useRef(onCaducado);
+  onCaducadoRef.current = onCaducado;
   const pcRef = useRef(null);
-  const iceEmisorAplicadosRef = useRef(0);
-  const iceGeneradosRef = useRef([]);
-  const iceGeneradosEnviadosRef = useRef(0);
+  const datosRef = useRef({ estado: "conectando", diana: null, lanzador: null });
+
+  function publicar(cambios) {
+    datosRef.current = { ...datosRef.current, ...cambios };
+    onEstadoRef.current?.(emisorId, datosRef.current);
+  }
 
   useEffect(() => {
     let cancelado = false;
+    publicar({ estado: "conectando", diana: null, lanzador: null });
     apiFetch(`/api/partidas-herramienta/${partidaId}/camara/ver`, { method: "POST", body: JSON.stringify({ emisorId }) })
       .then(({ viewerId: id }) => { if (!cancelado) setViewerId(id); })
-      .catch(() => { if (!cancelado) setError("No se han podido conectar las cámaras."); });
+      .catch(() => { if (!cancelado) publicar({ estado: "error" }); });
     return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partidaId, emisorId]);
 
   useEffect(() => {
     if (!viewerId) return undefined;
     let primerTrackAsignado = false;
     const idsAsignados = new Set();
+    const iceEmisorAplicados = { n: 0 };
+    const iceGenerados = [];
+    const iceGeneradosEnviados = { n: 0 };
+    let plazoConexion = null;
+
     const intervalo = setInterval(async () => {
       let data;
       try {
@@ -329,7 +364,7 @@ function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
       } catch (err) {
         // 404: el rival ha reiniciado sus cámaras y nuestro registro ya no
         // existe — el padre nos vuelve a montar para registrarnos de nuevo.
-        if (err.status === 404) onCaducado?.();
+        if (err.status === 404) onCaducadoRef.current?.();
         return;
       }
       if (!data.camarasActivas) return;
@@ -340,21 +375,30 @@ function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
         pcRef.current = pc;
         pc.ontrack = (e) => {
           // Sin nombres en WebRTC: se asigna por orden de llegada, el mismo
-          // orden (diana, luego lanzador) en que el emisor añade sus pistas
-          // — ver SelectorCamaras.
+          // orden (diana, luego lanzador) en que el emisor añade sus pistas.
           const stream = e.streams[0] || new MediaStream([e.track]);
           if (idsAsignados.has(stream.id)) return;
           idsAsignados.add(stream.id);
-          const destino = !primerTrackAsignado ? videoDianaRef.current : videoLanzadorRef.current;
+          if (!primerTrackAsignado) publicar({ diana: stream });
+          else publicar({ lanzador: stream });
           primerTrackAsignado = true;
-          if (destino) {
-            destino.srcObject = stream;
-            destino.play?.().catch(() => {});
-          }
         };
         pc.onicecandidate = (e) => {
-          if (e.candidate) iceGeneradosRef.current.push(e.candidate.toJSON());
+          if (e.candidate) iceGenerados.push(e.candidate.toJSON());
         };
+        pc.oniceconnectionstatechange = () => {
+          const s = pc.iceConnectionState;
+          if (s === "connected" || s === "completed") {
+            clearTimeout(plazoConexion);
+            publicar({ estado: "conectado" });
+          } else if (s === "failed") {
+            publicar({ estado: "error" });
+          }
+        };
+        // Si en 20s no ha conectado, se da por fallido (red que necesita TURN).
+        plazoConexion = setTimeout(() => {
+          if (pc.iceConnectionState !== "connected" && pc.iceConnectionState !== "completed") publicar({ estado: "error" });
+        }, 20000);
         try {
           await pc.setRemoteDescription(data.offer);
           const answer = await pc.createAnswer();
@@ -363,22 +407,21 @@ function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
             method: "PUT",
             body: JSON.stringify({ answer: pc.localDescription }),
           });
-          setConectado(true);
         } catch {
-          setError("No se ha podido conectar con las cámaras del rival.");
+          publicar({ estado: "error" });
           return;
         }
       }
 
       if (pc) {
         try {
-          const nuevosIce = (data.iceEmisor || []).slice(iceEmisorAplicadosRef.current);
+          const nuevosIce = (data.iceEmisor || []).slice(iceEmisorAplicados.n);
           for (const c of nuevosIce) await pc.addIceCandidate(c);
-          iceEmisorAplicadosRef.current = (data.iceEmisor || []).length;
+          iceEmisorAplicados.n = (data.iceEmisor || []).length;
 
-          if (iceGeneradosRef.current.length > iceGeneradosEnviadosRef.current) {
-            const pendientes = iceGeneradosRef.current.slice(iceGeneradosEnviadosRef.current);
-            iceGeneradosEnviadosRef.current = iceGeneradosRef.current.length;
+          if (iceGenerados.length > iceGeneradosEnviados.n) {
+            const pendientes = iceGenerados.slice(iceGeneradosEnviados.n);
+            iceGeneradosEnviados.n = iceGenerados.length;
             await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/senal/${viewerId}`, {
               method: "PUT",
               body: JSON.stringify({ iceReceptor: pendientes }),
@@ -389,20 +432,58 @@ function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
         }
       }
     }, 2500);
-    return () => clearInterval(intervalo);
-  }, [viewerId, partidaId]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      clearInterval(intervalo);
+      clearTimeout(plazoConexion);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerId, partidaId]);
 
-  useEffect(() => () => pcRef.current?.close(), []);
+  useEffect(() => () => {
+    pcRef.current?.close();
+    onEstadoRef.current?.(emisorId, null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  return null;
+}
+
+// Un <video> que engancha su MediaStream (viene del padre, así sobrevive a
+// que el marcador se remonte en cada leg).
+function VideoStream({ stream, etiqueta }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    ref.current.srcObject = stream || null;
+    if (stream) ref.current.play?.().catch(() => {});
+  }, [stream]);
+  return <VideoCamara videoRef={ref} etiqueta={etiqueta} />;
+}
+
+// Lo que se muestra en el hueco del teclado cuando le toca tirar al rival.
+export function CamarasRival({ rivales, nombresPorId = {} }) {
+  const lista = Object.entries(rivales || {});
+  if (lista.length === 0) return null;
   return (
-    <div className="camaras-partida">
-      <p className="chronicle-status" style={{ margin: 0 }}>Cámaras de {nombre}</p>
-      <div className="camaras-partida-videos">
-        <VideoCamara videoRef={videoDianaRef} etiqueta="Diana" />
-        <VideoCamara videoRef={videoLanzadorRef} etiqueta="Lanzador" />
-      </div>
-      {!conectado && !error && <p className="chronicle-status">Conectando con las cámaras…</p>}
-      {error && <p className="admin-msg admin-msg-error">{error}</p>}
+    <div className="camaras-rival-slot">
+      {lista.map(([id, r]) => (
+        <div key={id}>
+          <p className="chronicle-status" style={{ margin: "0 0 .3rem" }}>Cámaras de {nombresPorId[id] || "tu rival"}</p>
+          {r.estado === "error" ? (
+            <p className="admin-msg admin-msg-error">
+              No se ha podido conectar con sus cámaras (puede que la red de alguno de los dos lo impida).
+            </p>
+          ) : (
+            <>
+              <div className="camaras-partida-videos">
+                <VideoStream stream={r.diana} etiqueta="Diana" />
+                <VideoStream stream={r.lanzador} etiqueta="Lanzador" />
+              </div>
+              {r.estado !== "conectado" && <p className="chronicle-status">Conectando con las cámaras…</p>}
+            </>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -436,9 +517,11 @@ function useEstadoCamaras(partidaId) {
 
 // Punto de entrada montado desde JuegoHerramienta.jsx (PartidaCompleta).
 // Emisión en los dos sentidos a la vez (2026-09-19): cada jugador puede tener
-// SUS cámaras encendidas (SelectorCamaras) y a la vez ver las del rival (un
-// VisorCamaras por cada otro emisor activo) — antes eran excluyentes.
-export default function CamarasPartida({ partidaId, token, miJugadorId, nombresPorId = {} }) {
+// SUS cámaras encendidas (SelectorCamaras) y a la vez recibir las del rival
+// (una ConexionRival por cada otro emisor activo) — antes eran excluyentes.
+// Las del rival no se pintan aquí sino en el hueco del teclado cuando le toca
+// tirar a él (CamarasRival, usado desde el marcador).
+export default function CamarasPartida({ partidaId, token, miJugadorId, onRivalEstado }) {
   const emisores = useEstadoCamaras(partidaId);
   const [reintentos, setReintentos] = useState({});
   const ajenos = emisores.filter((id) => id !== miJugadorId);
@@ -447,11 +530,11 @@ export default function CamarasPartida({ partidaId, token, miJugadorId, nombresP
     <div className="camaras-partida-doble">
       <SelectorCamaras partidaId={partidaId} token={token} />
       {ajenos.map((id) => (
-        <VisorCamaras
+        <ConexionRival
           key={`${id}-${reintentos[id] || 0}`}
           partidaId={partidaId}
           emisorId={id}
-          nombre={nombresPorId[id] || "tu rival"}
+          onEstado={onRivalEstado}
           onCaducado={() => setReintentos((r) => ({ ...r, [id]: (r[id] || 0) + 1 }))}
         />
       ))}
