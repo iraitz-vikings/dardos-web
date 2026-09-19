@@ -1,5 +1,5 @@
   import { useEffect, useState } from "react";
-const ADMIN_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_192,w_192/f_png/v1789816550/IMG-20260910-WA0004_o3n7ly.png";
+const ADMIN_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/e_background_removal/b_transparent,c_pad,h_512,w_512/f_png/v1789816550/IMG-20260910-WA0004_o3n7ly.png";
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
 import AdminPatrocinadores from "./AdminPatrocinadores.jsx";
 import AdminSocios from "./AdminSocios.jsx";
