@@ -36,9 +36,9 @@ if (isAdmin) {
   const CLOUD_BASE = "https://res.cloudinary.com/lodi1y1k/image/upload";
   const ADMIN_IMG = "v1789816550/IMG-20260910-WA0004_o3n7ly";
   const setIcon = (selector, href) => document.querySelector(selector)?.setAttribute("href", href);
-  setIcon('link[rel="icon"][type="image/x-icon"]', `${CLOUD_BASE}/e_background_removal/b_transparent,c_pad,h_32,w_32/f_ico/${ADMIN_IMG}.ico`);
-  setIcon('link[rel="icon"][sizes="16x16"]', `${CLOUD_BASE}/e_background_removal/b_transparent,c_pad,h_16,w_16/f_png/${ADMIN_IMG}.png`);
-  setIcon('link[rel="icon"][sizes="32x32"]', `${CLOUD_BASE}/e_background_removal/b_transparent,c_pad,h_32,w_32/f_png/${ADMIN_IMG}.png`);
+  setIcon('link[rel="icon"][type="image/x-icon"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_32,w_32/f_ico/${ADMIN_IMG}.ico`);
+  setIcon('link[rel="icon"][sizes="16x16"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_16,w_16/f_png/${ADMIN_IMG}.png`);
+  setIcon('link[rel="icon"][sizes="32x32"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_32,w_32/f_png/${ADMIN_IMG}.png`);
   setIcon('link[rel="apple-touch-icon"]', `${CLOUD_BASE}/c_fill,g_auto,h_180,w_180/f_png/${ADMIN_IMG}.png`);
 }
 const isGaleria = path.startsWith("/galeria");
