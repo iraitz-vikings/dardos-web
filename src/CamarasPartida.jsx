@@ -53,7 +53,8 @@ function VideoCamara({ videoRef, etiqueta }) {
 
 // --- Lado emisor: quien tiene el dispositivo con las dos cámaras ----------
 
-function SelectorCamaras({ partidaId, token, onVolverAVer }) {
+function SelectorCamaras({ partidaId, token }) {
+  const [abierto, setAbierto] = useState(false);
   const [dispositivos, setDispositivos] = useState([]);
   const [dianaId, setDianaId] = useState(() => {
     try { return localStorage.getItem(CLAVE_DIANA) || ""; } catch { return ""; }
@@ -76,6 +77,7 @@ function SelectorCamaras({ partidaId, token, onVolverAVer }) {
   // cuál es cuál por nombre — cubre "Virt Camera Target" sin que Iraitz
   // tenga que elegirla a mano cada vez.
   useEffect(() => {
+    if (!abierto) return undefined;
     let cancelado = false;
     (async () => {
       try {
@@ -91,7 +93,7 @@ function SelectorCamaras({ partidaId, token, onVolverAVer }) {
       }
     })();
     return () => { cancelado = true; };
-  }, []);
+  }, [abierto]);
 
   function cerrarTodo() {
     for (const { pc } of conexionesRef.current.values()) pc.close();
@@ -224,6 +226,17 @@ function SelectorCamaras({ partidaId, token, onVolverAVer }) {
     return () => clearInterval(intervalo);
   }, [activa, partidaId, token]);
 
+  // Ya no se pide permiso de cámara nada más entrar: este bloque está siempre
+  // presente (a la vez que las cámaras del rival), y quien solo quiere ver no
+  // tiene por qué recibir el aviso del navegador.
+  if (!abierto && !activa) {
+    return (
+      <div className="camaras-partida">
+        <button type="button" onClick={() => setAbierto(true)}>🎥 Usar mis cámaras</button>
+      </div>
+    );
+  }
+
   return (
     <div className="camaras-partida">
       {!activa && (
@@ -251,11 +264,9 @@ function SelectorCamaras({ partidaId, token, onVolverAVer }) {
             <button type="button" onClick={activar} disabled={cargando}>
               {cargando ? "Activando…" : "🎥 Activar mis cámaras"}
             </button>
-            {onVolverAVer && (
-              <button type="button" className="admin-link-btn" onClick={onVolverAVer}>
-                ← Ver las del rival
-              </button>
-            )}
+            <button type="button" className="admin-link-btn" onClick={() => setAbierto(false)}>
+              Cerrar
+            </button>
           </div>
         </div>
       )}
@@ -276,7 +287,7 @@ function SelectorCamaras({ partidaId, token, onVolverAVer }) {
 
 // --- Lado espectador: rival remoto (o, en el futuro, público) -------------
 
-function VisorCamaras({ partidaId, onActivarPropias }) {
+function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
   const [viewerId, setViewerId] = useState("");
   const [conectado, setConectado] = useState(false);
   const [error, setError] = useState("");
@@ -289,11 +300,11 @@ function VisorCamaras({ partidaId, onActivarPropias }) {
 
   useEffect(() => {
     let cancelado = false;
-    apiFetch(`/api/partidas-herramienta/${partidaId}/camara/ver`, { method: "POST" })
+    apiFetch(`/api/partidas-herramienta/${partidaId}/camara/ver`, { method: "POST", body: JSON.stringify({ emisorId }) })
       .then(({ viewerId: id }) => { if (!cancelado) setViewerId(id); })
       .catch(() => { if (!cancelado) setError("No se han podido conectar las cámaras."); });
     return () => { cancelado = true; };
-  }, [partidaId]);
+  }, [partidaId, emisorId]);
 
   useEffect(() => {
     if (!viewerId) return undefined;
@@ -302,7 +313,10 @@ function VisorCamaras({ partidaId, onActivarPropias }) {
       let data;
       try {
         data = await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/senal/${viewerId}`);
-      } catch {
+      } catch (err) {
+        // 404: el rival ha reiniciado sus cámaras y nuestro registro ya no
+        // existe — el padre nos vuelve a montar para registrarnos de nuevo.
+        if (err.status === 404) onCaducado?.();
         return;
       }
       if (!data.camarasActivas) return;
@@ -357,23 +371,19 @@ function VisorCamaras({ partidaId, onActivarPropias }) {
       }
     }, 2500);
     return () => clearInterval(intervalo);
-  }, [viewerId, partidaId]);
+  }, [viewerId, partidaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => pcRef.current?.close(), []);
 
   return (
     <div className="camaras-partida">
+      <p className="chronicle-status" style={{ margin: 0 }}>Cámaras de {nombre}</p>
       <div className="camaras-partida-videos">
         <VideoCamara videoRef={videoDianaRef} etiqueta="Diana" />
         <VideoCamara videoRef={videoLanzadorRef} etiqueta="Lanzador" />
       </div>
       {!conectado && !error && <p className="chronicle-status">Conectando con las cámaras…</p>}
       {error && <p className="admin-msg admin-msg-error">{error}</p>}
-      {onActivarPropias && (
-        <button type="button" className="admin-link-btn" onClick={onActivarPropias}>
-          ¿Tienes tú las cámaras? Actívalas
-        </button>
-      )}
     </div>
   );
 }
@@ -385,55 +395,47 @@ function VisorCamaras({ partidaId, onActivarPropias }) {
 // que el turno de juego) — así el otro lado se entera si el rival enciende
 // o apaga las suyas, sin recargar la página.
 function useEstadoCamaras(partidaId) {
-  const [camarasActivas, setCamarasActivas] = useState(false);
+  const [emisores, setEmisores] = useState([]);
   useEffect(() => {
     let cancelado = false;
     function sondear() {
       apiFetch(`/api/partidas-herramienta/${partidaId}/camara/estado`)
-        .then(({ camarasActivas: activas }) => { if (!cancelado) setCamarasActivas(activas); })
+        .then(({ emisores: ids }) => {
+          if (cancelado) return;
+          const nuevos = ids || [];
+          // Solo se actualiza si cambia la lista, para no re-renderizar en cada sondeo.
+          setEmisores((actual) => (actual.join(",") === nuevos.join(",") ? actual : nuevos));
+        })
         .catch(() => {});
     }
     sondear();
     const intervalo = setInterval(sondear, 4000);
     return () => { cancelado = true; clearInterval(intervalo); };
   }, [partidaId]);
-  return camarasActivas;
+  return emisores;
 }
 
-// Punto de entrada montado desde JuegoHerramienta.jsx (PartidaCompleta): en
-// torneo/liga (dispositivo compartido) cualquiera de los dos puede activar
-// sus cámaras y las ve ahí mismo, en el mismo dispositivo — no hace falta
-// nada de red. En amistoso remoto es donde la retransmisión importa: un
-// lado activa, el otro las ve como espectador.
-//
-// `modo` decide qué se muestra: "emisor" (selector de cámaras propio, o su
-// vista en directo una vez activadas) o "ver" (las del otro lado). Se
-// decide UNA VEZ, en cuanto se sabe si ya hay cámaras activas de otro
-// dispositivo (si las hay, se empieza en "ver"; si no, en "emisor", listo
-// para activarlas). A partir de ahí solo cambia por un clic explícito del
-// botón "Activar mis cámaras"/"¿Tienes tú las cámaras?" — nunca solo porque
-// el sondeo de camarasActivas cambie, que si no le quitaría de debajo la
-// emisión propia a quien la tenga encendida en cuanto detectara su propio
-// camarasActivas=true.
-export default function CamarasPartida({ partidaId, token }) {
-  const camarasActivas = useEstadoCamaras(partidaId);
-  const [modo, setModo] = useState(null);
+// Punto de entrada montado desde JuegoHerramienta.jsx (PartidaCompleta).
+// Emisión en los dos sentidos a la vez (2026-09-19): cada jugador puede tener
+// SUS cámaras encendidas (SelectorCamaras) y a la vez ver las del rival (un
+// VisorCamaras por cada otro emisor activo) — antes eran excluyentes.
+export default function CamarasPartida({ partidaId, token, miJugadorId, nombresPorId = {} }) {
+  const emisores = useEstadoCamaras(partidaId);
+  const [reintentos, setReintentos] = useState({});
+  const ajenos = emisores.filter((id) => id !== miJugadorId);
 
-  useEffect(() => {
-    if (modo === null) setModo(camarasActivas ? "ver" : "emisor");
-  }, [camarasActivas, modo]);
-
-  if (modo === "ver") {
-    return <VisorCamaras partidaId={partidaId} onActivarPropias={() => setModo("emisor")} />;
-  }
-  if (modo === "emisor") {
-    return (
-      <SelectorCamaras
-        partidaId={partidaId}
-        token={token}
-        onVolverAVer={camarasActivas ? () => setModo("ver") : null}
-      />
-    );
-  }
-  return null;
+  return (
+    <div className="camaras-partida-doble">
+      <SelectorCamaras partidaId={partidaId} token={token} />
+      {ajenos.map((id) => (
+        <VisorCamaras
+          key={`${id}-${reintentos[id] || 0}`}
+          partidaId={partidaId}
+          emisorId={id}
+          nombre={nombresPorId[id] || "tu rival"}
+          onCaducado={() => setReintentos((r) => ({ ...r, [id]: (r[id] || 0) + 1 }))}
+        />
+      ))}
+    </div>
+  );
 }
