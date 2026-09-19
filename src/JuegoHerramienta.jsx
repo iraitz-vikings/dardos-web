@@ -1195,11 +1195,87 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
   );
 }
 
+// --- Sala de espera de un amistoso remoto ---------------------------------
+
+// Antes de empezar: cada uno activa y revisa sus cámaras, ve las del rival
+// (en cuanto ha dado su "Todo correcto"), se saludan, y cuando los dos pulsan
+// "Inicio" aparece el marcador. Las cámaras siguen conectadas de la sala al
+// partido (CamarasPartida vive fuera, ver PartidaCompleta).
+function SalaEspera({ partida, token, miJugadorId, nombresPorId, camarasRival, miRevisada, onActualizada }) {
+  const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const ids = [...new Set([...(partida.jugadoresId1 || []), ...(partida.jugadoresId2 || [])])];
+  const listos = partida.listosInicio || [];
+  const yoListo = listos.includes(miJugadorId);
+  const otros = ids.filter((id) => id !== miJugadorId);
+
+  async function alternarListo() {
+    setEnviando(true);
+    setError("");
+    try {
+      const data = await apiFetch(`/api/partidas-herramienta/${partida.id}/listo`, {
+        token,
+        method: "POST",
+        body: JSON.stringify({ listo: !yoListo }),
+      });
+      onActualizada(data);
+    } catch (err) {
+      setError(err.message || "No se ha podido marcar tu Inicio.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form" style={{ maxWidth: 460 }}>
+      <h3 style={{ marginTop: 0 }}>Sala de espera</h3>
+      <p className="chronicle-status" style={{ margin: 0 }}>
+        {partida.etiqueta1} vs {partida.etiqueta2} · al mejor de {partida.alMejorDe}
+      </p>
+      {miRevisada ? (
+        camarasRival
+      ) : (
+        <p className="chronicle-status">
+          Activa tus cámaras y pulsa «Todo correcto» para ver las de tu rival y saludaros. (Si no vas a usar cámaras, puedes pulsar Inicio igualmente.)
+        </p>
+      )}
+      <div style={{ margin: ".6rem 0" }}>
+        {otros.map((id) => (
+          <p key={id} className="chronicle-status" style={{ margin: ".2rem 0" }}>
+            {nombresPorId[id] || "Tu rival"}: {listos.includes(id) ? "✅ listo para empezar" : "⏳ todavía no ha pulsado Inicio"}
+          </p>
+        ))}
+      </div>
+      {error && <p className="admin-msg admin-msg-error">{error}</p>}
+      <button type="button" disabled={enviando} onClick={alternarListo}>
+        {yoListo ? "Cancelar (aún no estoy listo)" : "▶ Inicio"}
+      </button>
+      {yoListo && <p className="chronicle-status">Esperando a que tu rival pulse Inicio…</p>}
+    </div>
+  );
+}
+
 // --- Envoltorio: partida completa (varios legs hasta terminar) ------------
 
 function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   const [partidaActual, setPartidaActual] = useState(partida);
   const [rivales, setRivales] = useState({});
+  const [miRevisada, setMiRevisada] = useState(false);
+  // Sala de espera previa (solo amistoso remoto): hasta que TODOS los
+  // participantes pulsan "Inicio" no aparece el marcador.
+  const idsParticipantes = [...new Set([...(partidaActual.jugadoresId1 || []), ...(partidaActual.jugadoresId2 || [])])];
+  const todosListos = idsParticipantes.every((id) => (partidaActual.listosInicio || []).includes(id));
+  const enSala = !!partidaActual.amistosa && !partidaActual.finalizada && (partidaActual.legs || []).length === 0 && !todosListos;
+  useEffect(() => {
+    if (!enSala) return undefined;
+    const intervalo = setInterval(async () => {
+      try {
+        const data = await apiFetch(`/api/partidas-herramienta/${partidaActual.id}`, { token });
+        setPartidaActual((p) => (JSON.stringify(p.listosInicio) === JSON.stringify(data.listosInicio) ? p : data));
+      } catch { /* se reintenta en el siguiente sondeo */ }
+    }, 2500);
+    return () => clearInterval(intervalo);
+  }, [enSala, partidaActual.id, token]);
   function alCambiarRival(id, datos) {
     setRivales((r) => {
       if (datos) return { ...r, [id]: datos };
@@ -1234,8 +1310,25 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   // Streams de las cámaras del rival (los guarda aquí, fuera del marcador, para
   // que sobrevivan al remontaje de cada leg) y se pintan en el hueco del
   // teclado cuando le toca tirar al rival.
-  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} miJugadorId={miJugadorId} onRivalEstado={alCambiarRival} rivalIds={partidaActual.amistosa ? Object.keys(nombresPorId).filter((id) => id !== miJugadorId) : []} nombresPorId={nombresPorId} />;
+  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} miJugadorId={miJugadorId} onRivalEstado={alCambiarRival} onMiRevisada={setMiRevisada} rivalIds={partidaActual.amistosa ? Object.keys(nombresPorId).filter((id) => id !== miJugadorId) : []} nombresPorId={nombresPorId} />;
   const camarasRival = <CamarasRival rivales={rivales} nombresPorId={nombresPorId} />;
+
+  if (enSala) {
+    return (
+      <>
+        {camaras}
+        <SalaEspera
+          partida={partidaActual}
+          token={token}
+          miJugadorId={miJugadorId}
+          nombresPorId={nombresPorId}
+          camarasRival={camarasRival}
+          miRevisada={miRevisada}
+          onActualizada={setPartidaActual}
+        />
+      </>
+    );
+  }
 
   // key=legs.length fuerza que el marcador se remonte entero al empezar cada
   // leg nuevo (nuevas unidades a 501/marcas vacías, turno según toque) — si
