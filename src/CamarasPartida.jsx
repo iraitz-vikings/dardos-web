@@ -118,8 +118,6 @@ function SelectorCamaras({ partidaId, token }) {
       // Orden diana→lanzador consistente con VisorCamaras, que distingue las
       // pistas que le llegan por orden de llegada (WebRTC no manda nombres).
       streamsRef.current = { diana: streamDiana, lanzador: streamLanzador };
-      if (videoDianaRef.current) videoDianaRef.current.srcObject = streamDiana;
-      if (videoLanzadorRef.current) videoLanzadorRef.current.srcObject = streamLanzador;
       try {
         localStorage.setItem(CLAVE_DIANA, dianaId);
         localStorage.setItem(CLAVE_LANZADOR, lanzadorId);
@@ -141,6 +139,20 @@ function SelectorCamaras({ partidaId, token }) {
       await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/desactivar`, { token, method: "POST" });
     } catch { /* best-effort: si falla, el propio backend la dará por caducada */ }
   }
+
+  // Los <video> de la vista local solo existen mientras activa=true, así que
+  // el stream se engancha aquí, ya con los elementos montados (antes se
+  // asignaba dentro de activar(), cuando los refs todavía eran null, y las
+  // miniaturas propias se quedaban en negro).
+  useEffect(() => {
+    if (!activa) return;
+    for (const [ref, stream] of [[videoDianaRef, streamsRef.current.diana], [videoLanzadorRef, streamsRef.current.lanzador]]) {
+      if (ref.current && stream) {
+        ref.current.srcObject = stream;
+        ref.current.play?.().catch(() => {});
+      }
+    }
+  }, [activa]);
 
   // Si se sale de la pantalla (o se cambia de partido) con las cámaras
   // encendidas, se apagan solas — no debe quedar una emisión huérfana. Un
@@ -309,6 +321,7 @@ function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
   useEffect(() => {
     if (!viewerId) return undefined;
     let primerTrackAsignado = false;
+    const idsAsignados = new Set();
     const intervalo = setInterval(async () => {
       let data;
       try {
@@ -329,9 +342,15 @@ function VisorCamaras({ partidaId, emisorId, nombre, onCaducado }) {
           // Sin nombres en WebRTC: se asigna por orden de llegada, el mismo
           // orden (diana, luego lanzador) en que el emisor añade sus pistas
           // — ver SelectorCamaras.
+          const stream = e.streams[0] || new MediaStream([e.track]);
+          if (idsAsignados.has(stream.id)) return;
+          idsAsignados.add(stream.id);
           const destino = !primerTrackAsignado ? videoDianaRef.current : videoLanzadorRef.current;
           primerTrackAsignado = true;
-          if (destino) destino.srcObject = e.streams[0];
+          if (destino) {
+            destino.srcObject = stream;
+            destino.play?.().catch(() => {});
+          }
         };
         pc.onicecandidate = (e) => {
           if (e.candidate) iceGeneradosRef.current.push(e.candidate.toJSON());
