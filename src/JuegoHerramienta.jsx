@@ -50,7 +50,7 @@ function etiquetaModalidad(modalidad) {
 
 // --- Paso 1: identificación con PIN ---------------------------------------
 
-function LoginPin({ onEntrar }) {
+export function LoginPin({ onEntrar }) {
   const [jugadores, setJugadores] = useState([]);
   const [filtro, setFiltro] = useState("");
   const [jugadorId, setJugadorId] = useState("");
@@ -1252,8 +1252,8 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
 
 // --- Componente principal ---------------------------------------------------
 
-const CLAVE_TOKEN = "herramientaPartidasToken";
-const CLAVE_JUGADOR = "herramientaPartidasJugador";
+export const CLAVE_TOKEN = "herramientaPartidasToken";
+export const CLAVE_JUGADOR = "herramientaPartidasJugador";
 
 export default function AccesoHerramienta({ activa, entidadTipo, entidadId, entidadNombre, autoAbrir, partidaIdDirecta }) {
   const [mostrar, setMostrar] = useState(!!autoAbrir || !!partidaIdDirecta);

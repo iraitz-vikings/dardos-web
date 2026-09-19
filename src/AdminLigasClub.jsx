@@ -181,6 +181,14 @@ export default function AdminLigasClub({ token, salir }) {
     });
     cargarLigas();
   }
+  async function cambiarAnclarInicio(liga, nuevo) {
+    await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ anclarInicio: nuevo }),
+    });
+    cargarLigas();
+  }
   async function borrarLiga(id) {
     if (!confirm("¿Enviar esta liga a la papelera? Se podrá restaurar durante 7 días; pasado ese plazo se borrará ya del todo, con sus participantes y calendario.")) return;
     await fetch(`${API_URL}/api/ligas-club/${id}`, { method: "DELETE", headers: { "x-admin-token": token } });
@@ -517,6 +525,7 @@ export default function AdminLigasClub({ token, salir }) {
                     {l.numeroGrupos ? ` · ${l.numeroGrupos} grupos` : ""}
                     {l.finalizado ? " · Finalizada" : ""}
                     {l.notificaciones === false ? " · Sin avisos" : ""}
+                    {l.anclarInicio ? " · Anclada a inicio" : ""}
                   </time>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -528,6 +537,9 @@ export default function AdminLigasClub({ token, salir }) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarNotificaciones(l, !l.notificaciones)}>
                     {l.notificaciones === false ? "Activar avisos" : "Desactivar avisos"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarAnclarInicio(l, !l.anclarInicio)}>
+                    {l.anclarInicio ? "Desanclar de inicio" : "Anclar a inicio"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(l.id)}>Gestionar</button>
                   <a className="admin-link-btn" href={`${window.location.origin}/liga/${l.id}`} target="_blank" rel="noopener noreferrer">
