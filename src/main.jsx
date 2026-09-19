@@ -14,6 +14,20 @@ import "./styles.css";
 
 const path = window.location.pathname;
 const isAdmin = path.startsWith("/admin");
+
+// Instalar la web general y el admin como dos apps separadas (pedido de
+// Iraitz, 2026-09-18): index.html trae puesto el manifest general
+// (manifest.json, scope "/"). En /admin lo cambiamos por uno propio
+// (manifest-admin.json, scope "/admin", icono/nombre "Vikings Admin") ANTES
+// de montar React — así "Instalar aplicación" (Chrome/Android) o "Añadir a
+// pantalla de inicio" (iOS) desde /admin registra una app distinta de la
+// web general, aunque sea el mismo dominio: cada manifest.json es una
+// identidad de instalación aparte, no hace falta tocar el servidor ni el
+// build para tener dos "apps".
+if (isAdmin) {
+  document.querySelector('link[rel="manifest"]')?.setAttribute("href", "/manifest-admin.json");
+  document.title = "Vikings Dardos — Admin";
+}
 const isGaleria = path.startsWith("/galeria");
 const isHistorico = path.startsWith("/historico");
 const isSocios = path.startsWith("/socios");
