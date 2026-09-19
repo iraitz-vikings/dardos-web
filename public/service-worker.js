@@ -32,7 +32,7 @@ self.addEventListener("push", (event) => {
     // vikingo con cuernos + calavera) generada con IA a partir del escudo,
     // con huecos reales de transparencia en ojos/boca, para que sí se vea
     // una forma reconocible a tamaño diminuto.
-    badge: "https://res.cloudinary.com/lodi1y1k/image/upload/e_trim/b_transparent,c_pad,h_96,w_96/f_png/v1789826624/vikings-notif-badge-silueta-2026-v4.png",
+    badge: "https://res.cloudinary.com/lodi1y1k/image/upload/b_transparent,c_pad,h_96,w_96/f_png/v1789828140/vikings-notif-badge-silueta-2026-v5.png",
     data: { url: datos.url || "/" },
   };
   // Imagen grande opcional (p.ej. eliminación/campeón de un cuadrante). No
