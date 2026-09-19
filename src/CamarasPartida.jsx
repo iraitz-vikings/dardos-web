@@ -53,7 +53,7 @@ function VideoCamara({ videoRef, etiqueta }) {
 
 // --- Lado emisor: quien tiene el dispositivo con las dos cámaras ----------
 
-function SelectorCamaras({ partidaId, token }) {
+function SelectorCamaras({ partidaId, token, onMiRevisada }) {
   const [abierto, setAbierto] = useState(false);
   // "Visto bueno": tras comprobar la orientación de las cámaras propias, la
   // vista previa se oculta (siguen emitiendo al rival) — pedido de Iraitz
@@ -61,8 +61,12 @@ function SelectorCamaras({ partidaId, token }) {
   const [revisada, setRevisadaLocal] = useState(false);
   // Además de guardarlo en local, se avisa al backend para que el rival vea
   // si ya hemos dado el visto bueno (best-effort).
-  function setRevisada(valor) {
+  function fijarRevisada(valor) {
     setRevisadaLocal(valor);
+    onMiRevisada?.(valor);
+  }
+  function setRevisada(valor) {
+    fijarRevisada(valor);
     apiFetch(`/api/partidas-herramienta/${partidaId}/camara/revisada`, {
       token,
       method: "POST",
@@ -137,7 +141,7 @@ function SelectorCamaras({ partidaId, token }) {
         localStorage.setItem(CLAVE_LANZADOR, lanzadorId);
       } catch { /* almacenamiento no disponible, no pasa nada */ }
       await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/activar`, { token, method: "POST" });
-      setRevisadaLocal(false);
+      fijarRevisada(false);
       setActiva(true);
     } catch {
       cerrarTodo();
@@ -150,7 +154,7 @@ function SelectorCamaras({ partidaId, token }) {
   async function desactivar() {
     cerrarTodo();
     setActiva(false);
-    setRevisadaLocal(false);
+    fijarRevisada(false);
     try {
       await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/desactivar`, { token, method: "POST" });
     } catch { /* best-effort: si falla, el propio backend la dará por caducada */ }
@@ -531,14 +535,14 @@ function useEstadoCamaras(partidaId) {
 // (una ConexionRival por cada otro emisor activo) — antes eran excluyentes.
 // Las del rival no se pintan aquí sino en el hueco del teclado cuando le toca
 // tirar a él (CamarasRival, usado desde el marcador).
-export default function CamarasPartida({ partidaId, token, miJugadorId, onRivalEstado, rivalIds = [], nombresPorId = {} }) {
+export default function CamarasPartida({ partidaId, token, miJugadorId, onRivalEstado, onMiRevisada, rivalIds = [], nombresPorId = {} }) {
   const { emisores, estados } = useEstadoCamaras(partidaId);
   const [reintentos, setReintentos] = useState({});
   const ajenos = emisores.filter((id) => id !== miJugadorId);
 
   return (
     <div className="camaras-partida-doble">
-      <SelectorCamaras partidaId={partidaId} token={token} />
+      <SelectorCamaras partidaId={partidaId} token={token} onMiRevisada={onMiRevisada} />
       {rivalIds.map((id) => {
         const activo = emisores.includes(id);
         const revisada = activo && estados[id]?.revisada;
