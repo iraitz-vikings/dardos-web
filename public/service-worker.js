@@ -24,13 +24,11 @@ self.addEventListener("push", (event) => {
     icon: "https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_192,w_192/f_png/v1789382604/vikings-logo-icono-2026.png",
     // "badge" es el icono monocromo de la barra de estado en Android: el SO
     // solo mira el canal alfa (transparencia) y lo pinta en blanco/gris —
-    // ignora el color. La versión anterior era un cuadrado opaco sin
-    // transparencia (c_fill sobre fondo sólido), así que Android no
-    // encontraba silueta que recortar y pintaba el cuadrado entero en
-    // blanco. Usamos la versión con fondo transparente (b_transparent +
-    // c_pad, como el favicon) y un tamaño más pequeño (96px, el recomendado
-    // para badge) para que sí tenga alfa y se vea la silueta del escudo.
-    badge: "https://res.cloudinary.com/lodi1y1k/image/upload/b_transparent,c_pad,h_96,w_96/f_png/v1789382590/vikings-logo-transparente-2026.png",
+    // ignora el color. Usamos el escudo nuevo con el fondo eliminado
+    // (e_background_removal + e_trim, igual que el favicon del admin) a
+    // 96px (el tamaño recomendado para badge) para que tenga alfa y se vea
+    // la silueta.
+    badge: "https://res.cloudinary.com/lodi1y1k/image/upload/e_background_removal/e_trim/b_transparent,c_pad,h_96,w_96/f_png/v1789816550/IMG-20260910-WA0004_o3n7ly.png",
     data: { url: datos.url || "/" },
   };
   // Imagen grande opcional (p.ej. eliminación/campeón de un cuadrante). No
