@@ -1214,7 +1214,14 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   // así la emisión/recepción WebRTC no se corta ni se reconecta entre legs,
   // solo cuando el partido entero empieza o termina — ver CamarasPartida.jsx
   // (plan "camaras-partidas", guardado en el proyecto).
-  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} />;
+  // id de jugador -> nombre, para rotular las cámaras del rival.
+  const nombresPorId = {};
+  [1, 2].forEach((lado) => {
+    (partidaActual[`jugadoresId${lado}`] || []).forEach((id, i) => {
+      nombresPorId[id] = (partidaActual[`nombres${lado}`] || [])[i] || partidaActual[`etiqueta${lado}`];
+    });
+  });
+  const camaras = <CamarasPartida partidaId={partidaActual.id} token={token} miJugadorId={miJugadorId} nombresPorId={nombresPorId} />;
 
   // key=legs.length fuerza que el marcador se remonte entero al empezar cada
   // leg nuevo (nuevas unidades a 501/marcas vacías, turno según toque) — si
