@@ -1448,3 +1448,71 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   text-transform: uppercase;
   letter-spacing: .04em;
 }
+
+/* Pantalla de carga inicial (escudo transparente + efecto), ver Carga.jsx */
+.carga-inicial {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--iron);
+  opacity: 0;
+  animation: carga-inicial-fade-in .5s ease-out forwards;
+}
+.carga-inicial-saliendo {
+  animation: carga-inicial-fade-out .5s ease-in forwards;
+}
+@keyframes carga-inicial-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes carga-inicial-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+.carga-inicial-glow {
+  position: absolute;
+  width: clamp(220px, 55vw, 420px);
+  height: clamp(220px, 55vw, 420px);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--blood) 0%, transparent 70%);
+  filter: blur(24px);
+  animation: carga-inicial-glow-pulso 1.8s ease-in-out infinite;
+}
+@keyframes carga-inicial-glow-pulso {
+  0%, 100% { transform: scale(.85); opacity: .35; }
+  50% { transform: scale(1.08); opacity: .7; }
+}
+
+.carga-inicial-logo-wrap {
+  position: relative;
+  width: clamp(140px, 40vw, 240px);
+  aspect-ratio: 1 / 1;
+  animation: carga-inicial-logo-entrada .7s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+@keyframes carga-inicial-logo-entrada {
+  from { opacity: 0; transform: scale(.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.carga-inicial-logo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(154, 43, 40, .55));
+}
+
+/* Brillo metálico que recorre el escudo: mismo PNG usado como máscara
+   (WebkitMaskImage/maskImage, fijado desde Carga.jsx) para que el barrido
+   de luz solo se vea dentro de la silueta del escudo, no en un cuadrado. */
+.carga-inicial-brillo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, #fff 48%, #ffd9a8 52%, transparent 70%);
+  background-size: 300% 300%;
+  mix-blend-mode: overlay;
+  opacity: .9;
+  animation: carga-inicial-brillo-barrido 1.6s ease-in-out .35s 2;
+}
+@keyframes carga-inicial-brillo-barrido {
+  0% { background-position: 130% 0%; }
+  100% { background-position: -30% 0%; }
+}

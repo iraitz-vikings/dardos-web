@@ -9,8 +9,16 @@ import Historico from "./Historico.jsx";
 import Socios from "./Socios.jsx";
 import AvisoCheckIn from "./AvisoCheckIn.jsx";
 import PaginaPartidas from "./PaginaPartidas.jsx";
+import Carga from "./Carga.jsx";
 import { LanguageProvider } from "./i18n.jsx";
 import "./styles.css";
+
+// Logos EN VERSIÓN TRANSPARENTE (no los iconos cuadrados opacos del
+// manifest) para la pantalla de carga inicial (pedido 2026-09-19) — cada
+// app con el suyo: el de la web principal ya se usa igual en App.jsx
+// (HERO_LOGO_URL), y el del admin en Admin.jsx (ADMIN_EMBLEM_URL).
+const LOGO_TRANSPARENTE_PRINCIPAL = "https://res.cloudinary.com/lodi1y1k/image/upload/f_auto,q_auto/v1789382590/vikings-logo-transparente-2026.png";
+const LOGO_TRANSPARENTE_ADMIN = "https://res.cloudinary.com/lodi1y1k/image/upload/e_background_removal/e_trim/b_transparent,c_pad,h_512,w_512/f_png/v1789816550/IMG-20260910-WA0004_o3n7ly.png";
 
 const path = window.location.pathname;
 const isAdmin = path.startsWith("/admin");
@@ -71,6 +79,7 @@ function Pagina() {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <LanguageProvider>
+      <Carga logoUrl={isAdmin ? LOGO_TRANSPARENTE_ADMIN : LOGO_TRANSPARENTE_PRINCIPAL} />
       <Pagina />
     </LanguageProvider>
   </React.StrictMode>
