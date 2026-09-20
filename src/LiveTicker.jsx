@@ -24,7 +24,9 @@ export default function LiveTicker() {
                 .filter((c) => c.estado !== "finalizado")
                 .flatMap((c) =>
                   c.partidos
-                    .filter((p) => p.enCurso)
+                    // Un partido ya decidido (con ganador) nunca cuenta como "en directo",
+                    // aunque su flag enCurso se hubiera quedado colgado.
+                    .filter((p) => p.enCurso && !p.ganador)
                     .map((p) => ({ ...p, torneoId: t.id, torneoNombre: t.nombre }))
                 )
             );
