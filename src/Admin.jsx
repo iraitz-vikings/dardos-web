@@ -99,10 +99,35 @@ export default function Admin() {
     }
   }, [token]);
 
-  function entrar(e) {
+  const [errorLogin, setErrorLogin] = useState("");
+  const [comprobandoLogin, setComprobandoLogin] = useState(false);
+
+  // Valida la contraseña contra el backend antes de dar acceso al panel
+  // (antes cualquier texto abría el panel, aunque no cargara datos).
+  async function entrar(e) {
     e.preventDefault();
-    sessionStorage.setItem("adminToken", passwordInput);
-    setToken(passwordInput);
+    if (!passwordInput || comprobandoLogin) return;
+    setErrorLogin("");
+    setComprobandoLogin(true);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/pendientes`, {
+        headers: { "x-admin-token": passwordInput },
+      });
+      if (res.status === 401) {
+        setErrorLogin("Contraseña incorrecta.");
+      } else if (res.status === 429) {
+        setErrorLogin("Demasiados intentos. Espera unos minutos.");
+      } else if (!res.ok) {
+        setErrorLogin("No se pudo comprobar la contraseña. Inténtalo de nuevo.");
+      } else {
+        sessionStorage.setItem("adminToken", passwordInput);
+        setToken(passwordInput);
+      }
+    } catch {
+      setErrorLogin("No se pudo conectar con el servidor.");
+    } finally {
+      setComprobandoLogin(false);
+    }
   }
 
   function salir() {
@@ -504,7 +529,10 @@ function cancelarEdicionNoticia() {
             onChange={(e) => setPasswordInput(e.target.value)}
             autoFocus
           />
-          <button type="submit">Entrar</button>
+          <button type="submit" disabled={comprobandoLogin}>
+            {comprobandoLogin ? "Comprobando..." : "Entrar"}
+          </button>
+          {errorLogin && <p style={{ color: "#e5484d", margin: "0.5rem 0 0" }}>{errorLogin}</p>}
         </form>
       </div>
     );
