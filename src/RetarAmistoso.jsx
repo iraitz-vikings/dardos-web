@@ -119,13 +119,14 @@ export default function RetarAmistoso() {
               key={p.id}
               style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.4rem 0", borderBottom: "1px solid var(--border-color, #ddd)" }}
             >
-              <span>
+              <a href={`/partidas?partida=${p.id}`} style={{ color: "inherit", textDecoration: "none", flex: 1 }}>
                 {p.etiqueta1} vs {p.etiqueta2}
                 {" — "}
                 {p.finalizada
                   ? `${p.legsGanados1}-${p.legsGanados2}`
                   : "pendiente"}
-              </span>
+                {" ›"}
+              </a>
               <button type="button" onClick={() => borrar(p.id)} disabled={borrandoId === p.id}>
                 {borrandoId === p.id ? "Borrando…" : "Borrar"}
               </button>
