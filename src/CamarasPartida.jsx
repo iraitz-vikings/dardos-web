@@ -28,6 +28,24 @@ const ICE_SERVERS = [
   { urls: "stun:stun.cloudflare.com:3478" },
 ];
 
+// Servidores ICE reales (STUN + TURN si el backend lo tiene configurado, ver
+// GET /api/partidas-herramienta/ice). Se piden una vez y se reutilizan; si
+// falla la petición se sigue con el STUN de arriba.
+let iceServersPromesa = null;
+let iceServersMomento = 0;
+function obtenerIceServers() {
+  if (!iceServersPromesa || Date.now() - iceServersMomento > 30 * 60 * 1000) {
+    iceServersMomento = Date.now();
+    iceServersPromesa = apiFetch("/api/partidas-herramienta/ice")
+      .then((d) => (Array.isArray(d.iceServers) && d.iceServers.length > 0 ? d.iceServers : ICE_SERVERS))
+      .catch(() => {
+        iceServersMomento = 0;
+        return ICE_SERVERS;
+      });
+  }
+  return iceServersPromesa;
+}
+
 const CLAVE_DIANA = "camarasPartida.dianaId";
 const CLAVE_LANZADOR = "camarasPartida.lanzadorId";
 
@@ -129,6 +147,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
     setError("");
     setCargando(true);
     try {
+      obtenerIceServers();
       const [streamDiana, streamLanzador] = await Promise.all([
         navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: dianaId } } }),
         navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: lanzadorId } } }),
@@ -207,7 +226,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
         let entrada = conexionesRef.current.get(viewerId);
 
         if (!entrada && info.estado === "esperando") {
-          const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+          const pc = new RTCPeerConnection({ iceServers: await obtenerIceServers() });
           entrada = { pc, iceGenerados: [], iceGeneradosEnviados: 0, iceReceptorAplicados: 0 };
           conexionesRef.current.set(viewerId, entrada);
           pc.onicecandidate = (e) => {
@@ -385,7 +404,7 @@ function ConexionRival({ partidaId, emisorId, onEstado, onCaducado }) {
 
       let pc = pcRef.current;
       if (!pc && data.offer) {
-        pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        pc = new RTCPeerConnection({ iceServers: await obtenerIceServers() });
         pcRef.current = pc;
         pc.ontrack = (e) => {
           // Sin nombres en WebRTC: se asigna por orden de llegada, el mismo
@@ -402,6 +421,7 @@ function ConexionRival({ partidaId, emisorId, onEstado, onCaducado }) {
         };
         pc.oniceconnectionstatechange = () => {
           const s = pc.iceConnectionState;
+          publicar({ detalle: s });
           if (s === "connected" || s === "completed") {
             clearTimeout(plazoConexion);
             publicar({ estado: "conectado" });
@@ -486,6 +506,7 @@ export function CamarasRival({ rivales, nombresPorId = {} }) {
           {r.estado === "error" ? (
             <p className="admin-msg admin-msg-error">
               No se ha podido conectar con sus cámaras (puede que la red de alguno de los dos lo impida).
+              {r.detalle ? ` [${r.detalle}]` : ""}
             </p>
           ) : (
             <>
@@ -493,7 +514,9 @@ export function CamarasRival({ rivales, nombresPorId = {} }) {
                 <VideoStream stream={r.diana} etiqueta="Diana" />
                 <VideoStream stream={r.lanzador} etiqueta="Lanzador" />
               </div>
-              {r.estado !== "conectado" && <p className="chronicle-status">Conectando con las cámaras…</p>}
+              {r.estado !== "conectado" && (
+                <p className="chronicle-status">Conectando con las cámaras…{r.detalle ? ` [${r.detalle}]` : ""}</p>
+              )}
             </>
           )}
         </div>
