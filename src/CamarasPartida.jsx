@@ -46,6 +46,37 @@ function obtenerIceServers() {
   return iceServersPromesa;
 }
 
+// Calidad de emisión (probar con 640×480 a 15 fps; si se ve mal, subir aquí:
+// p. ej. 1280×720 y 1000 kbps). Es lo que la web PIDE: el móvil pone el techo.
+const VIDEO_ANCHO = 640;
+const VIDEO_ALTO = 480;
+const VIDEO_FPS = 15;
+const VIDEO_BITRATE_MAX = 500_000; // bits/s por cámara
+
+function restriccionesVideo(deviceId) {
+  return {
+    video: {
+      deviceId: { exact: deviceId },
+      width: { ideal: VIDEO_ANCHO },
+      height: { ideal: VIDEO_ALTO },
+      frameRate: { ideal: VIDEO_FPS },
+    },
+  };
+}
+
+// Limita el bitrate de cada pista enviada (best-effort: si el navegador no lo
+// permite, se emite con el bitrate automático).
+async function limitarBitrate(pc) {
+  for (const sender of pc.getSenders()) {
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+      params.encodings[0].maxBitrate = VIDEO_BITRATE_MAX;
+      await sender.setParameters(params);
+    } catch { /* no soportado, sin límite */ }
+  }
+}
+
 const CLAVE_DIANA = "camarasPartida.dianaId";
 const CLAVE_LANZADOR = "camarasPartida.lanzadorId";
 
@@ -149,8 +180,8 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
     try {
       obtenerIceServers();
       const [streamDiana, streamLanzador] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: dianaId } } }),
-        navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: lanzadorId } } }),
+        navigator.mediaDevices.getUserMedia(restriccionesVideo(dianaId)),
+        navigator.mediaDevices.getUserMedia(restriccionesVideo(lanzadorId)),
       ]);
       // Orden diana→lanzador consistente con VisorCamaras, que distingue las
       // pistas que le llegan por orden de llegada (WebRTC no manda nombres).
@@ -237,6 +268,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
           try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
+            limitarBitrate(pc);
             await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/senal`, {
               token,
               method: "PUT",
