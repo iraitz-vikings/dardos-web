@@ -101,6 +101,24 @@ export default function AdminEquiposClub({ token, salir }) {
     });
     cargarEquipos();
   }
+  async function guardarEscudo(equipoId, url) {
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/equipos-club/${equipoId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ escudoUrl: url || "" }),
+      });
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: "No se pudo guardar el escudo." });
+        return;
+      }
+      setMensaje({ tipo: "ok", texto: url ? "Escudo actualizado." : "Escudo quitado." });
+      cargarEquipos();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    }
+  }
   async function marcarCapitan(equipoId, capitanId) {
     await fetch(`${API_URL}/api/equipos-club/${equipoId}`, {
       method: "PUT",
@@ -226,7 +244,16 @@ export default function AdminEquiposClub({ token, salir }) {
           return (
             <li key={eq.id} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
               <div className="admin-list-item">
-                <strong>{eq.nombre}</strong>
+                <strong style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+                  {eq.escudoUrl && (
+                    <img
+                      src={eq.escudoUrl.replace("/upload/", "/upload/w_80,h_80,c_fit,q_auto,f_auto/")}
+                      alt=""
+                      style={{ width: 32, height: 32, objectFit: "contain" }}
+                    />
+                  )}
+                  {eq.nombre}
+                </strong>
                 <div style={{ display: "flex", gap: ".5rem" }}>
                   <button className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === eq.id ? null : eq.id)}>
                     {abiertoId === eq.id ? "Cerrar" : "Gestionar"}
@@ -237,6 +264,14 @@ export default function AdminEquiposClub({ token, salir }) {
 
               {abiertoId === eq.id && (
                 <div style={{ marginTop: ".8rem" }}>
+                  <h5>Escudo</h5>
+                  <SelectorImagen
+                    token={token}
+                    valor={eq.escudoUrl || ""}
+                    onCambiar={(url) => guardarEscudo(eq.id, url)}
+                    onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+                    etiqueta="Escudo"
+                  />
                   <h5>Plantilla ({eq.miembros.length})</h5>
                   <ul>
                     {eq.miembros.map((m) => (
