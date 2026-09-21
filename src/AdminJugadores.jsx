@@ -23,6 +23,41 @@ export default function AdminJugadores({ token, salir }) {
   const [pinEdicion, setPinEdicion] = useState("");
   const [guardandoPin, setGuardandoPin] = useState(false);
 
+  // Fusión de fichas duplicadas (un amigo repetido, o un amigo que ya es
+  // miembro): la ficha de la fila se elimina y su historial pasa a la que se
+  // elige aquí como "la que se conserva". Solo una a la vez.
+  const [fusionandoId, setFusionandoId] = useState(null);
+  const [destinoFusion, setDestinoFusion] = useState("");
+  const [fusionando, setFusionando] = useState(false);
+
+  async function fusionar(origen) {
+    const destino = jugadores.find((x) => x.id === destinoFusion);
+    if (!destino) return;
+    if (!confirm(`Se pasará todo el historial de "${origen.nombre}" a "${destino.nombre}" y la ficha de "${origen.nombre}" se eliminará. No se puede deshacer. ¿Continuar?`)) return;
+    setFusionando(true);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/jugadores/${origen.id}/fusionar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ destinoId: destino.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: data.error || "No se pudo fusionar." });
+        return;
+      }
+      setMensaje({ tipo: "ok", texto: data.mensaje || "Fichas fusionadas." });
+      setFusionandoId(null);
+      setDestinoFusion("");
+      cargar();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setFusionando(false);
+    }
+  }
+
   const cargar = () => {
     fetch(`${API_URL}/api/jugadores`, { headers: { "x-admin-token": token } })
       .then((r) => (r.ok ? r.json() : []))
@@ -229,6 +264,36 @@ export default function AdminJugadores({ token, salir }) {
               </li>
             );
           }
+          if (fusionandoId === j.id) {
+            const candidatos = jugadores
+              .filter((x) => x.id !== j.id)
+              .sort((a, b) => (!!b.usuario - !!a.usuario) || a.nombre.localeCompare(b.nombre));
+            return (
+              <li key={j.id} className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".4rem" }}>
+                <div className="admin-inline-form" style={{ marginTop: 0 }}>
+                  <label>
+                    Fusionar a "{j.nombre}" en… (la ficha que se conserva)
+                    <select value={destinoFusion} onChange={(e) => setDestinoFusion(e.target.value)}>
+                      <option value="">— elige una —</option>
+                      {candidatos.map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.nombre}{x.apodo ? ` "${x.apodo}"` : ""} · {x.usuario ? "miembro" : "amigo"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="button" disabled={fusionando || !destinoFusion} onClick={() => fusionar(j)}>
+                    {fusionando ? "Fusionando…" : "Fusionar"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => { setFusionandoId(null); setDestinoFusion(""); }}>Cancelar</button>
+                </div>
+                <p className="admin-hint" style={{ margin: 0 }}>
+                  El historial (torneos, ligas, partidas, equipos, avisos) pasa a la ficha elegida y esta se elimina.
+                  Prevalecen los datos de la que se conserva.
+                </p>
+              </li>
+            );
+          }
           if (editandoId === j.id) {
             return (
               <li key={j.id} className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".4rem" }}>
@@ -266,6 +331,7 @@ export default function AdminJugadores({ token, salir }) {
                 {!j.usuario && (
                   <>
                     <button className="admin-link-btn" onClick={() => empezarEdicion(j)}>Editar nombre</button>
+                    <button className="admin-link-btn" onClick={() => { setFusionandoId(j.id); setDestinoFusion(""); }}>Fusionar en…</button>
                     <button className="admin-link-btn" disabled={copiando === j.id} onClick={() => copiarEnlaceAvisos(j.id)}>
                       {copiando === j.id ? "Copiando…" : "Copiar enlace de avisos"}
                     </button>
