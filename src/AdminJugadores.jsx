@@ -258,7 +258,7 @@ export default function AdminJugadores({ token, salir }) {
                 {!j.usuario && (
                   <em style={{ display: "block", fontSize: ".8em" }}>
                     Amigo (sin cuenta)
-                    {enlaces[j.id] && (enlaces[j.id].telegramVinculado ? " · Avisos por Telegram activados" : " · Todavía no ha activado avisos")}
+                    {(enlaces[j.id]?.telegramVinculado ?? j.telegramVinculado) ? " · ✅ Avisos por Telegram activados" : " · Todavía no ha activado avisos"}
                   </em>
                 )}
               </div>
