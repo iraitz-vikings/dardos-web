@@ -481,8 +481,43 @@ function AvisosPush() {
     }
     navigator.serviceWorker
       .register("/service-worker.js")
-      .then((registro) => registro.pushManager.getSubscription())
-      .then((sub) => setActivadoAqui(!!sub))
+      .then(async (registro) => {
+        const sub = await registro.pushManager.getSubscription();
+        if (sub) {
+          setActivadoAqui(true);
+          return;
+        }
+        // La suscripción se puede perder sola con el tiempo (el navegador la
+        // invalida sin avisar a la web ni al servidor — es lo que hace que
+        // los avisos "se desactiven solos"). Si el permiso de notificaciones
+        // del navegador sigue concedido, no hace falta pedirlo otra vez: se
+        // puede volver a suscribir en silencio y re-registrar el endpoint
+        // nuevo en el servidor sin que el socio tenga que tocar nada. Si el
+        // propio permiso también se perdió, esto no puede hacer nada y se
+        // queda como desactivado (hace falta el botón de activar).
+        if (Notification.permission !== "granted") {
+          setActivadoAqui(false);
+          return;
+        }
+        try {
+          const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
+          if (!resClave.ok) throw new Error("sin clave");
+          const { publicKey } = await resClave.json();
+          const nuevaSuscripcion = await registro.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: claveVapidABytes(publicKey),
+          });
+          const datos = nuevaSuscripcion.toJSON();
+          const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+            body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
+          });
+          setActivadoAqui(res.ok);
+        } catch {
+          setActivadoAqui(false);
+        }
+      })
       .catch(() => {})
       .finally(() => setCargando(false));
   }, []);
