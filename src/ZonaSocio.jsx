@@ -37,6 +37,10 @@ export default function ZonaSocio({ usuario, salir }) {
   const [seccion, setSeccion] = useState("tablon");
   const [menuAbierto, setMenuAbierto] = useState(false);
   const actual = SECCIONES.find((s) => s.id === seccion);
+  // La galería privada aprovecha más espacio en tablet/PC (más fotos por
+  // fila); el resto de secciones son sobre todo texto/formularios y se
+  // quedan en el ancho estrecho de siempre, más legible.
+  const ancho = seccion === "galeria-privada" ? 1100 : 640;
 
   function elegirSeccion(s) {
     if (!s.lista) return;
@@ -45,7 +49,7 @@ export default function ZonaSocio({ usuario, salir }) {
   }
 
   return (
-    <div className="admin-form" style={{ maxWidth: 640, margin: "0 auto" }}>
+    <div className="admin-form" style={{ maxWidth: ancho, margin: "0 auto", transition: "max-width .15s ease" }}>
       <div className="admin-header" style={{ background: "none", padding: 0, marginBottom: "1rem" }}>
         <span>{t("socios.bienvenida").replace("{nombre}", usuario.nombre)}</span>
         <button className="admin-link-btn" onClick={salir}>{t("socios.salir")}</button>
