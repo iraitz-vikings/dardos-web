@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
-import SocioPerfil from "./SocioPerfil.jsx";
+import SocioPerfil, { sincronizarSuscripcionPush } from "./SocioPerfil.jsx";
 import TablonAnuncios from "./TablonAnuncios.jsx";
 import JugadoresClub from "./JugadoresClub.jsx";
 import GaleriaPrivada from "./GaleriaPrivada.jsx";
@@ -49,6 +49,19 @@ export default function ZonaSocio({ usuario, salir }) {
     setSeccion(s.id);
     setMenuAbierto(false);
   }
+
+  // Revisa y, si hace falta, recupera en silencio los avisos push de este
+  // dispositivo cada vez que se entra en la zona de socios — no solo al
+  // abrir "Mi perfil" (ver notificaciones-se-desactivan-solas-2026-09-22.md):
+  // entrar al perfil es bastante menos frecuente que el resto de secciones,
+  // así que dejarlo solo ahí se perdía a la mayoría de los socios que
+  // navegan sin pasar nunca por su perfil. Se ejecuta una vez por sesión
+  // (ZonaSocio no se remonta al cambiar de sección); si falla o el
+  // navegador no soporta algo, no hace nada visible — AvisosPush en "Mi
+  // perfil" sigue siendo el sitio para verlo y activarlo a mano.
+  useEffect(() => {
+    sincronizarSuscripcionPush().catch(() => {});
+  }, []);
 
   return (
     <div className="admin-form" style={{ maxWidth: ancho, margin: "0 auto", transition: "max-width .15s ease" }}>

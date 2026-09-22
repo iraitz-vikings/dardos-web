@@ -494,6 +494,64 @@ async function asegurarRespaldoResuscripcion(registro) {
   }
 }
 
+// Comprueba y, si hace falta, recupera en silencio los avisos push de este
+// dispositivo — la misma lógica que antes solo se ejecutaba al abrir "Mi
+// perfil". Se exporta para poder llamarla también desde ZonaSocio.jsx al
+// entrar en cualquier sección de socios, no solo el perfil (ver
+// notificaciones-se-desactivan-solas-2026-09-22.md: entrar al perfil es
+// mucho menos frecuente que el resto de secciones, así que dejarlo solo ahí
+// se perdía a la mayoría de socios que navegan sin pasar por su perfil).
+// Devuelve el estado para que AvisosPush pueda pintar su botón; ZonaSocio
+// simplemente ignora el resultado.
+export async function sincronizarSuscripcionPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return { soportado: false, iosSinInstalar: false, activo: false };
+  }
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const enStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  if (esIOS && !enStandalone) {
+    return { soportado: true, iosSinInstalar: true, activo: false };
+  }
+
+  const registro = await navigator.serviceWorker.register("/service-worker.js");
+  const sub = await registro.pushManager.getSubscription();
+  if (sub) {
+    asegurarRespaldoResuscripcion(registro);
+    return { soportado: true, iosSinInstalar: false, activo: true };
+  }
+
+  // La suscripción se puede perder sola con el tiempo (el navegador la
+  // invalida sin avisar a la web ni al servidor — es lo que hace que los
+  // avisos "se desactiven solos"). Si el permiso de notificaciones del
+  // navegador sigue concedido, no hace falta pedirlo otra vez: se puede
+  // volver a suscribir en silencio y re-registrar el endpoint nuevo en el
+  // servidor sin que el socio tenga que tocar nada. Si el propio permiso
+  // también se perdió, esto no puede hacer nada y se queda como desactivado
+  // (hace falta el botón de activar).
+  if (Notification.permission !== "granted") {
+    return { soportado: true, iosSinInstalar: false, activo: false };
+  }
+  try {
+    const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
+    if (!resClave.ok) throw new Error("sin clave");
+    const { publicKey } = await resClave.json();
+    const nuevaSuscripcion = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: claveVapidABytes(publicKey),
+    });
+    const datos = nuevaSuscripcion.toJSON();
+    const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+      body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
+    });
+    if (res.ok) asegurarRespaldoResuscripcion(registro);
+    return { soportado: true, iosSinInstalar: false, activo: res.ok };
+  } catch {
+    return { soportado: true, iosSinInstalar: false, activo: false };
+  }
+}
+
 function AvisosPush() {
   const { t } = useLang();
   const [soportado, setSoportado] = useState(true);
@@ -504,58 +562,11 @@ function AvisosPush() {
   const [mensaje, setMensaje] = useState(null);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setSoportado(false);
-      setCargando(false);
-      return;
-    }
-    const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const enStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
-    if (esIOS && !enStandalone) {
-      setEsIOSSinInstalar(true);
-      setCargando(false);
-      return;
-    }
-    navigator.serviceWorker
-      .register("/service-worker.js")
-      .then(async (registro) => {
-        const sub = await registro.pushManager.getSubscription();
-        if (sub) {
-          setActivadoAqui(true);
-          asegurarRespaldoResuscripcion(registro);
-          return;
-        }
-        // La suscripción se puede perder sola con el tiempo (el navegador la
-        // invalida sin avisar a la web ni al servidor — es lo que hace que
-        // los avisos "se desactiven solos"). Si el permiso de notificaciones
-        // del navegador sigue concedido, no hace falta pedirlo otra vez: se
-        // puede volver a suscribir en silencio y re-registrar el endpoint
-        // nuevo en el servidor sin que el socio tenga que tocar nada. Si el
-        // propio permiso también se perdió, esto no puede hacer nada y se
-        // queda como desactivado (hace falta el botón de activar).
-        if (Notification.permission !== "granted") {
-          setActivadoAqui(false);
-          return;
-        }
-        try {
-          const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
-          if (!resClave.ok) throw new Error("sin clave");
-          const { publicKey } = await resClave.json();
-          const nuevaSuscripcion = await registro.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: claveVapidABytes(publicKey),
-          });
-          const datos = nuevaSuscripcion.toJSON();
-          const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
-            body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
-          });
-          setActivadoAqui(res.ok);
-          if (res.ok) asegurarRespaldoResuscripcion(registro);
-        } catch {
-          setActivadoAqui(false);
-        }
+    sincronizarSuscripcionPush()
+      .then((resultado) => {
+        setSoportado(resultado.soportado);
+        setEsIOSSinInstalar(resultado.iosSinInstalar);
+        setActivadoAqui(resultado.activo);
       })
       .catch(() => {})
       .finally(() => setCargando(false));
