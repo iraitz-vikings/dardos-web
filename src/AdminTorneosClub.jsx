@@ -2054,6 +2054,7 @@ function CuadranteDetalle({
   const ramas = ["ganadores", "perdedores", "final"].filter((r) => porRama[r]);
 
   return (
+    <div className="admin-ancho-bleed">
     <div className="admin-cuadrante">
       <div className="admin-cuadrante-header">
         <h4>
@@ -2213,6 +2214,7 @@ function CuadranteDetalle({
           onCerrar={() => setPartidoSeleccionadoId(null)}
         />
       )}
+    </div>
     </div>
   );
 }
