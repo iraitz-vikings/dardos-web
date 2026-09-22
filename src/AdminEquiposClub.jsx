@@ -16,6 +16,12 @@ export default function AdminEquiposClub({ token, salir }) {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
   const [abiertoId, setAbiertoId] = useState(null);
+  // Edición de nombre/descripción de un equipo ya creado (el escudo ya se
+  // editaba aparte, ver guardarEscudo). Solo un equipo a la vez.
+  const [editandoId, setEditandoId] = useState(null);
+  const [nombreEdicion, setNombreEdicion] = useState("");
+  const [descripcionEdicion, setDescripcionEdicion] = useState("");
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
   const cargarEquipos = () => {
     fetch(`${API_URL}/api/equipos-club/admin`, { headers: { "x-admin-token": token } })
@@ -100,6 +106,37 @@ export default function AdminEquiposClub({ token, salir }) {
       headers: { "x-admin-token": token },
     });
     cargarEquipos();
+  }
+  function empezarEdicion(eq) {
+    setEditandoId(eq.id);
+    setNombreEdicion(eq.nombre);
+    setDescripcionEdicion(eq.descripcion || "");
+  }
+  function cancelarEdicion() {
+    setEditandoId(null);
+  }
+  async function guardarEdicion(equipoId) {
+    if (!nombreEdicion.trim()) return;
+    setGuardandoEdicion(true);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/equipos-club/${equipoId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ nombre: nombreEdicion.trim(), descripcion: descripcionEdicion }),
+      });
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: "No se pudo guardar el cambio." });
+        return;
+      }
+      setMensaje({ tipo: "ok", texto: "Equipo actualizado." });
+      setEditandoId(null);
+      cargarEquipos();
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setGuardandoEdicion(false);
+    }
   }
   async function guardarEscudo(equipoId, url) {
     setMensaje(null);
@@ -255,12 +292,30 @@ export default function AdminEquiposClub({ token, salir }) {
                   {eq.nombre}
                 </strong>
                 <div style={{ display: "flex", gap: ".5rem" }}>
+                  <button className="admin-link-btn" onClick={() => empezarEdicion(eq)}>Editar nombre</button>
                   <button className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === eq.id ? null : eq.id)}>
                     {abiertoId === eq.id ? "Cerrar" : "Gestionar"}
                   </button>
                   <button className="admin-link-btn" onClick={() => borrarEquipo(eq.id)}>Borrar</button>
                 </div>
               </div>
+
+              {editandoId === eq.id && (
+                <div className="admin-inline-form" style={{ marginTop: ".6rem" }}>
+                  <label>
+                    Nombre
+                    <input value={nombreEdicion} onChange={(e) => setNombreEdicion(e.target.value)} />
+                  </label>
+                  <label>
+                    Descripción
+                    <textarea rows={2} value={descripcionEdicion} onChange={(e) => setDescripcionEdicion(e.target.value)} />
+                  </label>
+                  <button type="button" disabled={guardandoEdicion || !nombreEdicion.trim()} onClick={() => guardarEdicion(eq.id)}>
+                    {guardandoEdicion ? "Guardando…" : "Guardar"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={cancelarEdicion}>Cancelar</button>
+                </div>
+              )}
 
               {abiertoId === eq.id && (
                 <div style={{ marginTop: ".8rem" }}>
