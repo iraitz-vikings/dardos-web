@@ -532,6 +532,23 @@ button {
 @keyframes admin-temporizador-texto-parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 .admin-ganador-activo { border-color: var(--ember) !important; color: var(--ember) !important; }
 .admin-cuadrante { border: 1px solid var(--line); padding: .8rem 1rem; margin-top: 1rem; }
+
+/* Se sale del ancho estrecho del panel de admin (640px, ver .admin) para
+   aprovechar la pantalla en tablet/PC al ver el cuadrante de un torneo —
+   pedido de Iraitz 2026-09-22. El interior (.admin-cuadrante) se vuelve a
+   centrar con su propio tope, para no quedar absurdamente ancho en un
+   monitor grande. */
+.admin-ancho-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+.admin-ancho-bleed > .admin-cuadrante {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
 .admin-cuadrante-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; }
 .admin-cuadrante-header h4 { font-size: .85rem; text-transform: none; color: var(--bone); }
 .admin-cuadrante-rama { margin-top: 1rem; padding-top: .8rem; border-top: 1px dashed var(--line); }
