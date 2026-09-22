@@ -457,6 +457,43 @@ function CambioPasswordVoluntario() {
 // vez, cada uno con su propia suscripción. No hace falta ningún check-in
 // aparte: al pulsar "Activar", el dispositivo queda vinculado directamente
 // a este jugador a través de la sesión ya iniciada.
+// Deja todo listo para que el propio navegador pueda recuperar los avisos en
+// segundo plano si la suscripción se pierde sola (ver
+// notificaciones-se-desactivan-solas-2026-09-22.md): guarda en IndexedDB el
+// token permanente de re-suscripción (el service worker no tiene acceso a
+// localStorage) y registra la revisión periódica. Se llama cada vez que se
+// confirma que este dispositivo tiene los avisos activos — no pasa nada si
+// se repite, ambos pasos son idempotentes. Todo dentro de try/catch: si el
+// navegador no soporta algo de esto (Periodic Background Sync es solo
+// Chrome/Android) o falla, los avisos siguen funcionando igual, simplemente
+// sin este respaldo automático.
+async function asegurarRespaldoResuscripcion(registro) {
+  try {
+    const resToken = await fetch(`${API_URL}/api/notificaciones/push/token-resuscripcion`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+    });
+    if (resToken.ok) {
+      const { token } = await resToken.json();
+      await window.guardarTokenResuscripcionPush(token);
+    }
+  } catch {
+    // Sin respaldo por esta vez; se puede volver a intentar en la próxima
+    // carga de "Mi perfil".
+  }
+
+  try {
+    if (!("periodicSync" in registro)) return;
+    const estadoPermiso = await navigator.permissions.query({ name: "periodic-background-sync" });
+    if (estadoPermiso.state !== "granted") return;
+    await registro.periodicSync.register("revisar-suscripcion-push", {
+      minInterval: 20 * 60 * 60 * 1000, // ~20h de orientación; el navegador decide el intervalo real
+    });
+  } catch {
+    // API no soportada (p.ej. iPhone) o permiso denegado: sin respaldo
+    // automático, queda el aviso por Telegram como red de seguridad.
+  }
+}
+
 function AvisosPush() {
   const { t } = useLang();
   const [soportado, setSoportado] = useState(true);
@@ -485,6 +522,7 @@ function AvisosPush() {
         const sub = await registro.pushManager.getSubscription();
         if (sub) {
           setActivadoAqui(true);
+          asegurarRespaldoResuscripcion(registro);
           return;
         }
         // La suscripción se puede perder sola con el tiempo (el navegador la
@@ -514,6 +552,7 @@ function AvisosPush() {
             body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
           });
           setActivadoAqui(res.ok);
+          if (res.ok) asegurarRespaldoResuscripcion(registro);
         } catch {
           setActivadoAqui(false);
         }
@@ -554,6 +593,7 @@ function AvisosPush() {
       }
       setActivadoAqui(true);
       setMensaje({ tipo: "ok", texto: t("avisosPush.activados") });
+      asegurarRespaldoResuscripcion(registro);
     } catch {
       setMensaje({ tipo: "error", texto: t("avisosPush.noPudoActivar") });
     } finally {
