@@ -37,10 +37,12 @@ export default function ZonaSocio({ usuario, salir }) {
   const [seccion, setSeccion] = useState("tablon");
   const [menuAbierto, setMenuAbierto] = useState(false);
   const actual = SECCIONES.find((s) => s.id === seccion);
-  // La galería privada aprovecha más espacio en tablet/PC (más fotos por
-  // fila); el resto de secciones son sobre todo texto/formularios y se
-  // quedan en el ancho estrecho de siempre, más legible.
-  const ancho = seccion === "galeria-privada" ? 1100 : 640;
+  // Algunas secciones aprovechan más espacio en tablet/PC (galerías, tablas
+  // de equipos/jugadores, calendario y competiciones); el resto es sobre
+  // todo texto/formularios y se queda en el ancho estrecho de siempre, más
+  // legible.
+  const SECCIONES_ANCHAS = ["galeria-privada", "jugadores", "equipos", "calendario", "competiciones"];
+  const ancho = SECCIONES_ANCHAS.includes(seccion) ? 1100 : 640;
 
   function elegirSeccion(s) {
     if (!s.lista) return;
