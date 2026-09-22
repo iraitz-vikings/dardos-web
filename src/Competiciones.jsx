@@ -26,6 +26,8 @@ export default function Competiciones({ usuario }) {
   const [maquinas, setMaquinas] = useState([]);
   const [pestana, setPestana] = useState("vikings");
   const [cargando, setCargando] = useState(true);
+  const [competicionesAbiertas, setCompeticionesAbiertas] = useState({});
+  const [equiposAbiertos, setEquiposAbiertos] = useState({});
 
   const token = () => localStorage.getItem("socioToken");
 
@@ -125,47 +127,77 @@ export default function Competiciones({ usuario }) {
           {torneosExternos.filter((tx) => tx.plataformaId === pestana).length === 0 && (
             <p className="chronicle-status">{t("competiciones.sinExternos")}</p>
           )}
-          {torneosExternos.filter((tx) => tx.plataformaId === pestana).map((tx) => (
-            <div key={tx.id} className="admin-form" style={{ marginBottom: "1rem", padding: "1rem" }}>
-              <strong>{tx.nombre}</strong>
-              {tx.nivel && <span style={{ color: "var(--steel)" }}> — {tx.nivel}</span>}
-              {tx.temporada && <span style={{ display: "block", fontSize: ".8em" }}>{tx.temporada}</span>}
-              {tx.clasificacion?.length > 0 && <TablaClasificacion filas={tx.clasificacion} />}
-              {tx.equipos.map((eq) => {
-                // El capitán "real" es el de la plantilla del equipo del club
-                // (eq.equipoClub.capitan); el de la inscripción concreta
-                // (eq.capitan) casi nunca se usa, pero se comprueban los dos.
-                const capitan = eq.equipoClub?.capitan || eq.capitan;
-                const esCapitan = usuario && capitan?.usuarioId === usuario.id;
-                return (
-                  <div key={eq.id} style={{ marginTop: ".6rem" }}>
-                    <em>
-                      {eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}
-                      {capitan ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
-                    </em>
-                    {eq.clasificacion?.length > 0 && <TablaClasificacion filas={eq.clasificacion} />}
-                    {esCapitan && (
-                      <NuevoPartidoCapitanForm onCrear={(fecha, rival) => crearPartido(eq.id, fecha, rival)} t={t} />
-                    )}
-                    <ul>
-                      {eq.partidos.map((p) => (
-                        esCapitan ? (
-                          <PartidoCapitanRow key={p.id} p={p} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
-                        ) : (
-                          <li key={p.id} style={{ fontSize: ".85em" }}>
-                            {formatFecha(p.fecha, lang)} — {t("partido.vs")} {p.rival || "?"}
-                            {p.resultado ? ` — ${p.resultado}` : p.fijado ? ` — ${t("competiciones.confirmado")}` : ` — ${t("competiciones.sinConfirmar")}`}
-                            {p.maquina ? ` (${p.maquina.nombre})` : ""}
-                          </li>
-                        )
-                      ))}
-                      {eq.partidos.length === 0 && <li style={{ fontSize: ".85em", opacity: 0.7 }}>{t("competiciones.sinPartidos")}</li>}
-                    </ul>
+          {torneosExternos.filter((tx) => tx.plataformaId === pestana).map((tx) => {
+            const abierta = !!competicionesAbiertas[tx.id];
+            return (
+              <div key={tx.id} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
+                <h4
+                  className="admin-ronda-header"
+                  style={{ margin: 0 }}
+                  onClick={() => setCompeticionesAbiertas((prev) => ({ ...prev, [tx.id]: !abierta }))}
+                >
+                  <span>
+                    {tx.nombre}
+                    {tx.nivel && <span style={{ color: "var(--steel)" }}> — {tx.nivel}</span>}
+                    {tx.temporada && <span style={{ fontSize: ".8em" }}> · {tx.temporada}</span>}
+                  </span>
+                  <span className="admin-ronda-toggle">{abierta ? "Ocultar ▲" : "Ver ▼"}</span>
+                </h4>
+
+                {abierta && (
+                  <div style={{ marginTop: ".8rem" }}>
+                    {tx.clasificacion?.length > 0 && <TablaClasificacion filas={tx.clasificacion} />}
+                    {tx.equipos.map((eq) => {
+                      // El capitán "real" es el de la plantilla del equipo del club
+                      // (eq.equipoClub.capitan); el de la inscripción concreta
+                      // (eq.capitan) casi nunca se usa, pero se comprueban los dos.
+                      const capitan = eq.equipoClub?.capitan || eq.capitan;
+                      const esCapitan = usuario && capitan?.usuarioId === usuario.id;
+                      const eqAbierto = !!equiposAbiertos[eq.id];
+                      return (
+                        <div key={eq.id} style={{ marginTop: ".8rem", paddingLeft: ".6rem", borderLeft: "2px solid var(--line)" }}>
+                          <h4
+                            className="admin-ronda-header"
+                            style={{ margin: 0, fontSize: ".85em", textTransform: "none" }}
+                            onClick={() => setEquiposAbiertos((prev) => ({ ...prev, [eq.id]: !eqAbierto }))}
+                          >
+                            <span>
+                              {eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}
+                              {capitan ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
+                            </span>
+                            <span className="admin-ronda-toggle">{eqAbierto ? "Ocultar ▲" : "Ver ▼"}</span>
+                          </h4>
+
+                          {eqAbierto && (
+                            <div style={{ marginTop: ".6rem" }}>
+                              {eq.clasificacion?.length > 0 && <TablaClasificacion filas={eq.clasificacion} />}
+                              {esCapitan && (
+                                <NuevoPartidoCapitanForm onCrear={(fecha, rival) => crearPartido(eq.id, fecha, rival)} t={t} />
+                              )}
+                              <ul>
+                                {eq.partidos.map((p) => (
+                                  esCapitan ? (
+                                    <PartidoCapitanRow key={p.id} p={p} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
+                                  ) : (
+                                    <li key={p.id} style={{ fontSize: ".85em" }}>
+                                      {formatFecha(p.fecha, lang)} — {t("partido.vs")} {p.rival || "?"}
+                                      {p.resultado ? ` — ${p.resultado}` : p.fijado ? ` — ${t("competiciones.confirmado")}` : ` — ${t("competiciones.sinConfirmar")}`}
+                                      {p.maquina ? ` (${p.maquina.nombre})` : ""}
+                                    </li>
+                                  )
+                                ))}
+                                {eq.partidos.length === 0 && <li style={{ fontSize: ".85em", opacity: 0.7 }}>{t("competiciones.sinPartidos")}</li>}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
