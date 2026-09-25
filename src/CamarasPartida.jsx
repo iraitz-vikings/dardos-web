@@ -52,6 +52,11 @@ const VIDEO_ANCHO = 640;
 const VIDEO_ALTO = 480;
 const VIDEO_FPS = 15;
 const VIDEO_BITRATE_MAX = 500_000; // bits/s por cámara
+// Espectadores del público (ventanita "En directo" de la página del
+// torneo/liga): solo reciben la cámara de la diana y a menos bitrate, para
+// que el dispositivo de la diana aguante varios a la vez (el backend limita
+// cuántos, ver MAX_ESPECTADORES_PUBLICOS en partidasHerramienta.js).
+const VIDEO_BITRATE_PUBLICO = 350_000;
 
 function restriccionesVideo(deviceId) {
   return {
@@ -66,12 +71,12 @@ function restriccionesVideo(deviceId) {
 
 // Limita el bitrate de cada pista enviada (best-effort: si el navegador no lo
 // permite, se emite con el bitrate automático).
-async function limitarBitrate(pc) {
+async function limitarBitrate(pc, maxBitrate = VIDEO_BITRATE_MAX) {
   for (const sender of pc.getSenders()) {
     try {
       const params = sender.getParameters();
       if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-      params.encodings[0].maxBitrate = VIDEO_BITRATE_MAX;
+      params.encodings[0].maxBitrate = maxBitrate;
       await sender.setParameters(params);
     } catch { /* no soportado, sin límite */ }
   }
@@ -258,17 +263,20 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
 
         if (!entrada && info.estado === "esperando") {
           const pc = new RTCPeerConnection({ iceServers: await obtenerIceServers() });
-          entrada = { pc, iceGenerados: [], iceGeneradosEnviados: 0, iceReceptorAplicados: 0 };
+          entrada = { pc, publico: !!info.publico, iceGenerados: [], iceGeneradosEnviados: 0, iceReceptorAplicados: 0 };
           conexionesRef.current.set(viewerId, entrada);
           pc.onicecandidate = (e) => {
             if (e.candidate) entrada.iceGenerados.push(e.candidate.toJSON());
           };
           if (streamsRef.current.diana) streamsRef.current.diana.getTracks().forEach((t) => pc.addTrack(t, streamsRef.current.diana));
-          if (streamsRef.current.lanzador) streamsRef.current.lanzador.getTracks().forEach((t) => pc.addTrack(t, streamsRef.current.lanzador));
+          // Al público solo la diana (ver VIDEO_BITRATE_PUBLICO).
+          if (streamsRef.current.lanzador && !entrada.publico) {
+            streamsRef.current.lanzador.getTracks().forEach((t) => pc.addTrack(t, streamsRef.current.lanzador));
+          }
           try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            limitarBitrate(pc);
+            limitarBitrate(pc, entrada.publico ? VIDEO_BITRATE_PUBLICO : VIDEO_BITRATE_MAX);
             await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/senal`, {
               token,
               method: "PUT",
@@ -303,6 +311,15 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
         } catch {
           // Best-effort: si un intercambio puntual falla, se reintenta en el
           // siguiente sondeo — no se cierra la conexión por un fallo suelto.
+        }
+      }
+      // Espectadores del público que ya se han ido (el backend deja de
+      // devolverlos al cerrar la ventanita o si dejan de mandar latido): se
+      // corta su conexión para no seguir gastando subida en ellos.
+      for (const [viewerId, entrada] of conexionesRef.current) {
+        if (entrada.publico && !(viewers && viewers[viewerId])) {
+          entrada.pc.close();
+          conexionesRef.current.delete(viewerId);
         }
       }
     }, 2500);
@@ -389,7 +406,11 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
 // cuando le toca tirar a él, en el hueco del teclado (ver CamarasRival y el
 // marcador en JuegoHerramienta.jsx); la conexión, en cambio, se mantiene
 // abierta para no tener que renegociar en cada turno ni a cada leg.
-function ConexionRival({ partidaId, emisorId, onEstado, onCaducado }) {
+//
+// `publico`: espectador de la página pública (DirectoPartida.jsx) — se
+// registra como tal (solo recibe la diana; puede estar el cupo completo),
+// manda un latido mientras mira y se da de baja al desmontar.
+export function ConexionRival({ partidaId, emisorId, onEstado, onCaducado, publico = false }) {
   const [viewerId, setViewerId] = useState("");
   const onEstadoRef = useRef(onEstado);
   onEstadoRef.current = onEstado;
@@ -406,9 +427,19 @@ function ConexionRival({ partidaId, emisorId, onEstado, onCaducado }) {
   useEffect(() => {
     let cancelado = false;
     publicar({ estado: "conectando", diana: null, lanzador: null });
-    apiFetch(`/api/partidas-herramienta/${partidaId}/camara/ver`, { method: "POST", body: JSON.stringify({ emisorId }) })
-      .then(({ viewerId: id }) => { if (!cancelado) setViewerId(id); })
-      .catch(() => { if (!cancelado) publicar({ estado: "error" }); });
+    apiFetch(`/api/partidas-herramienta/${partidaId}/camara/ver`, { method: "POST", body: JSON.stringify({ emisorId, publico }) })
+      .then(({ viewerId: id }) => {
+        if (!cancelado) setViewerId(id);
+        // Ya desmontado antes de recibir el registro (ventanita cerrada al
+        // momento, o el doble montaje de React en desarrollo): se da de baja
+        // para no ocupar una plaza de espectador del público para nada.
+        else if (publico) apiFetch(`/api/partidas-herramienta/${partidaId}/camara/senal/${id}`, { method: "DELETE" }).catch(() => {});
+      })
+      .catch((err) => {
+        if (cancelado) return;
+        if (err.status === 409 && publico) publicar({ estado: "completo", detalle: err.message });
+        else publicar({ estado: "error" });
+      });
     return () => { cancelado = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partidaId, emisorId]);
@@ -505,6 +536,21 @@ function ConexionRival({ partidaId, emisorId, onEstado, onCaducado }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewerId, partidaId]);
 
+  // Espectador del público: latido cada 15s (el backend libera la plaza si
+  // deja de llegar) y baja al cerrar. `keepalive` para que la baja salga
+  // aunque se esté cerrando la pestaña.
+  useEffect(() => {
+    if (!publico || !viewerId) return undefined;
+    const ruta = `/api/partidas-herramienta/${partidaId}/camara/senal/${viewerId}`;
+    const latido = setInterval(() => {
+      apiFetch(ruta, { method: "PUT", body: "{}" }).catch(() => {});
+    }, 15000);
+    return () => {
+      clearInterval(latido);
+      apiFetch(ruta, { method: "DELETE", keepalive: true }).catch(() => {});
+    };
+  }, [publico, viewerId, partidaId]);
+
   useEffect(() => () => {
     pcRef.current?.close();
     onEstadoRef.current?.(emisorId, null);
@@ -516,7 +562,7 @@ function ConexionRival({ partidaId, emisorId, onEstado, onCaducado }) {
 
 // Un <video> que engancha su MediaStream (viene del padre, así sobrevive a
 // que el marcador se remonte en cada leg).
-function VideoStream({ stream, etiqueta }) {
+export function VideoStream({ stream, etiqueta }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!ref.current) return;

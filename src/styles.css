@@ -1578,3 +1578,6 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .directo-boton:hover { background: #e5322d1a; }
 .directo-partida-panel { max-width: 720px; }
 @media (prefers-reduced-motion: reduce) { .directo-punto { animation: none; } }
+.directo-camara { margin-bottom: .4rem; }
+.directo-camara-videos .camaras-partida-video-caja { width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.directo-camara-videos .camaras-partida-video { object-fit: contain; }

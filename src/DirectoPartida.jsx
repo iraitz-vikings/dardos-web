@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CabeceraPartida, CuadroJugador, fmtProm } from "./CuadroJugador.jsx";
 import { apiFetch } from "./apiHerramienta.js";
+import { ConexionRival, VideoStream } from "./CamarasPartida.jsx";
 import {
   NUMEROS_CRICKET,
   calcularPuntosCricket,
@@ -17,7 +18,9 @@ import {
 // abre desde la página pública del torneo/liga (cuadro, "por máquina" o
 // calendario de jornadas). El dispositivo de la diana manda el estado del leg
 // dardo a dardo (useEnvioDirecto en JuegoHerramienta.jsx) y aquí se lee con
-// polling de GET /api/partidas-herramienta/:id/directo.
+// polling de GET /api/partidas-herramienta/:id/directo. Si en la diana
+// tienen las cámaras encendidas, se puede ver además la de la diana
+// (CamaraPublica, más abajo).
 
 const INTERVALO_MS = 3000;
 
@@ -172,9 +175,79 @@ function Tablero({ partida }) {
   );
 }
 
+// Cámara de la diana en directo (fase 2): se conecta por WebRTC al
+// dispositivo de la diana como espectador del público (ConexionRival con
+// publico, ver CamarasPartida.jsx) — solo mientras esta ventanita está
+// abierta y el visitante ha pulsado "Ver cámara". El backend limita cuántos
+// espectadores del público puede haber a la vez; si está completo se avisa.
+function CamaraPublica({ partidaId }) {
+  const [emisorId, setEmisorId] = useState(null);
+  const [sinCamara, setSinCamara] = useState(false);
+  const [datos, setDatos] = useState({ estado: "conectando" });
+  const [intento, setIntento] = useState(0);
+
+  useEffect(() => {
+    let vivo = true;
+    apiFetch(`/api/partidas-herramienta/${partidaId}/camara/estado`)
+      .then((d) => {
+        if (!vivo) return;
+        if (d.emisores && d.emisores.length > 0) setEmisorId(d.emisores[0]);
+        else setSinCamara(true);
+      })
+      .catch(() => vivo && setSinCamara(true));
+    return () => {
+      vivo = false;
+    };
+  }, [partidaId, intento]);
+
+  const onEstado = useCallback((_id, d) => {
+    if (d) setDatos(d);
+  }, []);
+  const reintentar = useCallback(() => {
+    setDatos({ estado: "conectando" });
+    setIntento((n) => n + 1);
+  }, []);
+
+  // Si en 25s no ha conectado (p.ej. el dispositivo de la diana se cerró de
+  // golpe sin apagar las cámaras y nadie está emitiendo de verdad), se deja
+  // de esperar y se ofrece reintentar.
+  useEffect(() => {
+    if (datos.estado !== "conectando") return undefined;
+    const plazo = setTimeout(() => setDatos((d) => (d.estado === "conectando" ? { ...d, estado: "error" } : d)), 25000);
+    return () => clearTimeout(plazo);
+  }, [datos.estado, intento]);
+
+  if (sinCamara) return <p className="chronicle-status">La cámara no está disponible ahora mismo.</p>;
+  if (!emisorId) return <p className="chronicle-status">Conectando con la cámara…</p>;
+
+  return (
+    <div className="directo-camara">
+      <ConexionRival key={`${emisorId}-${intento}`} partidaId={partidaId} emisorId={emisorId} publico onEstado={onEstado} onCaducado={reintentar} />
+      {datos.estado === "completo" ? (
+        <p className="chronicle-status">{datos.detalle || "La cámara está completa ahora mismo. Prueba otra vez en un rato."}</p>
+      ) : datos.estado === "error" ? (
+        <p className="chronicle-status">
+          No se ha podido conectar con la cámara (puede que no esté emitiendo o que tu red lo impida).{" "}
+          <button type="button" className="admin-link-btn" onClick={reintentar}>
+            Reintentar
+          </button>
+        </p>
+      ) : (
+        <>
+          <div className="camaras-partida-videos directo-camara-videos">
+            <VideoStream stream={datos.diana} etiqueta="Diana" />
+          </div>
+          {datos.estado !== "conectado" && <p className="chronicle-status">Conectando con la cámara…</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function DirectoPartida({ partidaId, titulo, onCerrar }) {
   const [partida, setPartida] = useState(null);
   const [error, setError] = useState(null);
+  const [verCamara, setVerCamara] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -220,6 +293,19 @@ export default function DirectoPartida({ partidaId, titulo, onCerrar }) {
           <p className="chronicle-status">
             Partido terminado: {partida.etiqueta1} {partida.legsGanados1} – {partida.legsGanados2} {partida.etiqueta2}
           </p>
+        )}
+        {partida && !partida.finalizada && partida.camarasActivas && !verCamara && (
+          <button type="button" className="directo-boton" style={{ margin: "0 0 .8rem" }} onClick={() => setVerCamara(true)}>
+            🎥 Ver cámara
+          </button>
+        )}
+        {partida && !partida.finalizada && partida.camarasActivas && verCamara && (
+          <>
+            <CamaraPublica partidaId={partidaId} />
+            <button type="button" className="admin-link-btn" style={{ margin: ".3rem 0 .8rem" }} onClick={() => setVerCamara(false)}>
+              Ocultar cámara
+            </button>
+          </>
         )}
         {partida && !partida.finalizada && <Tablero partida={partida} />}
         {partida && !partida.finalizada && error && (
