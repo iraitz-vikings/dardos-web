@@ -1026,6 +1026,7 @@ const TIPOS_MENSAJE_AVISO = [
   { clave: "programado", etiqueta: "Partido programado", placeholders: "{competicion}, {enfrentamiento}, {fecha}, {maquina}" },
   { clave: "eliminado", etiqueta: "Eliminado", placeholders: "{competicion}" },
   { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
+  { clave: "unMinuto", etiqueta: "Falta 1 minuto (temporizador)", placeholders: "{competicion}, {enfrentamiento}" },
 ];
 const IDIOMAS_MENSAJE_AVISO = [
   { id: "es", etiqueta: "Castellano" },
@@ -1051,6 +1052,9 @@ const DEFECTOS_MENSAJE_AVISO = {
       fr: "Le tirage au sort a eu lieu et tu as déjà ta place dans le tableau. Bonne chance !",
     },
   },
+  // {minutos} se sustituye (solo con el temporizador activo) por p.ej.
+  // " Tienes 5 min para empezar. Si no empezáis antes de que se acabe el
+  // tiempo, el partido se dará por perdido." — ver torneosClub.js.
   enCurso: {
     titulo: {
       es: "¡Tu partido empieza ahora! {competicion}",
@@ -1099,16 +1103,30 @@ const DEFECTOS_MENSAJE_AVISO = {
       fr: "Félicitations, tu as remporté le tableau !",
     },
   },
+  // Solo se envía si el torneo tiene el temporizador activo (ver
+  // src/lib/avisoTemporizadorPartidos.js en el backend).
+  unMinuto: {
+    titulo: {
+      es: "¡Falta 1 minuto! {competicion}",
+      eu: "Minutu bat falta da! {competicion}",
+      fr: "Plus qu'une minute ! {competicion}",
+    },
+    cuerpo: {
+      es: "{enfrentamiento}: queda 1 minuto para presentaros a jugar. Si no empezáis antes de que se acabe el tiempo, el partido se dará por perdido.",
+      eu: "{enfrentamiento}: minutu bat geratzen da jokatzera aurkezteko. Denbora amaitu aurretik hasten ez bazarete, partida galdutzat emango da.",
+      fr: "{enfrentamiento} : il reste 1 minute pour vous présenter. Si vous ne commencez pas avant la fin du temps, le match sera déclaré perdu.",
+    },
+  },
 };
 
 // Panel para sobreescribir, opcionalmente y en cualquier idioma, el texto de
-// los 5 avisos automáticos (bienvenida/en curso/programado/eliminado/
-// campeón) de un torneo o liga concreto — p.ej. un mensaje especial para el
+// los 6 avisos automáticos (bienvenida/en curso/programado/eliminado/
+// campeón/falta 1 minuto) de un torneo o liga concreto — p.ej. un mensaje especial para el
 // Open. Un campo vacío sigue usando el texto por defecto del club en ese
 // idioma. Mismo patrón de guardado que ImagenesAvisos (PUT con el campo
 // mensajesAvisos), pero aquí el selector de idioma es un único interruptor
-// que cambia los 10 campos a la vez (5 tipos × título/cuerpo) en vez de
-// mostrar los 30 campos posibles de golpe.
+// que cambia los 12 campos a la vez (6 tipos × título/cuerpo) en vez de
+// mostrar los 36 campos posibles de golpe.
 function MensajesAvisos({ torneo, onGuardar }) {
   const [idioma, setIdioma] = useState("es");
   const [mensajes, setMensajes] = useState(() => torneo.mensajesAvisos || {});
@@ -1169,6 +1187,18 @@ function MensajesAvisos({ torneo, onGuardar }) {
           <div key={t.clave} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
             <h4 style={{ marginTop: 0 }}>{t.etiqueta}</h4>
             <p className="admin-hint" style={{ marginTop: 0 }}>Datos disponibles: {t.placeholders}</p>
+            {t.clave === "enCurso" && (
+              <p className="admin-hint" style={{ marginTop: 0 }}>
+                Con el temporizador activo, {"{minutos}"} se convierte en «Tienes X min para empezar. Si no empezáis
+                antes de que se acabe el tiempo, el partido se dará por perdido.» Si prefieres otra redacción, quita{" "}
+                {"{minutos}"} y escribe el texto a tu gusto.
+              </p>
+            )}
+            {t.clave === "unMinuto" && (
+              <p className="admin-hint" style={{ marginTop: 0 }}>
+                Solo se envía si el torneo tiene el temporizador activo, cuando queda 1 minuto del plazo.
+              </p>
+            )}
             <p className="admin-hint" style={{ marginTop: 0, fontStyle: "italic" }}>
               Mensaje por defecto del club: «{defecto.titulo[idioma]}» — «{defecto.cuerpo[idioma]}»
             </p>
@@ -1251,7 +1281,9 @@ function TemporizadorPanel({ torneo, onGuardar }) {
       <p className="admin-hint" style={{ marginTop: 0 }}>
         Da un tiempo máximo para que un jugador empiece a jugar desde que su partido se marca "en curso" (botón
         "Marcar en curso" en Cuadrantes). Es solo informativo: el aviso automático de "tu partido empieza ahora"
-        indicará estos minutos, pero nada se bloquea ni se cierra en automático al agotarse el plazo.
+        indicará estos minutos y avisará de que, si no se empieza antes del límite, el partido se dará por perdido;
+        cuando quede 1 minuto se manda otro aviso. El texto de ambos avisos se cambia en "Mensajes de avisos". La web
+        no da el partido por perdido sola al agotarse el plazo: eso lo decide el admin.
       </p>
       <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
         <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} style={{ width: "auto" }} />
