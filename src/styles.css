@@ -1546,3 +1546,35 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   flex: 1 1 0;
   aspect-ratio: 4 / 3;
 }
+
+/* Marcador en directo en las páginas públicas de torneo/liga (partidos que
+   se están jugando con la herramienta) — ver DirectoPartida.jsx. */
+@keyframes directo-latido { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.directo-punto {
+  display: inline-block;
+  width: .55em;
+  height: .55em;
+  border-radius: 50%;
+  background: #e5322d;
+  vertical-align: middle;
+  animation: directo-latido 1.4s ease-in-out infinite;
+}
+.directo-etiqueta { color: #e5322d; font-weight: 700; }
+.directo-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+  margin-left: .5rem;
+  padding: .15rem .55rem;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #e5322d;
+  background: transparent;
+  border: 1px solid #e5322d;
+  cursor: pointer;
+}
+.directo-boton:hover { background: #e5322d1a; }
+.directo-partida-panel { max-width: 720px; }
+@media (prefers-reduced-motion: reduce) { .directo-punto { animation: none; } }
