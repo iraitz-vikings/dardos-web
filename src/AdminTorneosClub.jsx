@@ -1054,7 +1054,8 @@ const DEFECTOS_MENSAJE_AVISO = {
   },
   // {minutos} se sustituye (solo con el temporizador activo) por p.ej.
   // " Tienes 5 min para empezar. Si no empezáis antes de que se acabe el
-  // tiempo, el partido se dará por perdido." — ver torneosClub.js.
+  // tiempo, el partido se dará por perdido y quedaréis eliminados." — ver
+  // torneosClub.js.
   enCurso: {
     titulo: {
       es: "¡Tu partido empieza ahora! {competicion}",
@@ -1190,7 +1191,7 @@ function MensajesAvisos({ torneo, onGuardar }) {
             {t.clave === "enCurso" && (
               <p className="admin-hint" style={{ marginTop: 0 }}>
                 Con el temporizador activo, {"{minutos}"} se convierte en «Tienes X min para empezar. Si no empezáis
-                antes de que se acabe el tiempo, el partido se dará por perdido.» Si prefieres otra redacción, quita{" "}
+                antes de que se acabe el tiempo, el partido se dará por perdido y quedaréis eliminados.» Si prefieres otra redacción, quita{" "}
                 {"{minutos}"} y escribe el texto a tu gusto.
               </p>
             )}
