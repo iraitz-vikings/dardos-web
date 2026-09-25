@@ -770,9 +770,9 @@ const IDIOMAS_MENSAJE_AVISO_LIGA = [
 const DEFECTOS_MENSAJE_AVISO_LIGA = {
   bienvenida: {
     titulo: {
-      es: "¡Ya estás en el cuadro! {competicion}",
-      eu: "Jada koadroan zaude! {competicion}",
-      fr: "Tu es dans le tableau ! {competicion}",
+      es: "¡Ya estás en el cuadro! · {competicion}",
+      eu: "Jada koadroan zaude! · {competicion}",
+      fr: "Tu es dans le tableau ! · {competicion}",
     },
     cuerpo: {
       es: "Se ha hecho el sorteo y ya tienes tu sitio en el cuadro. ¡Mucha suerte!",
@@ -782,9 +782,9 @@ const DEFECTOS_MENSAJE_AVISO_LIGA = {
   },
   enCurso: {
     titulo: {
-      es: "¡Tu partido empieza ahora! {competicion}",
-      eu: "Zure partida orain hasten da! {competicion}",
-      fr: "Ton match commence maintenant ! {competicion}",
+      es: "¡Tu partido empieza ahora! · {competicion}",
+      eu: "Zure partida orain hasten da! · {competicion}",
+      fr: "Ton match commence maintenant ! · {competicion}",
     },
     cuerpo: {
       es: "{enfrentamiento} en {maquina}.",
@@ -818,9 +818,9 @@ const DEFECTOS_MENSAJE_AVISO_LIGA = {
   },
   campeon: {
     titulo: {
-      es: "¡Campeón! {competicion}",
-      eu: "Txapelduna! {competicion}",
-      fr: "Champion ! {competicion}",
+      es: "¡Campeón! · {competicion}",
+      eu: "Txapelduna! · {competicion}",
+      fr: "Champion ! · {competicion}",
     },
     cuerpo: {
       es: "¡Enhorabuena, has ganado el cuadrante!",
