@@ -1042,9 +1042,9 @@ const IDIOMAS_MENSAJE_AVISO = [
 const DEFECTOS_MENSAJE_AVISO = {
   bienvenida: {
     titulo: {
-      es: "¡Ya estás en el cuadro! {competicion}",
-      eu: "Jada koadroan zaude! {competicion}",
-      fr: "Tu es dans le tableau ! {competicion}",
+      es: "¡Ya estás en el cuadro! · {competicion}",
+      eu: "Jada koadroan zaude! · {competicion}",
+      fr: "Tu es dans le tableau ! · {competicion}",
     },
     cuerpo: {
       es: "Se ha hecho el sorteo y ya tienes tu sitio en el cuadro. ¡Mucha suerte!",
@@ -1057,9 +1057,9 @@ const DEFECTOS_MENSAJE_AVISO = {
   // tiempo, el partido se dará por perdido." — ver torneosClub.js.
   enCurso: {
     titulo: {
-      es: "¡Tu partido empieza ahora! {competicion}",
-      eu: "Zure partida orain hasten da! {competicion}",
-      fr: "Ton match commence maintenant ! {competicion}",
+      es: "¡Tu partido empieza ahora! · {competicion}",
+      eu: "Zure partida orain hasten da! · {competicion}",
+      fr: "Ton match commence maintenant ! · {competicion}",
     },
     cuerpo: {
       es: "{enfrentamiento} en {maquina}.{minutos}",
@@ -1093,9 +1093,9 @@ const DEFECTOS_MENSAJE_AVISO = {
   },
   campeon: {
     titulo: {
-      es: "¡Campeón! {competicion}",
-      eu: "Txapelduna! {competicion}",
-      fr: "Champion ! {competicion}",
+      es: "¡Campeón! · {competicion}",
+      eu: "Txapelduna! · {competicion}",
+      fr: "Champion ! · {competicion}",
     },
     cuerpo: {
       es: "¡Enhorabuena, has ganado el cuadrante!",
@@ -1107,9 +1107,9 @@ const DEFECTOS_MENSAJE_AVISO = {
   // src/lib/avisoTemporizadorPartidos.js en el backend).
   unMinuto: {
     titulo: {
-      es: "¡Falta 1 minuto! {competicion}",
-      eu: "Minutu bat falta da! {competicion}",
-      fr: "Plus qu'une minute ! {competicion}",
+      es: "¡Falta 1 minuto! · {competicion}",
+      eu: "Minutu bat falta da! · {competicion}",
+      fr: "Plus qu'une minute ! · {competicion}",
     },
     cuerpo: {
       es: "{enfrentamiento}: queda 1 minuto para presentaros a jugar. Si no empezáis antes de que se acabe el tiempo, el partido se dará por perdido.",
