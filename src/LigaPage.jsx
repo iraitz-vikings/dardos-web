@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import BracketView from "./BracketView.jsx";
+import DirectoPartida, { BotonDirecto } from "./DirectoPartida.jsx";
 import AccesoHerramienta from "./JuegoHerramienta.jsx";
 import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
@@ -52,7 +53,7 @@ function etiquetaEstadoJornada(t, estado) {
   return t("ligaPage.estadoPendiente");
 }
 
-function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t }) {
+function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t, onVerDirecto }) {
   const [jornadasManual, setJornadasManual] = useState({});
   const jornadas = Object.keys(porJornada).map(Number).sort((a, b) => a - b);
 
@@ -85,6 +86,7 @@ function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t }) {
                       : p.ganador
                       ? ` — ${t("ligaPage.partidoGano").replace("{nombre}", p.ganador)}`
                       : ` — ${t("ligaPage.partidoPendiente")}`}
+                    <BotonDirecto partido={p} onVer={onVerDirecto} />
                   </li>
                 ))}
               </ul>
@@ -102,6 +104,13 @@ export default function LigaPage({ id }) {
   const [estado, setEstado] = useState("cargando");
   const [vista, setVista] = useState("clasificacion");
   const [busqueda, setBusqueda] = useState("");
+  // Partido cuyo marcador en directo está abierto (ventanita, ver DirectoPartida.jsx).
+  const [directo, setDirecto] = useState(null);
+  const verDirecto = (p) =>
+    setDirecto({
+      partidaId: p.partidaHerramienta.id,
+      titulo: `${p.participante1 || p.jugador1 || "?"} vs ${p.participante2 || p.jugador2 || "?"}`,
+    });
 
   const [clasificacion, setClasificacion] = useState(null);
 
@@ -226,7 +235,7 @@ export default function LigaPage({ id }) {
                   <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>{t("ligaPage.tabCalendario")}</h2>
                   {gruposConCalendario.length > 0 ? (
                     gruposConCalendario.map((g) => (
-                      <CalendarioGrupo key={g} grupo={g} porJornada={porGrupoJornada[g]} mostrarGrupo={!!liga.numeroGrupos} t={t} />
+                      <CalendarioGrupo key={g} grupo={g} porJornada={porGrupoJornada[g]} mostrarGrupo={!!liga.numeroGrupos} t={t} onVerDirecto={verDirecto} />
                     ))
                   ) : (
                     <p className="chronicle-status">{t("ligaPage.sinCalendario")}</p>
@@ -245,11 +254,12 @@ export default function LigaPage({ id }) {
                     onChange={(e) => setBusqueda(e.target.value)}
                     style={{ marginBottom: "1rem" }}
                   />
-                  <BracketView cuadrante={cuadrante} busqueda={busqueda} />
+                  <BracketView cuadrante={cuadrante} busqueda={busqueda} onVerDirecto={verDirecto} />
                 </>
               )}
             </>
           )}
+          {directo && <DirectoPartida partidaId={directo.partidaId} titulo={directo.titulo} onCerrar={() => setDirecto(null)} />}
         </section>
       </main>
       <Footer simple />

@@ -342,6 +342,38 @@ function useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, tu
   }, [turnoIdx, esRemota, esMiTurno]);
 }
 
+// Marcador en directo para la página pública del torneo/liga (ventanita "En
+// directo", ver DirectoPartida.jsx y GET /api/partidas-herramienta/:id/directo
+// en el backend): en partidos de torneo/liga (dispositivo compartido, no
+// amistosos) se manda el estado del leg al backend dardo a dardo, para que
+// quien mire la página vea los restos/marcas y los dardos de la visita en
+// curso casi al momento. Best-effort: si falla no afecta al juego. Lleva
+// `secuencia` (creciente) y `leg` para que el backend descarte envíos que
+// lleguen desordenados o de un leg ya terminado.
+function useEnvioDirecto({ partida, token, activo, unidades, turnoIdx, tiradasVisita, estadisticas, ultimaVisitaLado, inicioTurnoIdx }) {
+  const secuencia = useRef(0);
+  useEffect(() => {
+    if (partida.amistosa || !activo) return;
+    secuencia.current = Math.max(secuencia.current + 1, Date.now());
+    apiFetch(`/api/partidas-herramienta/${partida.id}/visita`, {
+      token,
+      method: "PUT",
+      body: JSON.stringify({
+        turnoJugadorId: idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]),
+        unidades,
+        turnoIdx,
+        estadisticas,
+        ultimaVisitaLado,
+        tiradas: tiradasVisita.map((t) => t.resultado.etiqueta),
+        inicioTurnoIdx,
+        leg: partida.legs.length + 1,
+        secuencia: secuencia.current,
+      }),
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unidades, turnoIdx, tiradasVisita, estadisticas, ultimaVisitaLado, activo]);
+}
+
 // Sondea el estado de la partida cada 2.5s mientras se espera el turno del
 // rival (amistoso remoto, no aplica a torneo/liga). Si ha cambiado de leg o
 // ha terminado, se propaga tal cual (onActualizada ya sabe remontar el
@@ -719,6 +751,17 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
   const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
 
   useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, turnoIdx, estadisticas, ultimaVisitaLado });
+  useEnvioDirecto({
+    partida,
+    token,
+    activo: ganadorIdx === null && fase === "jugando",
+    unidades,
+    turnoIdx,
+    tiradasVisita,
+    estadisticas,
+    ultimaVisitaLado,
+    inicioTurnoIdx: inicio.turnoIdx,
+  });
 
   useSondeoTurnoRemoto({
     partida,
@@ -1034,6 +1077,17 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
   const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
 
   useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, turnoIdx, estadisticas, ultimaVisitaLado });
+  useEnvioDirecto({
+    partida,
+    token,
+    activo: ganadorIdx === null && fase === "jugando",
+    unidades,
+    turnoIdx,
+    tiradasVisita,
+    estadisticas,
+    ultimaVisitaLado,
+    inicioTurnoIdx: inicio.turnoIdx,
+  });
 
   useSondeoTurnoRemoto({
     partida,

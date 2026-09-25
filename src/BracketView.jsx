@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import useResaltadoReciente from "./useResaltadoReciente.js";
+import { esPartidoEnDirecto } from "./DirectoPartida.jsx";
 import useTemporizadorPartido from "./useTemporizadorPartido.js";
 
 const BOX_W = 176;
@@ -135,8 +136,12 @@ function esUltimaAparicion(nombre, partido, ultimaAparicion) {
 // públicas se omite y la caja se queda de solo lectura, como siempre.
 // `bloqueado` marca un enfrentamiento cuya ronda anterior todavía no ha
 // terminado, con un candado en la caja a modo de aviso.
-function Caja({ x, y, partido, busqueda, ultimaAparicion, onClick, bloqueado, temporizadorActivo, temporizadorMinutos }) {
+function Caja({ x, y, partido, busqueda, ultimaAparicion, onClick: onClickAdmin, onVerDirecto, bloqueado, temporizadorActivo, temporizadorMinutos }) {
   const decidido = !!partido.ganador;
+  // Vistas públicas: si el partido se está jugando con la herramienta, la
+  // caja lleva "EN DIRECTO" y abre el marcador en directo (DirectoPartida.jsx).
+  const enDirecto = !onClickAdmin && !!onVerDirecto && esPartidoEnDirecto(partido);
+  const onClick = onClickAdmin || (enDirecto ? onVerDirecto : undefined);
   const reciente = useResaltadoReciente(partido.enCurso, partido.actualizadoEn);
   // Temporizador de partidos (ver TorneoClub.temporizadorActivo/Minutos):
   // parpadea en el mismo tono que "en curso" al quedar <=1 min, y en rojo al
@@ -159,6 +164,7 @@ function Caja({ x, y, partido, busqueda, ultimaAparicion, onClick, bloqueado, te
         onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(partido); } } : undefined}
       >
         <div className="bracket-box-ronda">
+          {enDirecto && <span className="directo-etiqueta"><span className="directo-punto" aria-hidden="true" /> EN DIRECTO · </span>}
           {bloqueado && "🔒 "}
           {partido.ronda}{partido.maquina ? ` · ${partido.maquina}` : ""}
         </div>
@@ -197,7 +203,7 @@ function Linea({ origen, destino, activa }) {
   );
 }
 
-function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickPartido, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
+function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickPartido, onVerDirecto, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
   const posiciones = calcularLayout(partidos, 1, "ganadores");
   if (posiciones.length === 0) return null;
   const idPosicion = Object.fromEntries(posiciones.map((p) => [p.partido.id, p]));
@@ -241,6 +247,7 @@ function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickParti
                 busqueda={busqueda}
                 ultimaAparicion={ultimaAparicion}
                 onClick={onClickPartido}
+                onVerDirecto={onVerDirecto}
                 bloqueado={partidosBloqueados?.has(partido.id)}
                 temporizadorActivo={temporizadorActivo}
                 temporizadorMinutos={temporizadorMinutos}
@@ -257,7 +264,7 @@ function BracketRama({ titulo, partidos, busqueda, ultimaAparicion, onClickParti
 // una columna central compartida (la ronda 1 de ganadores, el sorteo inicial):
 // el cuadro de ganadores crece hacia la derecha y el de perdedores hacia la
 // izquierda, como un cuadro doble "en espejo".
-function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onClickPartido, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
+function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onClickPartido, onVerDirecto, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
   const posGanadores = calcularLayout(ganadores, 1, "ganadores");
   const posPerdedoresRaw = calcularLayout(perdedores, -1, "perdedores");
   if (posGanadores.length === 0 && posPerdedoresRaw.length === 0) return null;
@@ -344,6 +351,7 @@ function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onCli
                 busqueda={busqueda}
                 ultimaAparicion={ultimaAparicion}
                 onClick={onClickPartido}
+                onVerDirecto={onVerDirecto}
                 bloqueado={partidosBloqueados?.has(partido.id)}
                 temporizadorActivo={temporizadorActivo}
                 temporizadorMinutos={temporizadorMinutos}
@@ -362,7 +370,7 @@ function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onCli
 // pasan y el cuadrante se queda de solo lectura. `partidosBloqueados` es un
 // Set opcional de ids de partidos cuya ronda anterior no ha terminado, para
 // marcarlos con un candado.
-export default function BracketView({ cuadrante, busqueda, onClickPartido, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
+export default function BracketView({ cuadrante, busqueda, onClickPartido, onVerDirecto, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
   const ganadores = cuadrante.partidos.filter((p) => p.rama === "ganadores");
   const perdedores = cuadrante.partidos.filter((p) => p.rama === "perdedores");
   const finales = cuadrante.partidos.filter((p) => p.rama === "final").sort((a, b) => a.posicion - b.posicion);
@@ -377,6 +385,7 @@ export default function BracketView({ cuadrante, busqueda, onClickPartido, parti
           busqueda={busqueda}
           ultimaAparicion={ultimaAparicion}
           onClickPartido={onClickPartido}
+          onVerDirecto={onVerDirecto}
           partidosBloqueados={partidosBloqueados}
           temporizadorActivo={temporizadorActivo}
           temporizadorMinutos={temporizadorMinutos}
@@ -388,6 +397,7 @@ export default function BracketView({ cuadrante, busqueda, onClickPartido, parti
           busqueda={busqueda}
           ultimaAparicion={ultimaAparicion}
           onClickPartido={onClickPartido}
+          onVerDirecto={onVerDirecto}
           partidosBloqueados={partidosBloqueados}
           temporizadorActivo={temporizadorActivo}
           temporizadorMinutos={temporizadorMinutos}
@@ -400,15 +410,18 @@ export default function BracketView({ cuadrante, busqueda, onClickPartido, parti
             const coincideJ1 = coincide(final.jugador1, busqueda) && esUltimaAparicion(final.jugador1, final, ultimaAparicion);
             const coincideJ2 = coincide(final.jugador2, busqueda) && esUltimaAparicion(final.jugador2, final, ultimaAparicion);
             const bloqueado = partidosBloqueados?.has(final.id);
+            const enDirecto = !onClickPartido && !!onVerDirecto && esPartidoEnDirecto(final);
+            const onClickFinal = onClickPartido || (enDirecto ? onVerDirecto : null);
             return (
               <div
                 key={final.id}
-                className={`bracket-final-box ${coincideJ1 || coincideJ2 ? "bracket-box-encontrado" : ""} ${onClickPartido ? "bracket-final-box-clickable" : ""} ${bloqueado ? "bracket-box-bloqueado" : ""}`}
-                onClick={onClickPartido ? () => onClickPartido(final) : undefined}
-                role={onClickPartido ? "button" : undefined}
-                tabIndex={onClickPartido ? 0 : undefined}
-                onKeyDown={onClickPartido ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClickPartido(final); } } : undefined}
+                className={`bracket-final-box ${coincideJ1 || coincideJ2 ? "bracket-box-encontrado" : ""} ${onClickFinal ? "bracket-final-box-clickable" : ""} ${bloqueado ? "bracket-box-bloqueado" : ""}`}
+                onClick={onClickFinal ? () => onClickFinal(final) : undefined}
+                role={onClickFinal ? "button" : undefined}
+                tabIndex={onClickFinal ? 0 : undefined}
+                onKeyDown={onClickFinal ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClickFinal(final); } } : undefined}
               >
+                {enDirecto && <span className="directo-etiqueta"><span className="directo-punto" aria-hidden="true" /> EN DIRECTO</span>}
                 {i === 1 && <span className="bracket-final-desempate">Partido decisivo</span>}
                 {bloqueado && <span className="bracket-final-desempate">🔒</span>}
                 <span className={final.ganador && final.ganador === final.jugador1 ? "bracket-box-ganador" : ""}>
