@@ -310,7 +310,8 @@ export default function AdminLigasClub({ token, salir }) {
       <h2>Ligas del club</h2>
       <p className="admin-hint">
         Ligas todos-contra-todos, con calendario generado automáticamente. Marca "Público" para que aparezca en la
-        web; "Privado" para que solo se vea desde el admin.
+        web; "Privado" para que no aparezca en los listados públicos (su página sigue siendo accesible por enlace
+        directo en ambos casos).
       </p>
 
       {!mostrarFormulario && (
