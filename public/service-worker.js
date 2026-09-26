@@ -52,6 +52,18 @@ self.addEventListener("push", (event) => {
     badge: "https://res.cloudinary.com/lodi1y1k/image/upload/b_transparent,c_pad,h_96,w_96/f_png/v1789828140/vikings-notif-badge-silueta-2026-v5.png",
     data: { url: datos.url || "/" },
   };
+  // Un tag por partido (lo pone el backend, ver enviarPushAJugador en
+  // webPush.js): "tu partido empieza", "falta 1 minuto", el recordatorio del
+  // día y el eliminado/campeón de ese mismo partido se SUSTITUYEN en el móvil
+  // en vez de apilarse, así solo queda una notificación viva por partido.
+  // Menos avisos acumulados sin tocar = menos probabilidades de que Chrome/
+  // Android den la web por "molesta" y retiren el permiso solos (lo que pasó
+  // en mitad de un torneo). renotify: que el aviso que sustituye a otro
+  // vuelva a sonar/vibrar (sin él, el reemplazo llegaría en silencio).
+  if (datos.tag) {
+    opciones.tag = datos.tag;
+    opciones.renotify = true;
+  }
   // Imagen grande opcional (p.ej. eliminación/campeón de un cuadrante). No
   // todos los navegadores/sistemas la muestran (sobre todo en escritorio),
   // pero si no la soportan simplemente se ignora sin romper el resto del aviso.

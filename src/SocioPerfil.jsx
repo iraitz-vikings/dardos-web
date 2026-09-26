@@ -516,6 +516,16 @@ export async function sincronizarSuscripcionPush() {
   const registro = await navigator.serviceWorker.register("/service-worker.js");
   const sub = await registro.pushManager.getSubscription();
   if (sub) {
+    // Se vuelve a registrar en el servidor aunque ya exista (es un upsert):
+    // si el servidor la había dado por caída (404/410 en algún envío, ver
+    // enviarPushAJugador en el backend), así se reactiva sola sin que el
+    // socio tenga que tocar nada. Best-effort, no bloquea.
+    const datos = sub.toJSON();
+    fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+      body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
+    }).catch(() => {});
     asegurarRespaldoResuscripcion(registro);
     return { soportado: true, iosSinInstalar: false, activo: true };
   }
