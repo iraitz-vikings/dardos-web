@@ -1581,3 +1581,16 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .directo-camara { margin-bottom: .4rem; }
 .directo-camara-videos .camaras-partida-video-caja { width: 100%; height: auto; aspect-ratio: 4 / 3; }
 .directo-camara-videos .camaras-partida-video { object-fit: contain; }
+
+/* Aviso en la zona de socios si en este dispositivo los avisos de partidos
+   están bloqueados o sin activar — ver AvisoEstadoPush.jsx. */
+.aviso-estado-push {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ember);
+  background: rgba(255, 255, 255, .03);
+  padding: .8rem 1rem;
+  margin-bottom: 1.2rem;
+  font-size: .9rem;
+}
+.aviso-estado-push-bloqueado { border-left-color: #e5322d; }
+.aviso-estado-push summary { cursor: pointer; color: var(--ember); font-size: .85rem; }
