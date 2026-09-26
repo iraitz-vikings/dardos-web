@@ -600,7 +600,7 @@ async function programarCalendario(partidoId, datos) {
         <label>
           Visibilidad
           <select value={visibilidad} onChange={(e) => setVisibilidad(e.target.value)}>
-            <option value="privado">Privado (solo socios)</option>
+            <option value="privado">Privado (no sale en la web pública)</option>
             <option value="publico">Público (visible en la web)</option>
           </select>
         </label>
