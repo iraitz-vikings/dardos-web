@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // Idiomas en los que se puede recibir avisos por Telegram — pensado sobre
 // todo para invitados puntuales extranjeros (p.ej. jugadores de Francia en

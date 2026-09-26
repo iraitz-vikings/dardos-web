@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // Pide a Cloudinary una versión pequeña y optimizada de la imagen (en vez de descargar
 // el archivo original entero solo para mostrar una miniatura de 90px).

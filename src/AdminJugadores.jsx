@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { agruparPorSocio } from "./agruparJugadores.js";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 export default function AdminJugadores({ token, salir }) {
   const [jugadores, setJugadores] = useState([]);

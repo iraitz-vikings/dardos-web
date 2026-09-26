@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // El significado de "Id externo" depende de la plataforma: en Radikal Darts
 // es el nombre de la COMPETICIÓN (una única tabla compartida por todo el

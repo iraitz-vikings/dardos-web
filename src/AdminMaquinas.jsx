@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 export default function AdminMaquinas({ token, salir }) {
   const [maquinas, setMaquinas] = useState([]);

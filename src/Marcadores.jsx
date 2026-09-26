@@ -18,6 +18,7 @@ import {
   sumarEstadisticas501,
   sumarEstadisticasCricket,
   tiradorActual,
+  simboloMarcas,
 } from "./dardosLogica.js";
 
 // Modos de entrada de dardos, compartidos por 501 y Cricket. "total" (escribir
@@ -726,16 +727,6 @@ function Marcador501() {
 }
 
 // --- Cricket -----------------------------------------------------------
-
-function simboloMarcas(n) {
-  if (n <= 0) return "—";
-  if (n === 1) return "／";
-  if (n === 2) return "✕";
-  // A partir de 3 queda cerrado (⊗); los impactos de más ya se reflejan en
-  // la puntuación (tarjetas de arriba), así que aquí no hace falta repetir
-  // el "+N" — Iraitz lo pidió quitar por redundante tras probarlo.
-  return "⊗";
-}
 
 // Un leg de Cricket, mismo patrón que LegLocal501: sin guardar nada, con
 // estadísticas por unidad.id y aviso al padre (PartidaLocalCricket) cuando

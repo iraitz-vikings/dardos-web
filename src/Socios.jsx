@@ -4,8 +4,8 @@ import Footer from "./Footer.jsx";
 import { useLang } from "./i18n.jsx";
 import ZonaSocio from "./ZonaSocio.jsx";
 import { vigilarSesionSocio, EVENTO_SESION_CADUCADA } from "./socioSesion.js";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // Se engancha en cuanto se carga esta página (una sola vez, ver
 // socioSesion.js) para que cualquier fetch con el token de socio que
@@ -223,7 +223,7 @@ function CambioPasswordObligatorio({ onCambiado, salir }) {
     setMensaje(null);
     try {
       const token = localStorage.getItem("socioToken");
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app"}/api/auth/cambiar-password`, {
+      const res = await fetch(`${API_URL}/api/auth/cambiar-password`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ passwordActual, passwordNueva }),
