@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
 import { agruparPorSocio } from "./agruparJugadores.js";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 export default function AdminEquiposClub({ token, salir }) {
   const [equipos, setEquipos] = useState([]);

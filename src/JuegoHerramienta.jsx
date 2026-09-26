@@ -19,6 +19,7 @@ import {
   sumarEstadisticas501,
   sumarEstadisticasCricket,
   tiradorActual,
+  simboloMarcas,
 } from "./dardosLogica.js";
 
 // Flujo público de juego con la herramienta de marcador, para partidos de
@@ -940,13 +941,6 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
 }
 
 // --- Marcador Cricket --------------------------------------------------
-
-function simboloMarcas(n) {
-  if (n <= 0) return "—";
-  if (n === 1) return "／";
-  if (n === 2) return "✕";
-  return "⊗";
-}
 
 function nuevaLegCricket(partida, numeroLeg) {
   const base = construirUnidadesPartida(partida).map((u) => ({ ...u, marcas: marcasVacias() }));

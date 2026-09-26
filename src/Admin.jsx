@@ -13,8 +13,8 @@ import AdminMaquinas from "./AdminMaquinas.jsx";
 import AdminFabricantes from "./AdminFabricantes.jsx";
 import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
 import AdminCalendario from "./AdminCalendario.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso) {
   const d = new Date(iso);

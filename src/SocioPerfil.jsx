@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
 import MediasFabricante from "./MediasFabricante.jsx";
 import AceroJugador from "./AceroJugador.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // Convierte la clave pública VAPID (base64 URL-safe, tal como la da el
 // servidor) al formato Uint8Array que pide pushManager.subscribe().

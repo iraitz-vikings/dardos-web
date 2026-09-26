@@ -11,6 +11,7 @@ import {
   promedio3Dardos,
   sumarEstadisticas501,
   sumarEstadisticasCricket,
+  simboloMarcas,
 } from "./dardosLogica.js";
 
 // Marcador en directo, de solo lectura, de un partido de torneo/liga que se
@@ -45,13 +46,6 @@ export function BotonDirecto({ partido, onVer }) {
       <span className="directo-punto" aria-hidden="true" /> En directo
     </button>
   );
-}
-
-function simboloMarcas(n) {
-  if (n <= 0) return "—";
-  if (n === 1) return "／";
-  if (n === 2) return "✕";
-  return "⊗";
 }
 
 // Estado del leg en curso: el que ha mandado la diana o, si todavía no ha

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // Sección "Acero": medias calculadas a partir de partidas de torneo/liga
 // jugadas de verdad con la herramienta de marcador (ver JuegoHerramienta.jsx

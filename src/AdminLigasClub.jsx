@@ -5,8 +5,9 @@ import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
+import { API_URL } from "./config.js";
+import { DEFECTOS_MENSAJE_AVISO_LIGA, IDIOMAS_MENSAJE_AVISO } from "./mensajesAvisosDefecto.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 const MODALIDADES = [
   { id: "individual", etiqueta: "Individual" },
@@ -757,79 +758,7 @@ const TIPOS_MENSAJE_AVISO_LIGA = [
   { clave: "eliminado", etiqueta: "Eliminado", placeholders: "{competicion}" },
   { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
 ];
-const IDIOMAS_MENSAJE_AVISO_LIGA = [
-  { id: "es", etiqueta: "Castellano" },
-  { id: "eu", etiqueta: "Euskera" },
-  { id: "fr", etiqueta: "Francés" },
-];
 
-// Texto por defecto del club para cada tipo de aviso, tal cual está escrito
-// en src/routes/torneosClub.js (resolverMensaje) — se muestra como ejemplo
-// de referencia en el panel, con un botón para copiarlo al campo y partir
-// de ahí en vez de escribir desde cero. Mismo contenido que
-// DEFECTOS_MENSAJE_AVISO de AdminTorneosClub.jsx.
-const DEFECTOS_MENSAJE_AVISO_LIGA = {
-  bienvenida: {
-    titulo: {
-      es: "¡Ya estás en el cuadro! · {competicion}",
-      eu: "Jada koadroan zaude! · {competicion}",
-      fr: "Tu es dans le tableau ! · {competicion}",
-    },
-    cuerpo: {
-      es: "Se ha hecho el sorteo y ya tienes tu sitio en el cuadro. ¡Mucha suerte!",
-      eu: "Zozketa egin da eta jada baduzu zure lekua koadroan. Zorte on!",
-      fr: "Le tirage au sort a eu lieu et tu as déjà ta place dans le tableau. Bonne chance !",
-    },
-  },
-  enCurso: {
-    titulo: {
-      es: "¡Tu partido empieza ahora! · {competicion}",
-      eu: "Zure partida orain hasten da! · {competicion}",
-      fr: "Ton match commence maintenant ! · {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} en {maquina}.",
-      eu: "{enfrentamiento} ({maquina} makinan).",
-      fr: "{enfrentamiento} sur {maquina}.",
-    },
-  },
-  programado: {
-    titulo: {
-      es: "Partido programado: {competicion}",
-      eu: "Partida programatuta: {competicion}",
-      fr: "Match programmé : {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} el {fecha} en {maquina}.",
-      eu: "{enfrentamiento} ({fecha}) — {maquina} makina.",
-      fr: "{enfrentamiento} le {fecha} sur {maquina}.",
-    },
-  },
-  eliminado: {
-    titulo: {
-      es: "Eliminado: {competicion}",
-      eu: "Kanporatuta: {competicion}",
-      fr: "Éliminé : {competicion}",
-    },
-    cuerpo: {
-      es: "Has quedado eliminado del cuadrante. ¡Gracias por participar!",
-      eu: "Koadrotik kanporatuta zaude. Eskerrik asko parte hartzeagatik!",
-      fr: "Tu as été éliminé du tableau. Merci d'avoir participé !",
-    },
-  },
-  campeon: {
-    titulo: {
-      es: "¡Campeón! · {competicion}",
-      eu: "Txapelduna! · {competicion}",
-      fr: "Champion ! · {competicion}",
-    },
-    cuerpo: {
-      es: "¡Enhorabuena, has ganado el cuadrante!",
-      eu: "Zorionak, koadroa irabazi duzu!",
-      fr: "Félicitations, tu as remporté le tableau !",
-    },
-  },
-};
 
 // Igual que MensajesAvisos de AdminTorneosClub.jsx pero para el cuadrante
 // final de una liga: sobreescribe, opcionalmente y en cualquier idioma, el
@@ -884,7 +813,7 @@ function MensajesAvisosLiga({ liga, token, onRecargar }) {
       </p>
 
       <div className="nav-lang" style={{ marginBottom: "1.2rem" }}>
-        {IDIOMAS_MENSAJE_AVISO_LIGA.map((i, idx) => (
+        {IDIOMAS_MENSAJE_AVISO.map((i, idx) => (
           <span key={i.id}>
             {idx > 0 && <span> / </span>}
             <button

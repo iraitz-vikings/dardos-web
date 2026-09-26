@@ -226,6 +226,17 @@ export const NUMEROS_CRICKET = [
   { clave: "B", etiqueta: "Bull", valor: 25 },
 ];
 
+// Símbolo de las marcas de un número en la tabla de cricket (compartido por
+// el marcador de la herramienta, la calculadora suelta y el marcador en
+// directo). A partir de 3 queda cerrado (⊗); los impactos de más ya se
+// reflejan en la puntuación, así que no se repite el "+N".
+export function simboloMarcas(n) {
+  if (n <= 0) return "—";
+  if (n === 1) return "／";
+  if (n === 2) return "✕";
+  return "⊗";
+}
+
 export function marcasVacias() {
   return Object.fromEntries(NUMEROS_CRICKET.map((n) => [n.clave, 0]));
 }

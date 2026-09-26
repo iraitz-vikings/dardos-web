@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const ROLES = ["jugador", "capitan", "admin"];
 
 function formatFecha(iso) {

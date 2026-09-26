@@ -6,8 +6,9 @@ import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
 import useTemporizadorPartido, { formatoCuentaAtras } from "./useTemporizadorPartido.js";
+import { API_URL } from "./config.js";
+import { DEFECTOS_MENSAJE_AVISO, IDIOMAS_MENSAJE_AVISO } from "./mensajesAvisosDefecto.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
 
 const MODALIDADES = [
@@ -1028,96 +1029,7 @@ const TIPOS_MENSAJE_AVISO = [
   { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
   { clave: "unMinuto", etiqueta: "Falta 1 minuto (temporizador)", placeholders: "{competicion}, {enfrentamiento}" },
 ];
-const IDIOMAS_MENSAJE_AVISO = [
-  { id: "es", etiqueta: "Castellano" },
-  { id: "eu", etiqueta: "Euskera" },
-  { id: "fr", etiqueta: "Francés" },
-];
 
-// Texto por defecto del club para cada tipo de aviso, tal cual está escrito
-// en src/routes/torneosClub.js (resolverMensaje) — se muestra como ejemplo
-// de referencia en el panel, con un botón para copiarlo al campo y partir
-// de ahí en vez de escribir desde cero. Si el texto por defecto cambia en
-// el backend, actualizar también aquí para que el ejemplo no se desincronice.
-const DEFECTOS_MENSAJE_AVISO = {
-  bienvenida: {
-    titulo: {
-      es: "¡Ya estás en el cuadro! · {competicion}",
-      eu: "Jada koadroan zaude! · {competicion}",
-      fr: "Tu es dans le tableau ! · {competicion}",
-    },
-    cuerpo: {
-      es: "Se ha hecho el sorteo y ya tienes tu sitio en el cuadro. ¡Mucha suerte!",
-      eu: "Zozketa egin da eta jada baduzu zure lekua koadroan. Zorte on!",
-      fr: "Le tirage au sort a eu lieu et tu as déjà ta place dans le tableau. Bonne chance !",
-    },
-  },
-  // {minutos} se sustituye (solo con el temporizador activo) por p.ej.
-  // " Tienes 5 min para empezar. Si no empezáis antes de que se acabe el
-  // tiempo, el partido se dará por perdido." — ver torneosClub.js.
-  enCurso: {
-    titulo: {
-      es: "¡Tu partido empieza ahora! · {competicion}",
-      eu: "Zure partida orain hasten da! · {competicion}",
-      fr: "Ton match commence maintenant ! · {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} en {maquina}.{minutos}",
-      eu: "{enfrentamiento} ({maquina} makinan).{minutos}",
-      fr: "{enfrentamiento} sur {maquina}.{minutos}",
-    },
-  },
-  programado: {
-    titulo: {
-      es: "Partido programado: {competicion}",
-      eu: "Partida programatuta: {competicion}",
-      fr: "Match programmé : {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} el {fecha} en {maquina}.",
-      eu: "{enfrentamiento} ({fecha}) — {maquina} makina.",
-      fr: "{enfrentamiento} le {fecha} sur {maquina}.",
-    },
-  },
-  eliminado: {
-    titulo: {
-      es: "Eliminado: {competicion}",
-      eu: "Kanporatuta: {competicion}",
-      fr: "Éliminé : {competicion}",
-    },
-    cuerpo: {
-      es: "Has quedado eliminado del cuadrante. ¡Gracias por participar!",
-      eu: "Koadrotik kanporatuta zaude. Eskerrik asko parte hartzeagatik!",
-      fr: "Tu as été éliminé du tableau. Merci d'avoir participé !",
-    },
-  },
-  campeon: {
-    titulo: {
-      es: "¡Campeón! · {competicion}",
-      eu: "Txapelduna! · {competicion}",
-      fr: "Champion ! · {competicion}",
-    },
-    cuerpo: {
-      es: "¡Enhorabuena, has ganado el cuadrante!",
-      eu: "Zorionak, koadroa irabazi duzu!",
-      fr: "Félicitations, tu as remporté le tableau !",
-    },
-  },
-  // Solo se envía si el torneo tiene el temporizador activo (ver
-  // src/lib/avisoTemporizadorPartidos.js en el backend).
-  unMinuto: {
-    titulo: {
-      es: "¡Falta 1 minuto! · {competicion}",
-      eu: "Minutu bat falta da! · {competicion}",
-      fr: "Plus qu'une minute ! · {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento}: queda 1 minuto para presentaros a jugar. Si no empezáis antes de que se acabe el tiempo, el partido se dará por perdido.",
-      eu: "{enfrentamiento}: minutu bat geratzen da jokatzera aurkezteko. Denbora amaitu aurretik hasten ez bazarete, partida galdutzat emango da.",
-      fr: "{enfrentamiento} : il reste 1 minute pour vous présenter. Si vous ne commencez pas avant la fin du temps, le match sera déclaré perdu.",
-    },
-  },
-};
 
 // Panel para sobreescribir, opcionalmente y en cualquier idioma, el texto de
 // los 6 avisos automáticos (bienvenida/en curso/programado/eliminado/
