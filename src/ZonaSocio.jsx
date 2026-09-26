@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
 import SocioPerfil, { sincronizarSuscripcionPush } from "./SocioPerfil.jsx";
+import AvisoEstadoPush from "./AvisoEstadoPush.jsx";
 import TablonAnuncios from "./TablonAnuncios.jsx";
 import JugadoresClub from "./JugadoresClub.jsx";
 import GaleriaPrivada from "./GaleriaPrivada.jsx";
@@ -59,8 +60,12 @@ export default function ZonaSocio({ usuario, salir }) {
   // (ZonaSocio no se remonta al cambiar de sección); si falla o el
   // navegador no soporta algo, no hace nada visible — AvisosPush en "Mi
   // perfil" sigue siendo el sitio para verlo y activarlo a mano.
+  //
+  // El resultado se usa para AvisoEstadoPush: si en este dispositivo las
+  // notificaciones están bloqueadas o sin activar, se avisa aquí mismo.
+  const [estadoPush, setEstadoPush] = useState(null);
   useEffect(() => {
-    sincronizarSuscripcionPush().catch(() => {});
+    sincronizarSuscripcionPush().then(setEstadoPush).catch(() => {});
   }, []);
 
   return (
@@ -97,6 +102,7 @@ export default function ZonaSocio({ usuario, salir }) {
         </nav>
       </div>
 
+      <AvisoEstadoPush estado={estadoPush} onActivado={() => setEstadoPush((e) => ({ ...e, activo: true }))} />
       {seccion === "perfil" && <SocioPerfil usuario={usuario} />}
       {seccion === "historial" && <HistorialTorneos />}
       {seccion === "historico-privado" && <HistoricoPrivado />}

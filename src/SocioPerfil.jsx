@@ -515,6 +515,7 @@ export async function sincronizarSuscripcionPush() {
 
   const registro = await navigator.serviceWorker.register("/service-worker.js");
   const sub = await registro.pushManager.getSubscription();
+  const permiso = typeof Notification !== "undefined" ? Notification.permission : "default";
   if (sub) {
     // Se vuelve a registrar en el servidor aunque ya exista (es un upsert):
     // si el servidor la había dado por caída (404/410 en algún envío, ver
@@ -527,7 +528,7 @@ export async function sincronizarSuscripcionPush() {
       body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
     }).catch(() => {});
     asegurarRespaldoResuscripcion(registro);
-    return { soportado: true, iosSinInstalar: false, activo: true };
+    return { soportado: true, iosSinInstalar: false, activo: true, permiso };
   }
 
   // La suscripción se puede perder sola con el tiempo (el navegador la
@@ -538,8 +539,8 @@ export async function sincronizarSuscripcionPush() {
   // servidor sin que el socio tenga que tocar nada. Si el propio permiso
   // también se perdió, esto no puede hacer nada y se queda como desactivado
   // (hace falta el botón de activar).
-  if (Notification.permission !== "granted") {
-    return { soportado: true, iosSinInstalar: false, activo: false };
+  if (permiso !== "granted") {
+    return { soportado: true, iosSinInstalar: false, activo: false, permiso };
   }
   try {
     const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
@@ -556,9 +557,39 @@ export async function sincronizarSuscripcionPush() {
       body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
     });
     if (res.ok) asegurarRespaldoResuscripcion(registro);
-    return { soportado: true, iosSinInstalar: false, activo: res.ok };
+    return { soportado: true, iosSinInstalar: false, activo: res.ok, permiso };
   } catch {
-    return { soportado: true, iosSinInstalar: false, activo: false };
+    return { soportado: true, iosSinInstalar: false, activo: false, permiso };
+  }
+}
+
+// Pide permiso (tiene que llamarse desde un toque del usuario) y suscribe
+// este dispositivo a los avisos push. Compartido por el botón de "Mi perfil"
+// (AvisosPush) y el aviso de la zona de socios (AvisoEstadoPush.jsx).
+// Devuelve { ok: true } o { ok: false, clave } con la clave de i18n del error.
+export async function activarSuscripcionPush() {
+  const permiso = await Notification.requestPermission();
+  if (permiso !== "granted") return { ok: false, clave: "avisosPush.sinPermiso" };
+  try {
+    const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
+    if (!resClave.ok) return { ok: false, clave: "avisosPush.sinConfigurar" };
+    const { publicKey } = await resClave.json();
+    const registro = await navigator.serviceWorker.ready;
+    const suscripcion = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: claveVapidABytes(publicKey),
+    });
+    const datos = suscripcion.toJSON();
+    const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+      body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
+    });
+    if (!res.ok) return { ok: false, clave: "avisosPush.noActivoServidor" };
+    asegurarRespaldoResuscripcion(registro);
+    return { ok: true };
+  } catch {
+    return { ok: false, clave: "avisosPush.noPudoActivar" };
   }
 }
 
@@ -586,37 +617,13 @@ function AvisosPush() {
     setProcesando(true);
     setMensaje(null);
     try {
-      const permiso = await Notification.requestPermission();
-      if (permiso !== "granted") {
-        setMensaje({ tipo: "error", texto: t("avisosPush.sinPermiso") });
-        return;
-      }
-      const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
-      if (!resClave.ok) {
-        setMensaje({ tipo: "error", texto: t("avisosPush.sinConfigurar") });
-        return;
-      }
-      const { publicKey } = await resClave.json();
-      const registro = await navigator.serviceWorker.ready;
-      const suscripcion = await registro.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: claveVapidABytes(publicKey),
-      });
-      const datos = suscripcion.toJSON();
-      const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
-        body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
-      });
-      if (!res.ok) {
-        setMensaje({ tipo: "error", texto: t("avisosPush.noActivoServidor") });
+      const r = await activarSuscripcionPush();
+      if (!r.ok) {
+        setMensaje({ tipo: "error", texto: t(r.clave) });
         return;
       }
       setActivadoAqui(true);
       setMensaje({ tipo: "ok", texto: t("avisosPush.activados") });
-      asegurarRespaldoResuscripcion(registro);
-    } catch {
-      setMensaje({ tipo: "error", texto: t("avisosPush.noPudoActivar") });
     } finally {
       setProcesando(false);
     }
