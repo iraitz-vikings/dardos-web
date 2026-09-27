@@ -12,6 +12,7 @@ export default function AdminEquiposClub({ token, salir }) {
   const [maquinas, setMaquinas] = useState([]);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [tipo, setTipo] = useState("equipo");
   const [escudoUrl, setEscudoUrl] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
@@ -21,6 +22,7 @@ export default function AdminEquiposClub({ token, salir }) {
   const [editandoId, setEditandoId] = useState(null);
   const [nombreEdicion, setNombreEdicion] = useState("");
   const [descripcionEdicion, setDescripcionEdicion] = useState("");
+  const [tipoEdicion, setTipoEdicion] = useState("equipo");
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
   const cargarEquipos = () => {
@@ -63,7 +65,7 @@ export default function AdminEquiposClub({ token, salir }) {
       const res = await fetch(`${API_URL}/api/equipos-club`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre, descripcion, escudoUrl }),
+        body: JSON.stringify({ nombre, descripcion, tipo, escudoUrl }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -75,8 +77,8 @@ export default function AdminEquiposClub({ token, salir }) {
         setMensaje({ tipo: "error", texto: data.error || "No se pudo crear el equipo." });
         return;
       }
-      setNombre(""); setDescripcion(""); setEscudoUrl("");
-      setMensaje({ tipo: "ok", texto: "Equipo creado." });
+      setNombre(""); setDescripcion(""); setTipo("equipo"); setEscudoUrl("");
+      setMensaje({ tipo: "ok", texto: tipo === "pareja" ? "Pareja creada." : "Equipo creado." });
       cargarEquipos();
     } catch {
       setMensaje({ tipo: "error", texto: "Error de conexión." });
@@ -111,6 +113,7 @@ export default function AdminEquiposClub({ token, salir }) {
     setEditandoId(eq.id);
     setNombreEdicion(eq.nombre);
     setDescripcionEdicion(eq.descripcion || "");
+    setTipoEdicion(eq.tipo || "equipo");
   }
   function cancelarEdicion() {
     setEditandoId(null);
@@ -123,7 +126,7 @@ export default function AdminEquiposClub({ token, salir }) {
       const res = await fetch(`${API_URL}/api/equipos-club/${equipoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre: nombreEdicion.trim(), descripcion: descripcionEdicion }),
+        body: JSON.stringify({ nombre: nombreEdicion.trim(), descripcion: descripcionEdicion, tipo: tipoEdicion }),
       });
       if (!res.ok) {
         setMensaje({ tipo: "error", texto: "No se pudo guardar el cambio." });
@@ -252,6 +255,13 @@ export default function AdminEquiposClub({ token, salir }) {
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} required />
         </label>
         <label>
+          Tipo
+          <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
+            <option value="equipo">Equipo</option>
+            <option value="pareja">Pareja</option>
+          </select>
+        </label>
+        <label>
           Descripción (opcional)
           <textarea rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
         </label>
@@ -290,6 +300,9 @@ export default function AdminEquiposClub({ token, salir }) {
                     />
                   )}
                   {eq.nombre}
+                  <span className="admin-hint" style={{ fontWeight: "normal", fontSize: ".8em" }}>
+                    · {eq.tipo === "pareja" ? "Pareja" : "Equipo"}
+                  </span>
                 </strong>
                 <div style={{ display: "flex", gap: ".5rem" }}>
                   <button className="admin-link-btn" onClick={() => empezarEdicion(eq)}>Editar nombre</button>
@@ -305,6 +318,13 @@ export default function AdminEquiposClub({ token, salir }) {
                   <label>
                     Nombre
                     <input value={nombreEdicion} onChange={(e) => setNombreEdicion(e.target.value)} />
+                  </label>
+                  <label>
+                    Tipo
+                    <select value={tipoEdicion} onChange={(e) => setTipoEdicion(e.target.value)}>
+                      <option value="equipo">Equipo</option>
+                      <option value="pareja">Pareja</option>
+                    </select>
                   </label>
                   <label>
                     Descripción

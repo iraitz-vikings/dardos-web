@@ -56,7 +56,7 @@ function Cuadrante({ cuadrante, busqueda, onVerDirecto }) {
 
 export default function LiveTournament({ torneo }) {
   const { t } = useLang();
-  const [vista, setVista] = useState("maquina");
+  const [vista, setVista] = useState("cuadrante");
   const [busqueda, setBusqueda] = useState("");
   // Partido cuyo marcador en directo está abierto (ventanita, ver DirectoPartida.jsx).
   const [directo, setDirecto] = useState(null);
@@ -87,11 +87,11 @@ export default function LiveTournament({ torneo }) {
       {torneo.descripcion && <p className="event-description">{torneo.descripcion}</p>}
 
       <div className="live-tournament-toggle">
-        <button className={vista === "maquina" ? "active" : ""} onClick={() => setVista("maquina")}>
-          {t("live.byMachine")}
-        </button>
         <button className={vista === "cuadrante" ? "active" : ""} onClick={() => setVista("cuadrante")}>
           {t("live.byBracket")}
+        </button>
+        <button className={vista === "maquina" ? "active" : ""} onClick={() => setVista("maquina")}>
+          {t("live.byMachine")}
         </button>
       </div>
 
