@@ -52,6 +52,7 @@ export default function AdminDispositivosPush({ token, salir }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [soloCaidos, setSoloCaidos] = useState(false);
+  const [limpiando, setLimpiando] = useState(false);
 
   const cargar = () => {
     setCargando(true);
@@ -66,6 +67,28 @@ export default function AdminDispositivosPush({ token, salir }) {
       .then(setDispositivos)
       .catch((e) => setError(e.message || "Error de conexión."))
       .finally(() => setCargando(false));
+  };
+
+  const eliminarCaidos = () => {
+    if (!confirm("¿Eliminar todos los dispositivos caídos? Se borran solo los que ya no sirven; los activos no se tocan.")) return;
+    setLimpiando(true);
+    setError(null);
+    fetch(`${API_URL}/api/notificaciones/push/admin/dispositivos/caidos`, {
+      method: "DELETE",
+      headers: { "x-admin-token": token },
+    })
+      .then((r) => {
+        if (r.status === 401) {
+          salir();
+          return null;
+        }
+        return r.ok ? r.json() : Promise.reject(new Error("No se pudieron eliminar."));
+      })
+      .then((d) => {
+        if (d) cargar();
+      })
+      .catch((e) => setError(e.message || "Error de conexión."))
+      .finally(() => setLimpiando(false));
   };
 
   useEffect(() => {
@@ -96,6 +119,11 @@ export default function AdminDispositivosPush({ token, salir }) {
         <button type="button" className="admin-link-btn" onClick={cargar} disabled={cargando}>
           {cargando ? "Actualizando…" : "Actualizar"}
         </button>
+        {caidos > 0 && (
+          <button type="button" className="admin-link-btn" onClick={eliminarCaidos} disabled={limpiando} style={{ color: "#e5484d" }}>
+            {limpiando ? "Eliminando…" : `Eliminar caídos (${caidos})`}
+          </button>
+        )}
       </div>
 
       {error && <p className="admin-msg admin-msg-error">{error}</p>}
