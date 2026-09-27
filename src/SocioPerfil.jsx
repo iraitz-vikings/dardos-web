@@ -510,7 +510,7 @@ export async function sincronizarSuscripcionPush() {
   const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const enStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
   if (esIOS && !enStandalone) {
-    return { soportado: true, iosSinInstalar: true, activo: false };
+    return { soportado: true, iosSinInstalar: true, activo: false, enStandalone };
   }
 
   const registro = await navigator.serviceWorker.register("/service-worker.js");
@@ -528,7 +528,7 @@ export async function sincronizarSuscripcionPush() {
       body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
     }).catch(() => {});
     asegurarRespaldoResuscripcion(registro);
-    return { soportado: true, iosSinInstalar: false, activo: true, permiso };
+    return { soportado: true, iosSinInstalar: false, activo: true, permiso, enStandalone };
   }
 
   // La suscripción se puede perder sola con el tiempo (el navegador la
@@ -540,7 +540,7 @@ export async function sincronizarSuscripcionPush() {
   // también se perdió, esto no puede hacer nada y se queda como desactivado
   // (hace falta el botón de activar).
   if (permiso !== "granted") {
-    return { soportado: true, iosSinInstalar: false, activo: false, permiso };
+    return { soportado: true, iosSinInstalar: false, activo: false, permiso, enStandalone };
   }
   try {
     const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
@@ -557,9 +557,9 @@ export async function sincronizarSuscripcionPush() {
       body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
     });
     if (res.ok) asegurarRespaldoResuscripcion(registro);
-    return { soportado: true, iosSinInstalar: false, activo: res.ok, permiso };
+    return { soportado: true, iosSinInstalar: false, activo: res.ok, permiso, enStandalone };
   } catch {
-    return { soportado: true, iosSinInstalar: false, activo: false, permiso };
+    return { soportado: true, iosSinInstalar: false, activo: false, permiso, enStandalone };
   }
 }
 
@@ -601,6 +601,12 @@ function AvisosPush() {
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  // Estado real de ESTE dispositivo para diagnosticar los avisos que "se
+  // desactivan solos": permiso del navegador, si está instalada como app y si
+  // hay suscripción viva. Sirve para saber, cuando se caiga, si fue el permiso
+  // (lo revocó el navegador), la suscripción (la mató el sistema — típico en
+  // OnePlus/Samsung por el ahorro de batería) o que nunca se activó aquí.
+  const [diag, setDiag] = useState(null);
 
   useEffect(() => {
     sincronizarSuscripcionPush()
@@ -608,6 +614,7 @@ function AvisosPush() {
         setSoportado(resultado.soportado);
         setEsIOSSinInstalar(resultado.iosSinInstalar);
         setActivadoAqui(resultado.activo);
+        setDiag({ permiso: resultado.permiso, enStandalone: resultado.enStandalone, activo: resultado.activo });
       })
       .catch(() => {})
       .finally(() => setCargando(false));
@@ -677,6 +684,31 @@ function AvisosPush() {
           <button type="button" className="admin-link-btn" disabled={procesando} onClick={activadoAqui ? desactivar : activar}>
             {procesando ? t("avisosPush.unMomento") : activadoAqui ? t("avisosPush.desactivarAqui") : t("avisosPush.activarAqui")}
           </button>
+          {diag && (
+            <details style={{ marginTop: ".6rem" }}>
+              <summary className="admin-hint">{t("avisosPush.diagTitulo")}</summary>
+              <ul className="admin-hint" style={{ margin: ".4rem 0 0", fontSize: ".85em", lineHeight: 1.6 }}>
+                <li>
+                  {t("avisosPush.diagSuscripcion")}: <strong>{diag.activo ? t("avisosPush.diagSi") : t("avisosPush.diagNo")}</strong>
+                </li>
+                <li>
+                  {t("avisosPush.diagPermiso")}:{" "}
+                  <strong>
+                    {diag.permiso === "granted"
+                      ? t("avisosPush.diagConcedido")
+                      : diag.permiso === "denied"
+                      ? t("avisosPush.diagBloqueado")
+                      : t("avisosPush.diagPorDefecto")}
+                  </strong>
+                </li>
+                <li>
+                  {t("avisosPush.diagInstalada")}:{" "}
+                  <strong>{diag.enStandalone ? t("avisosPush.diagSi") : t("avisosPush.diagPestana")}</strong>
+                </li>
+              </ul>
+              <p className="admin-hint" style={{ margin: ".4rem 0 0", fontSize: ".8em" }}>{t("avisosPush.diagAyuda")}</p>
+            </details>
+          )}
         </>
       )}
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
