@@ -89,6 +89,8 @@ const dic = {
     "equiposClub.vacio": "Todavía no hay equipos.",
     "equiposClub.capitan": "Capitán:",
     "equiposClub.sinJugadores": "Sin jugadores todavía",
+    "equiposClub.equipos": "Equipos",
+    "equiposClub.parejas": "Parejas",
 
     "calendarioSocio.diaAbrev.lunes": "Lun",
     "calendarioSocio.diaAbrev.martes": "Mar",
@@ -473,6 +475,8 @@ const dic = {
     "equiposClub.vacio": "Oraindik ez dago talderik.",
     "equiposClub.capitan": "Kapitaina:",
     "equiposClub.sinJugadores": "Oraindik jokalaririk ez",
+    "equiposClub.equipos": "Taldeak",
+    "equiposClub.parejas": "Bikoteak",
 
     "calendarioSocio.diaAbrev.lunes": "Al",
     "calendarioSocio.diaAbrev.martes": "Ar",
