@@ -9,6 +9,7 @@ import AdminJugadores from "./AdminJugadores.jsx";
 import AdminLigasClub from "./AdminLigasClub.jsx";
 import AdminTrofeos from "./AdminTrofeos.jsx";
 import AdminEquiposClub from "./AdminEquiposClub.jsx";
+import AdminDispositivosPush from "./AdminDispositivosPush.jsx";
 import AdminMaquinas from "./AdminMaquinas.jsx";
 import AdminFabricantes from "./AdminFabricantes.jsx";
 import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
@@ -554,6 +555,7 @@ function cancelarEdicionNoticia() {
     { id: "calendario", etiqueta: "Calendario" },
     { id: "fabricantes", etiqueta: "Fabricantes" },
     { id: "competiciones-externas", etiqueta: "Comp. externas" },
+    { id: "dispositivos-push", etiqueta: "Avisos push" },
   ];
 
   return (
@@ -757,6 +759,7 @@ function cancelarEdicionNoticia() {
       {pestana === "calendario" && <AdminCalendario token={token} salir={salir} />}
       {pestana === "fabricantes" && <AdminFabricantes token={token} salir={salir} />}
       {pestana === "competiciones-externas" && <AdminCompeticionesExternas token={token} salir={salir} />}
+      {pestana === "dispositivos-push" && <AdminDispositivosPush token={token} salir={salir} />}
     </div>
   );
 }
