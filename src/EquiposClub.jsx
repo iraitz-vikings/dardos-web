@@ -31,6 +31,7 @@ export default function EquiposClub() {
   const { t } = useLang();
   const [equipos, setEquipos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [vista, setVista] = useState("equipos");
 
   useEffect(() => {
     const token = localStorage.getItem("socioToken");
@@ -41,38 +42,47 @@ export default function EquiposClub() {
       .finally(() => setCargando(false));
   }, []);
 
-  // Se separan equipos (varios jugadores) y parejas (dos) en dos bloques.
+  // Equipos (varios jugadores) y parejas (dos) en pestañas separadas.
   const parejas = equipos.filter((eq) => eq.tipo === "pareja");
   const equiposReales = equipos.filter((eq) => eq.tipo !== "pareja");
+  const lista = vista === "parejas" ? parejas : equiposReales;
 
   const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1rem" };
 
   return (
     <div>
       <h3>{t("zona.equipos")}</h3>
-      {cargando && <p className="chronicle-status">{t("equiposClub.cargando")}</p>}
-      {!cargando && equipos.length === 0 && <p className="chronicle-status">{t("equiposClub.vacio")}</p>}
 
-      {equiposReales.length > 0 && (
-        <>
-          {parejas.length > 0 && <h4 style={{ marginTop: "1rem" }}>{t("equiposClub.equipos")}</h4>}
-          <div style={gridStyle}>
-            {equiposReales.map((eq) => (
-              <TarjetaEquipo key={eq.id} eq={eq} t={t} />
-            ))}
-          </div>
-        </>
+      <nav className="admin-tabs" style={{ marginBottom: "1.2rem" }}>
+        <button
+          type="button"
+          className={`admin-tab ${vista === "equipos" ? "admin-tab-active" : ""}`}
+          onClick={() => setVista("equipos")}
+        >
+          {t("equiposClub.equipos")}
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${vista === "parejas" ? "admin-tab-active" : ""}`}
+          onClick={() => setVista("parejas")}
+        >
+          {t("equiposClub.parejas")}
+        </button>
+      </nav>
+
+      {cargando && <p className="chronicle-status">{t("equiposClub.cargando")}</p>}
+      {!cargando && lista.length === 0 && (
+        <p className="chronicle-status">
+          {vista === "parejas" ? t("equiposClub.vacioParejas") : t("equiposClub.vacioEquipos")}
+        </p>
       )}
 
-      {parejas.length > 0 && (
-        <>
-          <h4 style={{ marginTop: "1.5rem" }}>{t("equiposClub.parejas")}</h4>
-          <div style={gridStyle}>
-            {parejas.map((eq) => (
-              <TarjetaEquipo key={eq.id} eq={eq} t={t} />
-            ))}
-          </div>
-        </>
+      {lista.length > 0 && (
+        <div style={gridStyle}>
+          {lista.map((eq) => (
+            <TarjetaEquipo key={eq.id} eq={eq} t={t} />
+          ))}
+        </div>
       )}
     </div>
   );
