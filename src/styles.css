@@ -457,6 +457,10 @@ button {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      /* En móvil, si nombre + botones no caben en una línea, que los botones
+         bajen debajo en vez de salirse de la pantalla. */
+      flex-wrap: wrap;
+      gap: .5rem;
       border: 1px solid var(--line);
       padding: .7rem .9rem;
 }
