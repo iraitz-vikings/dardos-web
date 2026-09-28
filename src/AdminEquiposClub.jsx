@@ -304,7 +304,7 @@ export default function AdminEquiposClub({ token, salir }) {
                     · {eq.tipo === "pareja" ? "Pareja" : "Equipo"}
                   </span>
                 </strong>
-                <div style={{ display: "flex", gap: ".5rem" }}>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                   <button className="admin-link-btn" onClick={() => empezarEdicion(eq)}>Editar nombre</button>
                   <button className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === eq.id ? null : eq.id)}>
                     {abiertoId === eq.id ? "Cerrar" : "Gestionar"}
