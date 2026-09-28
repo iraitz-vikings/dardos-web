@@ -29,6 +29,47 @@ export default function AdminJugadores({ token, salir }) {
   const [fusionandoId, setFusionandoId] = useState(null);
   const [destinoFusion, setDestinoFusion] = useState("");
   const [fusionando, setFusionando] = useState(false);
+  // Actualización de medias de UN jugador (en vez de todo el club), para
+  // ahorrar tiempo y consumo de servidor. Solo uno a la vez.
+  const [actualizandoMediasId, setActualizandoMediasId] = useState(null);
+
+  // Refresca las medias/estadísticas de fabricante SOLO de este jugador.
+  async function actualizarMedias(j) {
+    setActualizandoMediasId(j.id);
+    setMensaje(null);
+    try {
+      const res = await fetch(`${API_URL}/api/jugadores/${j.id}/actualizar-medias`, {
+        method: "POST",
+        headers: { "x-admin-token": token },
+      });
+      if (res.status === 401) {
+        setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
+        salir();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMensaje({ tipo: "error", texto: data.error || "No se pudieron actualizar las medias." });
+        return;
+      }
+      // `data` es un resumen por fabricante: { Connection: { actualizados, errores }, ... }
+      let ok = 0;
+      let err = 0;
+      for (const v of Object.values(data)) {
+        if (typeof v?.actualizados === "number") ok += v.actualizados;
+        if (typeof v?.errores === "number") err += v.errores;
+      }
+      const texto =
+        ok === 0 && err === 0
+          ? `${j.nombre} no tiene ninguna media de fabricante que actualizar.`
+          : `Medias de ${j.nombre} actualizadas (${ok} correcta${ok === 1 ? "" : "s"}${err ? `, ${err} con error` : ""}).`;
+      setMensaje({ tipo: err && !ok ? "error" : "ok", texto });
+    } catch {
+      setMensaje({ tipo: "error", texto: "Error de conexión." });
+    } finally {
+      setActualizandoMediasId(null);
+    }
+  }
 
   async function fusionar(origen) {
     const destino = jugadores.find((x) => x.id === destinoFusion);
@@ -339,6 +380,9 @@ export default function AdminJugadores({ token, salir }) {
                 )}
                 <button className="admin-link-btn" onClick={() => empezarEdicionPin(j)}>
                   {j.tienePinPartidas ? "Cambiar PIN" : "Poner PIN"}
+                </button>
+                <button className="admin-link-btn" disabled={actualizandoMediasId === j.id} onClick={() => actualizarMedias(j)}>
+                  {actualizandoMediasId === j.id ? "Actualizando…" : "Actualizar medias"}
                 </button>
                 <button className="admin-link-btn" onClick={() => borrar(j.id)}>Borrar</button>
               </div>
