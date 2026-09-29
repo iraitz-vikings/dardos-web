@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import CargaExterna from "./CargaExterna.jsx";
 import TorneoResumen from "./TorneoResumen.jsx";
 import VideoHome from "./VideoHome.jsx";
 import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
@@ -295,12 +296,16 @@ export default function App() {
                           return (
                             <div key={i} className="timeline-video-embed">
                               {v.tipo === "youtube" ? (
-                                <iframe
-                                  src={`https://www.youtube.com/embed/${v.id}`}
-                                  title="Vídeo de la noticia"
-                                  loading="lazy"
-                                  allowFullScreen
-                                />
+                                <CargaExterna servicio="YouTube" boton={t("video.play")}>
+                                  {() => (
+                                    <iframe
+                                      src={`https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1`}
+                                      title="Vídeo de la noticia"
+                                      allow="autoplay; encrypted-media; picture-in-picture"
+                                      allowFullScreen
+                                    />
+                                  )}
+                                </CargaExterna>
                               ) : (
                                 <video src={v.url} controls preload="metadata" />
                               )}
@@ -395,7 +400,7 @@ export default function App() {
           {lightbox.tipo === "youtube" && (
             <div className="lightbox-video" onClick={(e) => e.stopPropagation()}>
               <iframe
-                src={`https://www.youtube.com/embed/${lightbox.id}?autoplay=1`}
+                src={`https://www.youtube-nocookie.com/embed/${lightbox.id}?autoplay=1`}
                 title="Vídeo"
                 allow="autoplay; encrypted-media"
                 allowFullScreen

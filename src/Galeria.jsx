@@ -179,7 +179,7 @@ export default function Galeria() {
           {lightbox.tipo === "youtube" && (
             <div className="lightbox-video" onClick={(e) => e.stopPropagation()}>
               <iframe
-                src={`https://www.youtube.com/embed/${lightbox.id}?autoplay=1`}
+                src={`https://www.youtube-nocookie.com/embed/${lightbox.id}?autoplay=1`}
                 title="Vídeo"
                 allow="autoplay; encrypted-media"
                 allowFullScreen
