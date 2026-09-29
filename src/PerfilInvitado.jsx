@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
 import { apiFetch, API_URL } from "./apiHerramienta.js";
 import EditorMediasFabricante, { construirIdsFabricantes, mapasDesdeIdsFabricantes } from "./EditorMediasFabricante.jsx";
+import MediasFabricante from "./MediasFabricante.jsx";
 
 // Pestaña "Perfil" de la página pública "Invitados": un amigo/invitado
 // identificado con su PIN edita su propia ficha (foto, nombre, apodo) y sus
@@ -25,6 +26,7 @@ export default function PerfilInvitado({ token, onNombreCambiado }) {
   const [subiendo, setSubiendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  const [editando, setEditando] = useState(false);
 
   function rellenar(p) {
     setPerfil(p);
@@ -104,6 +106,7 @@ export default function PerfilInvitado({ token, onNombreCambiado }) {
       });
       rellenar(actualizado);
       onNombreCambiado?.(actualizado.nombre);
+      setEditando(false);
       setMensaje({ tipo: "ok", texto: t("invitados.perfilGuardado") });
     } catch (err) {
       setMensaje({ tipo: "error", texto: err.message || t("perfil.errorConexion") });
@@ -122,6 +125,49 @@ export default function PerfilInvitado({ token, onNombreCambiado }) {
         {t("invitados.esMiembro")}{" "}
         <a href="/socios">{t("invitados.irZonaSocios")}</a>
       </p>
+    );
+  }
+
+  // Vista de solo lectura (como el perfil de miembros): foto, nombre, apodo y
+  // medias. Se pasa a edición con el botón.
+  if (!editando) {
+    return (
+      <div className="perfil-resumen" style={{ maxWidth: 560 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {perfil?.avatarUrl ? (
+            <img
+              src={perfil.avatarUrl}
+              alt={t("perfil.tuFoto")}
+              style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "1.6rem",
+              }}
+              aria-hidden="true"
+            >
+              🎯
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <strong style={{ display: "block", fontSize: "1.1rem" }}>{perfil?.nombre}</strong>
+            {perfil?.apodo && <span style={{ display: "block", opacity: 0.85 }}>"{perfil.apodo}"</span>}
+            <button type="button" className="admin-link-btn" style={{ marginTop: ".6rem" }} onClick={() => { setMensaje(null); setEditando(true); }}>
+              {t("perfil.editarPerfil")}
+            </button>
+          </div>
+        </div>
+        <MediasFabricante idsFabricantes={perfil?.idsFabricantes} />
+        {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+      </div>
     );
   }
 
@@ -158,7 +204,16 @@ export default function PerfilInvitado({ token, onNombreCambiado }) {
         onMedia={(id, campo, v) => setMedias((p) => ({ ...p, [id]: { ...p[id], [campo]: v } }))}
       />
 
-      <button type="submit" disabled={guardando}>{guardando ? t("perfil.guardando") : t("perfil.guardarPerfil")}</button>
+      <div style={{ display: "flex", gap: ".6rem" }}>
+        <button type="submit" disabled={guardando}>{guardando ? t("perfil.guardando") : t("perfil.guardarPerfil")}</button>
+        <button
+          type="button"
+          className="admin-link-btn"
+          onClick={() => { rellenar(perfil); setMensaje(null); setEditando(false); }}
+        >
+          {t("tablon.cancelar")}
+        </button>
+      </div>
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
     </form>
   );
