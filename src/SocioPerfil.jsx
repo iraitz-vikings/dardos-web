@@ -20,6 +20,7 @@ export default function SocioPerfil() {
   const [fabricantes, setFabricantes] = useState([]);
   const [editando, setEditando] = useState(false);
 
+  const [nombre, setNombre] = useState("");
   const [apodo, setApodo] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -40,6 +41,7 @@ export default function SocioPerfil() {
 
   function restaurarDesdePerfil(p) {
     if (!p) return;
+    setNombre(p.nombre || "");
     setApodo(p.apodo || "");
     setBio(p.bio || "");
     setAvatarUrl(p.avatarUrl || "");
@@ -127,6 +129,7 @@ export default function SocioPerfil() {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({
+          nombre,
           apodo,
           bio,
           avatarUrl,
@@ -150,12 +153,14 @@ export default function SocioPerfil() {
         }),
       });
       if (!res.ok) {
-        setMensaje({ tipo: "error", texto: t("perfil.noGuardoPerfil") });
+        const data = await res.json().catch(() => ({}));
+        setMensaje({ tipo: "error", texto: data.error || t("perfil.noGuardoPerfil") });
         return;
       }
       setMensaje({ tipo: "ok", texto: t("perfil.actualizado") });
       setPerfil((p) => ({
         ...p,
+        nombre,
         apodo,
         bio,
         avatarUrl,
@@ -243,7 +248,7 @@ export default function SocioPerfil() {
       )}
       <label>
         {t("perfil.nombre")}
-        <input value={perfil.nombre} disabled />
+        <input value={nombre} onChange={(e) => setNombre(e.target.value)} required />
       </label>
       <label>
         {t("perfil.email")}
