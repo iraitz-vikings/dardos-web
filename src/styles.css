@@ -263,6 +263,7 @@ a { color: inherit; text-decoration: none; }
     letter-spacing: normal;
 }
 .footer-map {
+    position: relative;
     flex: 1 1 320px;
     max-width: 420px;
     aspect-ratio: 4/3;
@@ -796,24 +797,31 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   height: 100%;
   object-fit: cover;
 }
-.video-home-play {
+/* Contenido de terceros que se carga con un clic (CargaExterna.jsx) */
+.carga-externa {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .5rem;
-  background: #0d0e11cc;
-  border: none;
+  gap: .6rem;
+  padding: 1rem;
+  background: #0d0e11;
+  text-align: center;
+}
+.carga-externa-boton {
+  background: none;
+  border: 1px solid var(--line);
+  padding: .6rem 1.2rem;
   color: var(--bone);
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: .06em;
   cursor: pointer;
 }
-.video-home-play:hover { color: var(--ember); }
+.carga-externa-boton:hover { color: var(--ember); border-color: var(--ember); }
+.carga-externa-aviso { margin: 0; max-width: 32rem; color: var(--bone-dim); font-size: .72rem; line-height: 1.4; text-transform: none; letter-spacing: normal; }
 
 .mensaje-anclado { max-width: 700px; margin: 1.5rem auto 0; padding: .8rem 1.2rem; text-align: center; border: 1px solid var(--ember); background: #1a0d0dcc; }
 .mensaje-anclado p { margin: 0; color: var(--ember); font-size: .95rem; letter-spacing: .02em; }

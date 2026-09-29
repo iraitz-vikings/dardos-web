@@ -1,4 +1,8 @@
+import CargaExterna from "./CargaExterna.jsx";
+import { useLang } from "./i18n.jsx";
+
 export default function Footer({ simple = false }) {
+  const { t } = useLang();
   if (simple) {
     return (
       <footer className="footer">
@@ -11,12 +15,15 @@ export default function Footer({ simple = false }) {
     <footer id="contacto" className="footer">
       <div className="footer-contact">
         <div className="footer-map">
-          <iframe
-            title="Ubicación del club"
-            src="https://www.google.com/maps?q=43.310774,-1.912812&z=17&output=embed"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
+          <CargaExterna servicio="Google Maps" boton={t("externo.verMapa")}>
+            {() => (
+              <iframe
+                title="Ubicación del club"
+                src="https://www.google.com/maps?q=43.310774,-1.912812&z=17&output=embed"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            )}
+          </CargaExterna>
         </div>
         <div className="footer-contact-info">
           <p className="footer-address">

@@ -12,6 +12,15 @@ import PaginaPartidas from "./PaginaPartidas.jsx";
 import PaginaTorneos from "./PaginaTorneos.jsx";
 import Carga from "./Carga.jsx";
 import { LanguageProvider } from "./i18n.jsx";
+// Fuentes servidas desde la propia web (paquetes @fontsource, empaquetados
+// por Vite) en vez de Google Fonts: cargarlas de fonts.googleapis.com manda
+// la IP de cada visitante a Google sin consentimiento, algo que el RGPD no
+// permite (revisión de normativa 2026-09-29).
+import "@fontsource/cinzel/600.css";
+import "@fontsource/cinzel/700.css";
+import "@fontsource/cinzel/900.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import "./styles.css";
 
 // Logos EN VERSIÓN TRANSPARENTE (no los iconos cuadrados opacos del

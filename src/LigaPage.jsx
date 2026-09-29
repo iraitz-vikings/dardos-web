@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import QrPagina from "./QrPagina.jsx";
 import BracketView from "./BracketView.jsx";
 import DirectoPartida, { BotonDirecto } from "./DirectoPartida.jsx";
 import PerfilJugadorPorId from "./PerfilJugadorPorId.jsx";
@@ -183,12 +184,7 @@ export default function LigaPage({ id }) {
 
               <details className="torneo-pagina-qr">
                 <summary>{t("torneoPage.share")}</summary>
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
-                  alt="Código QR de esta página"
-                  width={160}
-                  height={160}
-                />
+                <QrPagina />
                 <p className="torneo-pagina-qr-url">{window.location.href}</p>
               </details>
 
