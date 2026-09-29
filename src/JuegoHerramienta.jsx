@@ -1508,8 +1508,12 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
   if (!mostrar) {
     return (
       <div style={{ marginTop: "1.5rem" }}>
-        <button type="button" onClick={() => setMostrar(true)}>
-          🎯 Jugar con la herramienta de marcador
+        <button type="button" className="vikingscounter-btn" onClick={() => setMostrar(true)}>
+          <span className="vikingscounter-btn-icon" aria-hidden="true">🎯</span>
+          <span className="vikingscounter-btn-label">
+            <span className="vikingscounter-btn-text">VikingsCounter</span>
+            <span className="vikingscounter-btn-sub">Jugar con el marcador</span>
+          </span>
         </button>
       </div>
     );
@@ -1517,7 +1521,7 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
 
   return (
     <div className="marcador-herramienta-publica" style={{ marginTop: "1.5rem", border: "1px solid var(--line)", padding: "1rem" }}>
-      <h3 style={{ marginTop: 0 }}>Herramienta de marcador — {entidadNombre}</h3>
+      <h3 style={{ marginTop: 0 }}>VikingsCounter — {entidadNombre}</h3>
 
       {!token && <LoginPin onEntrar={alEntrar} />}
 
