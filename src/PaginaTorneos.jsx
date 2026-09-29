@@ -4,12 +4,14 @@ import Footer from "./Footer.jsx";
 import { LoginPin, CLAVE_TOKEN, CLAVE_JUGADOR } from "./JuegoHerramienta.jsx";
 import { apiFetch } from "./apiHerramienta.js";
 import { useLang } from "./i18n.jsx";
+import PerfilInvitado from "./PerfilInvitado.jsx";
 
-// Pestaña pública "Torneos" (/torneos): identificación con PIN (mismo
+// Pestaña pública "Invitados" (/torneos): identificación con PIN (mismo
 // sistema y misma sesión que la herramienta de marcador, sirve para
-// miembros, amigos e invitados) y, una vez dentro, solo los torneos/ligas
-// en los que participa el jugador Y que el admin ha marcado "anclar a
-// inicio" — ver GET /mis-competiciones en el backend.
+// miembros, amigos e invitados) y, una vez dentro, dos pestañas: "Perfil"
+// (foto, nombre, apodo y medias de fabricante, para amigos/invitados sin
+// cuenta) y "Competiciones" (los torneos/ligas en los que participa el
+// jugador Y que el admin ha marcado "anclar a inicio", ver /mis-competiciones).
 
 function fmtFecha(iso) {
   return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
@@ -23,6 +25,7 @@ export default function PaginaTorneos() {
   const [jugador, setJugador] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(CLAVE_JUGADOR) || "null"); } catch { return null; }
   });
+  const [vista, setVista] = useState("competiciones");
   const [competiciones, setCompeticiones] = useState(null);
   const [error, setError] = useState("");
 
@@ -66,7 +69,7 @@ export default function PaginaTorneos() {
 
           {!token && (
             <>
-              <p className="chronicle-status">Identifícate con tu PIN para ver tus torneos y ligas.</p>
+              <p className="chronicle-status">{t("invitados.identificate")}</p>
               <LoginPin onEntrar={alEntrar} />
             </>
           )}
@@ -74,34 +77,67 @@ export default function PaginaTorneos() {
           {token && (
             <>
               <p className="chronicle-status">
-                Sesión: <strong>{jugador?.nombre}</strong>{" "}
-                <button type="button" className="admin-link-btn" onClick={salir}>(cambiar de jugador)</button>
+                {t("invitados.sesion")}: <strong>{jugador?.nombre}</strong>{" "}
+                <button type="button" className="admin-link-btn" onClick={salir}>{t("invitados.cambiarJugador")}</button>
               </p>
-              {error && <p className="admin-msg admin-msg-error">{error}</p>}
-              {competiciones && competiciones.length === 0 && (
-                <p className="chronicle-status">No participas ahora mismo en ningún torneo o liga destacado.</p>
+
+              <nav className="admin-tabs" style={{ marginBottom: "1.2rem" }}>
+                <button
+                  type="button"
+                  className={`admin-tab ${vista === "perfil" ? "admin-tab-active" : ""}`}
+                  onClick={() => setVista("perfil")}
+                >
+                  {t("invitados.perfil")}
+                </button>
+                <button
+                  type="button"
+                  className={`admin-tab ${vista === "competiciones" ? "admin-tab-active" : ""}`}
+                  onClick={() => setVista("competiciones")}
+                >
+                  {t("invitados.competiciones")}
+                </button>
+              </nav>
+
+              {vista === "perfil" && (
+                <PerfilInvitado
+                  token={token}
+                  onNombreCambiado={(nombre) => {
+                    const actualizado = { ...(jugador || {}), nombre };
+                    setJugador(actualizado);
+                    try { sessionStorage.setItem(CLAVE_JUGADOR, JSON.stringify(actualizado)); } catch { /* memoria */ }
+                  }}
+                />
               )}
-              {competiciones && competiciones.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: ".75rem", maxWidth: 560 }}>
-                  {competiciones.map((c) => (
-                    <a
-                      key={`${c.tipo}-${c.id}`}
-                      className="admin-tab"
-                      style={{ display: "flex", gap: ".75rem", alignItems: "center", textAlign: "left", textDecoration: "none" }}
-                      href={`/${c.tipo === "liga" ? "liga" : "torneo"}/${c.id}`}
-                    >
-                      {c.insigniaUrl && <img src={c.insigniaUrl} alt="" width={48} height={48} style={{ objectFit: "contain" }} />}
-                      <span>
-                        <strong>{c.nombre}</strong>
-                        <br />
-                        <small>
-                          {c.tipo === "liga" ? "Liga" : "Torneo"} · {fmtFecha(c.fechaInicio)} – {fmtFecha(c.fechaFin)}
-                          {c.finalizado ? " · Finalizado" : ""} · {c.etiquetaPropia}
-                        </small>
-                      </span>
-                    </a>
-                  ))}
-                </div>
+
+              {vista === "competiciones" && (
+                <>
+                  {error && <p className="admin-msg admin-msg-error">{error}</p>}
+                  {competiciones && competiciones.length === 0 && (
+                    <p className="chronicle-status">No participas ahora mismo en ningún torneo o liga destacado.</p>
+                  )}
+                  {competiciones && competiciones.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: ".75rem", maxWidth: 560 }}>
+                      {competiciones.map((c) => (
+                        <a
+                          key={`${c.tipo}-${c.id}`}
+                          className="admin-tab"
+                          style={{ display: "flex", gap: ".75rem", alignItems: "center", textAlign: "left", textDecoration: "none" }}
+                          href={`/${c.tipo === "liga" ? "liga" : "torneo"}/${c.id}`}
+                        >
+                          {c.insigniaUrl && <img src={c.insigniaUrl} alt="" width={48} height={48} style={{ objectFit: "contain" }} />}
+                          <span>
+                            <strong>{c.nombre}</strong>
+                            <br />
+                            <small>
+                              {c.tipo === "liga" ? "Liga" : "Torneo"} · {fmtFecha(c.fechaInicio)} – {fmtFecha(c.fechaFin)}
+                              {c.finalizado ? " · Finalizado" : ""} · {c.etiquetaPropia}
+                            </small>
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { agruparPorSocio } from "./agruparJugadores.js";
 import { API_URL } from "./config.js";
+import SelectorImagen from "./SelectorImagen.jsx";
+import EditorMediasFabricante, { construirIdsFabricantes, mapasDesdeIdsFabricantes } from "./EditorMediasFabricante.jsx";
 
 
 export default function AdminJugadores({ token, salir }) {
@@ -16,6 +18,13 @@ export default function AdminJugadores({ token, salir }) {
   const [nombreEdicion, setNombreEdicion] = useState("");
   const [apodoEdicion, setApodoEdicion] = useState("");
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  // Foto y alias/medias de fabricante del amigo/invitado que se está editando
+  // (se cargan al abrir la edición con GET /api/jugadores/:id/perfil).
+  const [avatarEdicion, setAvatarEdicion] = useState("");
+  const [idsEdicion, setIdsEdicion] = useState({});
+  const [notasEdicion, setNotasEdicion] = useState({});
+  const [mediasEdicion, setMediasEdicion] = useState({});
+  const [fabricantes, setFabricantes] = useState([]);
   // PIN de partidas (4 dígitos) para jugar con la herramienta de marcador en
   // torneos/ligas — el admin puede ponérselo/cambiárselo a cualquier
   // jugador, socio o invitado (el socio también puede desde su perfil).
@@ -108,6 +117,10 @@ export default function AdminJugadores({ token, salir }) {
 
   useEffect(() => {
     cargar();
+    fetch(`${API_URL}/api/fabricantes`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setFabricantes)
+      .catch(() => {});
   }, []);
 
   async function crear(e) {
@@ -176,6 +189,22 @@ export default function AdminJugadores({ token, salir }) {
     setEditandoId(j.id);
     setNombreEdicion(j.nombre);
     setApodoEdicion(j.apodo || "");
+    // Foto y medias vacías hasta que llegue el perfil.
+    setAvatarEdicion("");
+    setIdsEdicion({});
+    setNotasEdicion({});
+    setMediasEdicion({});
+    fetch(`${API_URL}/api/jugadores/${j.id}/perfil`, { headers: { "x-admin-token": token } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => {
+        if (!p) return;
+        setAvatarEdicion(p.avatarUrl || "");
+        const { ids, notas, medias } = mapasDesdeIdsFabricantes(p.idsFabricantes);
+        setIdsEdicion(ids);
+        setNotasEdicion(notas);
+        setMediasEdicion(medias);
+      })
+      .catch(() => {});
   }
 
   function cancelarEdicion() {
@@ -190,7 +219,12 @@ export default function AdminJugadores({ token, salir }) {
       const res = await fetch(`${API_URL}/api/jugadores/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre: nombreEdicion.trim(), apodo: apodoEdicion }),
+        body: JSON.stringify({
+          nombre: nombreEdicion.trim(),
+          apodo: apodoEdicion,
+          avatarUrl: avatarEdicion,
+          idsFabricantes: construirIdsFabricantes(fabricantes, idsEdicion, notasEdicion, mediasEdicion),
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -347,6 +381,25 @@ export default function AdminJugadores({ token, salir }) {
                     Apodo (opcional)
                     <input value={apodoEdicion} onChange={(e) => setApodoEdicion(e.target.value)} />
                   </label>
+                  <label>
+                    Foto (opcional)
+                    <SelectorImagen
+                      token={token}
+                      valor={avatarEdicion}
+                      onCambiar={setAvatarEdicion}
+                      onError={(msg) => setMensaje({ tipo: "error", texto: msg })}
+                      etiqueta="Foto"
+                    />
+                  </label>
+                  <EditorMediasFabricante
+                    fabricantes={fabricantes}
+                    ids={idsEdicion}
+                    notas={notasEdicion}
+                    medias={mediasEdicion}
+                    onId={(fid, v) => setIdsEdicion((p) => ({ ...p, [fid]: v }))}
+                    onNota={(fid, v) => setNotasEdicion((p) => ({ ...p, [fid]: v }))}
+                    onMedia={(fid, campo, v) => setMediasEdicion((p) => ({ ...p, [fid]: { ...p[fid], [campo]: v } }))}
+                  />
                   <button type="button" disabled={guardandoEdicion || !nombreEdicion.trim()} onClick={() => guardarEdicion(j.id)}>
                     {guardandoEdicion ? "Guardando…" : "Guardar"}
                   </button>
@@ -371,7 +424,7 @@ export default function AdminJugadores({ token, salir }) {
               <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
                 {!j.usuario && (
                   <>
-                    <button className="admin-link-btn" onClick={() => empezarEdicion(j)}>Editar nombre</button>
+                    <button className="admin-link-btn" onClick={() => empezarEdicion(j)}>Editar perfil</button>
                     <button className="admin-link-btn" onClick={() => { setFusionandoId(j.id); setDestinoFusion(""); }}>Fusionar en…</button>
                     <button className="admin-link-btn" disabled={copiando === j.id} onClick={() => copiarEnlaceAvisos(j.id)}>
                       {copiando === j.id ? "Copiando…" : "Copiar enlace de avisos"}
