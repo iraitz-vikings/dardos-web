@@ -413,7 +413,7 @@ const dic = {
     "patrocinadores.eyebrow": "Patrocinador oficial",
 
     "externo.aviso": "Se carga desde {servicio}, que recibirá tu IP y puede guardar cookies.",
-    "externo.verMapa": "🗺 Ver mapa",
+    "footer.abrirMapa": "Abrir en Google Maps ↗",
     "footer.copy": "Vikings Darts Club",
   },
   eu: {
@@ -828,7 +828,7 @@ const dic = {
     "patrocinadores.eyebrow": "Babesle ofiziala",
 
     "externo.aviso": "{servicio}-etik kargatzen da; zure IPa jasoko du eta cookieak gorde ditzake.",
-    "externo.verMapa": "🗺 Mapa ikusi",
+    "footer.abrirMapa": "Google Maps-en ireki ↗",
     "footer.copy": "Vikings Darts Club",
   },
   // Francés: cubre las páginas públicas de la web (Nav, Inicio, Histórico,
@@ -947,7 +947,7 @@ const dic = {
     "patrocinadores.eyebrow": "Sponsor officiel",
 
     "externo.aviso": "Chargé depuis {servicio}, qui recevra votre IP et peut enregistrer des cookies.",
-    "externo.verMapa": "🗺 Voir la carte",
+    "footer.abrirMapa": "Ouvrir dans Google Maps ↗",
     "footer.copy": "Vikings Darts Club",
   },
 };
