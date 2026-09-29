@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { CLUB } from "./club.js";
 
 const dic = {
   es: {
@@ -49,7 +50,7 @@ const dic = {
     "zona.calendario": "Calendario",
     "zona.marcadores": "Marcadores 501/Cricket",
     "zona.amistoso": "Amistoso remoto",
-    "zona.vikingsCounter": "VikingsCounter",
+    "zona.vikingsCounter": CLUB.nombreMarcador,
     "vc.local": "Partido local",
     "vc.remoto": "Partido remoto",
     "vc.localHint": "Lleva el marcador de un partido aquí, en este mismo dispositivo.",
@@ -341,15 +342,10 @@ const dic = {
     "marcador.dobleMin": "doble",
     "marcador.enviar": "Enviar",
 
-    "hero.eyebrow": "Vikings · Club de dardos",
-    "hero.title1": "La incursión",
-    "hero.title2": "ya ha comenzado",
-    "hero.subtitle": "Noticias, fotos de eventos y crónicas del club. Un solo lugar para seguir todo lo que pasa dentro y fuera de la diana.",
 
     "torneo.eyebrow": "Próximo evento",
     "torneo.title": "Próximo torneo",
 
-    "video.eyebrow": "Vikings TV",
     "video.title": "Con esto empieza todo",
     "video.play": "▶ Reproducir vídeo",
     "video.unmute": "🔊 Activar sonido",
@@ -415,7 +411,6 @@ const dic = {
 
     "externo.aviso": "Se carga desde {servicio}, que recibirá tu IP y puede guardar cookies.",
     "footer.abrirMapa": "Abrir en Google Maps ↗",
-    "footer.copy": "Vikings Darts Club",
   },
   eu: {
     "nav.cronica": "Kronika",
@@ -465,7 +460,7 @@ const dic = {
     "zona.calendario": "Egutegia",
     "zona.marcadores": "501/Cricket markagailuak",
     "zona.amistoso": "Adiskidetasunezkoa urrunetik",
-    "zona.vikingsCounter": "VikingsCounter",
+    "zona.vikingsCounter": CLUB.nombreMarcador,
     "vc.local": "Partida lokala",
     "vc.remoto": "Urrutiko partida",
     "vc.localHint": "Eraman partida baten markagailua hemen, gailu honetan bertan.",
@@ -757,15 +752,10 @@ const dic = {
     "marcador.dobleMin": "bikoitza",
     "marcador.enviar": "Bidali",
 
-    "hero.eyebrow": "Vikings · Dardo kluba",
-    "hero.title1": "Erasoaldia",
-    "hero.title2": "hasi da",
-    "hero.subtitle": "Berriak, ekitaldien argazkiak eta klubaren kronikak. Diana barruan zein kanpoan gertatzen den guztia jarraitzeko toki bakarra.",
 
     "torneo.eyebrow": "Hurrengo ekitaldia",
     "torneo.title": "Hurrengo txapelketa",
 
-    "video.eyebrow": "Vikings TV",
     "video.title": "Honela hasten da dena",
     "video.play": "▶ Bideoa erreproduzitu",
     "video.unmute": "🔊 Soinua aktibatu",
@@ -831,7 +821,6 @@ const dic = {
 
     "externo.aviso": "{servicio}-etik kargatzen da; zure IPa jasoko du eta cookieak gorde ditzake.",
     "footer.abrirMapa": "Google Maps-en ireki ↗",
-    "footer.copy": "Vikings Darts Club",
   },
   // Francés: cubre las páginas públicas de la web (Nav, Inicio, Histórico,
   // Galería, página de torneo/liga, login) — a petición de Iraitz,
@@ -884,12 +873,7 @@ const dic = {
     "socios.errorConexion": "Erreur de connexion au serveur.",
     "socios.sesionCaducada": "Ta session a expiré. Reconnecte-toi.",
 
-    "hero.eyebrow": "Vikings · Club de fléchettes",
-    "hero.title1": "L'incursion",
-    "hero.title2": "a déjà commencé",
-    "hero.subtitle": "Actualités, photos d'événements et chroniques du club. Un seul endroit pour suivre tout ce qui se passe autour de la cible.",
 
-    "video.eyebrow": "Vikings TV",
     "video.title": "Tout commence ici",
     "video.play": "▶ Lire la vidéo",
     "video.unmute": "🔊 Activer le son",
@@ -958,7 +942,6 @@ const dic = {
 
     "externo.aviso": "Chargé depuis {servicio}, qui recevra votre IP et peut enregistrer des cookies.",
     "footer.abrirMapa": "Ouvrir dans Google Maps ↗",
-    "footer.copy": "Vikings Darts Club",
   },
 };
 
@@ -971,7 +954,11 @@ export function LanguageProvider({ children }) {
     localStorage.setItem("idioma", lang);
   }, [lang]);
 
-  const t = (clave) => dic[lang]?.[clave] ?? dic.es[clave] ?? clave;
+  // Los textos propios del club (club.config.js → textos) mandan sobre los
+  // genéricos de este diccionario.
+  const textosClub = CLUB.textos || {};
+  const t = (clave) =>
+    textosClub[lang]?.[clave] ?? dic[lang]?.[clave] ?? textosClub.es?.[clave] ?? dic.es[clave] ?? clave;
 
   return <LanguageContext.Provider value={{ lang, setLang, t }}>{children}</LanguageContext.Provider>;
 }

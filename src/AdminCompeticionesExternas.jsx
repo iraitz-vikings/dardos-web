@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_URL } from "./config.js";
+import { CLUB } from "./club.js";
 
 
 // El significado de "Id externo" depende de la plataforma: en Radikal Darts
@@ -296,7 +297,7 @@ export default function AdminCompeticionesExternas({ token, salir }) {
                 eq.clasificacion?.length > 0 && (
                   <div key={eq.id} style={{ marginTop: ".8rem" }}>
                     <p className="admin-hint" style={{ marginBottom: 0 }}>
-                      <strong>{eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}</strong>
+                      <strong>{eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto}</strong>
                       {eq.idExternoEquipo ? ` (${eq.idExternoEquipo} en ${t.plataforma?.nombre})` : ""}
                     </p>
                     <TablaClasificacion filas={eq.clasificacion} />
@@ -306,7 +307,7 @@ export default function AdminCompeticionesExternas({ token, salir }) {
 
               <p className="admin-hint" style={{ marginTop: ".8rem" }}>
                 {t.equipos?.length > 0
-                  ? `Equipos del club inscritos: ${t.equipos.map((eq) => eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings").join(", ")}. Gestiónalos desde la pestaña "Equipos".`
+                  ? `Equipos del club inscritos: ${t.equipos.map((eq) => eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto).join(", ")}. Gestiónalos desde la pestaña "Equipos".`
                   : 'Todavía no hay ningún equipo del club inscrito en esta competición. Ve a la pestaña "Equipos" para inscribir uno.'}
               </p>
             </div>

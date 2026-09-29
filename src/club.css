@@ -1,0 +1,20 @@
+/* Colores y fondo propios del club. Es el único CSS que hay que tocar para
+   cambiar la paleta de otro club (ver NUEVO-CLUB.md); styles.css usa estas
+   variables. Ojo: styles.css aún tiene algunos tonos derivados de esta
+   paleta escritos a mano (p.ej. #0e0f13cc, #9a2b2814 en degradados y
+   fondos semitransparentes): si se cambia --iron o --blood mucho, conviene
+   repasarlos con una búsqueda de "#0e0f13" y "#9a2b28". El color de la
+   barra del navegador/app instalada está en club.config.js (colorTema). */
+:root {
+    --iron: #0e0f13;
+    --iron-2: #191b22;
+    --bone: #e7e0cd;
+    --bone-dim: #e7e0cd8c;
+    --blood: #9a2b28;
+    --ember: #c96a2e;
+    --steel: #8891a0;
+    --line: #e7e0cd1f;
+
+    /* Foto de fondo de la portada/web (bajo un degradado oscuro). */
+    --club-fondo: url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg");
+}

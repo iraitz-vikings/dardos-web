@@ -1,5 +1,6 @@
   import { useEffect, useState } from "react";
-const ADMIN_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/e_background_removal/e_trim/b_transparent,c_pad,h_512,w_512/f_png/v1789816550/IMG-20260910-WA0004_o3n7ly.png";
+import { CLUB } from "./club.js";
+const ADMIN_EMBLEM_URL = CLUB.imagenes.logoAdmin;
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
 import AdminPatrocinadores from "./AdminPatrocinadores.jsx";
 import AdminSocios from "./AdminSocios.jsx";
@@ -520,7 +521,7 @@ function cancelarEdicionNoticia() {
   if (!token) {
     return (
       <div className="admin-gate">
-        <img src={ADMIN_EMBLEM_URL} alt="Escudo Vikings" className="admin-emblem" />
+        <img src={ADMIN_EMBLEM_URL} alt={`Escudo ${CLUB.nombreCorto}`} className="admin-emblem" />
         <h1>Panel del club</h1>
         <form onSubmit={entrar} className="admin-login-form">
           <input

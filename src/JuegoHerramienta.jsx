@@ -5,6 +5,7 @@ import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
 import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
 import CamarasPartida, { CamarasRival } from "./CamarasPartida.jsx";
 import { apiFetch } from "./apiHerramienta.js";
+import { CLUB } from "./club.js";
 import {
   buscarCierre,
   calcularPuntosCricket,
@@ -1511,7 +1512,7 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
         <button type="button" className="vikingscounter-btn" onClick={() => setMostrar(true)}>
           <span className="vikingscounter-btn-icon" aria-hidden="true">🎯</span>
           <span className="vikingscounter-btn-label">
-            <span className="vikingscounter-btn-text">VikingsCounter</span>
+            <span className="vikingscounter-btn-text">{CLUB.nombreMarcador}</span>
             <span className="vikingscounter-btn-sub">Jugar con el marcador</span>
           </span>
         </button>
@@ -1521,7 +1522,7 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
 
   return (
     <div className="marcador-herramienta-publica" style={{ marginTop: "1.5rem", border: "1px solid var(--line)", padding: "1rem" }}>
-      <h3 style={{ marginTop: 0 }}>VikingsCounter — {entidadNombre}</h3>
+      <h3 style={{ marginTop: 0 }}>{CLUB.nombreMarcador} — {entidadNombre}</h3>
 
       {!token && <LoginPin onEntrar={alEntrar} />}
 

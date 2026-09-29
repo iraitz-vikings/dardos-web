@@ -3,34 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vikings Club de Dardos</title>
-  <meta name="description" content="Vikings Club de Dardos — noticias, crónicas y torneos del club." />
-  <link rel="canonical" href="https://www.vikingsdartsclub.es/">
+  <title>{{nombre}}</title>
+  <meta name="description" content="{{descripcion}}" />
+  <link rel="canonical" href="{{dominio}}/">
 
   <!-- Open Graph / redes sociales (WhatsApp, Facebook, Instagram...). La web
        es una SPA sin renderizado en servidor, así que estas etiquetas son
        las mismas para cualquier URL del sitio — no hay vista previa
-       específica por torneo/noticia sin añadir renderizado en servidor. -->
+       específica por torneo/noticia sin añadir renderizado en servidor.
+       Los marcadores entre dobles llaves los rellena vite.config.js con los
+       datos de club.config.js. -->
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Vikings Club de Dardos">
-  <meta property="og:title" content="Vikings Club de Dardos">
-  <meta property="og:description" content="Noticias, crónicas y torneos del Vikings Club de Dardos.">
-  <meta property="og:url" content="https://www.vikingsdartsclub.es/">
-  <meta property="og:image" content="https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_512,w_512/f_png/v1789382604/vikings-logo-icono-2026.png">
+  <meta property="og:site_name" content="{{nombre}}">
+  <meta property="og:title" content="{{nombre}}">
+  <meta property="og:description" content="{{descripcionRedes}}">
+  <meta property="og:url" content="{{dominio}}/">
+  <meta property="og:image" content="{{imagenes.redes}}">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Vikings Club de Dardos">
-  <meta name="twitter:description" content="Noticias, crónicas y torneos del Vikings Club de Dardos.">
-  <meta name="twitter:image" content="https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_512,w_512/f_png/v1789382604/vikings-logo-icono-2026.png">
+  <meta name="twitter:title" content="{{nombre}}">
+  <meta name="twitter:description" content="{{descripcionRedes}}">
+  <meta name="twitter:image" content="{{imagenes.redes}}">
 
   <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/x-icon" href="https://res.cloudinary.com/lodi1y1k/image/upload/b_transparent,c_pad,h_32,w_32/f_ico/v1789382590/vikings-logo-transparente-2026.ico">
-  <link rel="icon" type="image/png" sizes="16x16" href="https://res.cloudinary.com/lodi1y1k/image/upload/b_transparent,c_pad,h_16,w_16/f_png/v1789382590/vikings-logo-transparente-2026.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="https://res.cloudinary.com/lodi1y1k/image/upload/b_transparent,c_pad,h_32,w_32/f_png/v1789382590/vikings-logo-transparente-2026.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_180,w_180/f_png/v1789382604/vikings-logo-icono-2026.png">
-  <meta name="theme-color" content="#0e0f13">
+  <link rel="icon" type="image/x-icon" href="{{imagenes.favicon.ico}}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{imagenes.favicon.png16}}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{imagenes.favicon.png32}}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{imagenes.favicon.apple}}">
+  <meta name="theme-color" content="{{colorTema}}">
 </head>
 <body>
   <div id="root"></div>
+  <script src="/club-config.js"></script>
   <script src="/push-token-db.js"></script>
   <script type="module" src="/src/main.jsx"></script>
 </body>

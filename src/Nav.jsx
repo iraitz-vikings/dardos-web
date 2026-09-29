@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { EMBLEM_DATA_URI } from "./emblem.js";
-const NAV_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/f_auto,q_auto/v1789382590/vikings-logo-transparente-2026.png";
 import LiveTicker from "./LiveTicker.jsx";
 import Buscador from "./Buscador.jsx";
 import { useLang } from "./i18n.jsx";
+import { CLUB } from "./club.js";
 
 export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -13,8 +12,8 @@ export default function Nav() {
     <>
       <header className="nav">
         <a className="nav-brand" href="/#inicio" onClick={() => setMenuOpen(false)}>
-          <img src={NAV_EMBLEM_URL} alt="Escudo Vikings" className="nav-emblem" />
-          <span>Vikings <em>Darts Club</em></span>
+          <img src={CLUB.imagenes.logo} alt={`Escudo ${CLUB.nombreCorto}`} className="nav-emblem" />
+          <span>{CLUB.marcaNav.principal} <em>{CLUB.marcaNav.secundario}</em></span>
         </a>
 
         <button
@@ -45,18 +44,20 @@ export default function Nav() {
             <span>/</span>
             <button type="button" className={lang === "fr" ? "nav-lang-activo" : ""} onClick={() => setLang("fr")}>FR</button>
           </div>
-          <a
-            href="https://www.facebook.com/Vikingsdartsclub/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="nav-social"
-            aria-label="Facebook del club"
-            onClick={() => setMenuOpen(false)}
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-              <path d="M13.5 21v-7.5h2.5l.4-3H13.5V8.5c0-.87.24-1.46 1.49-1.46H16.5V4.36C16.24 4.32 15.36 4.25 14.33 4.25c-2.15 0-3.62 1.31-3.62 3.72V10.5H8.2v3h2.51V21h2.79z" />
-            </svg>
-          </a>
+          {CLUB.redes?.facebook && (
+            <a
+              href={CLUB.redes.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="nav-social"
+              aria-label="Facebook del club"
+              onClick={() => setMenuOpen(false)}
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                <path d="M13.5 21v-7.5h2.5l.4-3H13.5V8.5c0-.87.24-1.46 1.49-1.46H16.5V4.36C16.24 4.32 15.36 4.25 14.33 4.25c-2.15 0-3.62 1.31-3.62 3.72V10.5H8.2v3h2.51V21h2.79z" />
+              </svg>
+            </a>
+          )}
         </nav>
       </header>
       <LiveTicker />

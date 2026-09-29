@@ -1,7 +1,8 @@
 import CargaExterna from "./CargaExterna.jsx";
 import { useLang } from "./i18n.jsx";
+import { CLUB } from "./club.js";
 
-const VIDEO_ID = "RV6ZBv9Y8wo";
+const VIDEO_ID = CLUB.videoPortadaYoutube;
 
 // Antes se cargaba la API de YouTube al abrir la portada e intentaba
 // reproducirse sola. Ahora el vídeo no se pide a YouTube hasta que el
@@ -9,6 +10,8 @@ const VIDEO_ID = "RV6ZBv9Y8wo";
 // sin cookies de YouTube (revisión de normativa 2026-09-29).
 export default function VideoHome() {
   const { t } = useLang();
+
+  if (!VIDEO_ID) return null;
 
   return (
     <section id="video" className="video-home">

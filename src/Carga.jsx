@@ -12,6 +12,7 @@
 // navegador a partir del manifest.json (icono + background_color) y no se
 // puede animar ni personalizar más allá de eso.
 import { useEffect, useState } from "react";
+import { CLUB } from "./club.js";
 
 const DURACION_VISIBLE_MS = 1500;
 const DURACION_SALIDA_MS = 500;
@@ -45,7 +46,7 @@ export default function Carga({ logoUrl }) {
     <div className={`carga-inicial ${fase === "saliendo" ? "carga-inicial-saliendo" : ""}`}>
       <div className="carga-inicial-glow" />
       <div className="carga-inicial-logo-wrap">
-        <img src={logoUrl} alt="Vikings" className="carga-inicial-logo" />
+        <img src={logoUrl} alt={CLUB.nombreCorto} className="carga-inicial-logo" />
         <div className="carga-inicial-brillo" style={mascara} />
       </div>
     </div>

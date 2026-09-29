@@ -2,15 +2,16 @@
 // Push y abrir la web al pulsarlos. No cachea nada (no es una PWA offline),
 // así que no hay que tocarlo cada vez que se despliega una versión nueva.
 
-// push-token-db.js define guardarTokenResuscripcionPush/leerTokenResuscripcionPush
-// en self (ver ese archivo) — comparte código con SocioPerfil.jsx sin poder
-// usar imports de módulo ES en un service worker.
-importScripts("/push-token-db.js");
+// club-config.js (lo genera vite.config.js a partir de club.config.js)
+// deja en self.CLUB_CONFIG la URL del backend, el nombre de la app y los
+// iconos de los avisos — este archivo es estático (no pasa por Vite) y no
+// puede importar módulos. push-token-db.js define
+// guardarTokenResuscripcionPush/leerTokenResuscripcionPush en self (ver ese
+// archivo) — comparte código con SocioPerfil.jsx.
+importScripts("/club-config.js", "/push-token-db.js");
 
-// URL del backend, en duro porque este archivo es estático (no pasa por
-// Vite/import.meta como el resto del frontend). Si cambia la URL de
-// producción del backend, hay que actualizarla aquí también.
-const API_URL_SW = "https://dardos-club-backend-production.up.railway.app";
+const CLUB_SW = self.CLUB_CONFIG;
+const API_URL_SW = CLUB_SW.apiUrl;
 
 function claveVapidABytesSW(base64) {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -32,24 +33,24 @@ self.addEventListener("push", (event) => {
   try {
     datos = event.data ? event.data.json() : {};
   } catch {
-    datos = { titulo: "Vikings Dardos", cuerpo: event.data ? event.data.text() : "" };
+    datos = { titulo: CLUB_SW.nombreApp, cuerpo: event.data ? event.data.text() : "" };
   }
 
-  const titulo = datos.titulo || "Vikings Dardos";
+  const titulo = datos.titulo || CLUB_SW.nombreApp;
   const opciones = {
     body: datos.cuerpo || "",
-    icon: "https://res.cloudinary.com/lodi1y1k/image/upload/c_fill,g_auto,h_192,w_192/f_png/v1789382604/vikings-logo-icono-2026.png",
+    icon: CLUB_SW.iconoAviso,
     // "badge" es el icono monocromo de la barra de estado en Android: el SO
     // solo mira el canal alfa (transparencia) y pinta de blanco todo lo
     // opaco, ignorando el color y el relieve interior. El escudo circular
     // es una moneda maciza (opaca de borde a borde salvo el fondo ya
     // quitado), así que Android solo veía "un círculo relleno" y lo pintaba
     // como un blob/cuadrado blanco sin forma reconocible. Por eso aquí
-    // usamos un icono aparte, pensado para esto: una silueta plana (casco
-    // vikingo con cuernos + calavera) generada con IA a partir del escudo,
-    // con huecos reales de transparencia en ojos/boca, para que sí se vea
-    // una forma reconocible a tamaño diminuto.
-    badge: "https://res.cloudinary.com/lodi1y1k/image/upload/b_transparent,c_pad,h_96,w_96/f_png/v1789828140/vikings-notif-badge-silueta-2026-v5.png",
+    // usamos un icono aparte, pensado para esto (club.config.js →
+    // imagenes.badgeAviso): una silueta plana con huecos reales de
+    // transparencia, para que sí se vea una forma reconocible a tamaño
+    // diminuto.
+    badge: CLUB_SW.badgeAviso,
     data: { url: datos.url || "/" },
   };
   // Un tag por partido (lo pone el backend, ver enviarPushAJugador en
