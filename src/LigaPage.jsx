@@ -3,6 +3,7 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import BracketView from "./BracketView.jsx";
 import DirectoPartida, { BotonDirecto } from "./DirectoPartida.jsx";
+import PerfilJugadorPorId from "./PerfilJugadorPorId.jsx";
 import AccesoHerramienta from "./JuegoHerramienta.jsx";
 import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
@@ -111,6 +112,10 @@ export default function LigaPage({ id }) {
       partidaId: p.partidaHerramienta.id,
       titulo: `${p.participante1 || p.jugador1 || "?"} vs ${p.participante2 || p.jugador2 || "?"}`,
     });
+  // Perfil al pulsar un nombre del cuadrante final: solo para socios
+  // identificados (el modal enseña las medias).
+  const [perfilId, setPerfilId] = useState(null);
+  const verPerfil = typeof window !== "undefined" && localStorage.getItem("socioToken") ? setPerfilId : undefined;
 
   const [clasificacion, setClasificacion] = useState(null);
 
@@ -254,12 +259,13 @@ export default function LigaPage({ id }) {
                     onChange={(e) => setBusqueda(e.target.value)}
                     style={{ marginBottom: "1rem" }}
                   />
-                  <BracketView cuadrante={cuadrante} busqueda={busqueda} onVerDirecto={verDirecto} />
+                  <BracketView cuadrante={cuadrante} busqueda={busqueda} onVerDirecto={verDirecto} onVerPerfil={verPerfil} />
                 </>
               )}
             </>
           )}
           {directo && <DirectoPartida partidaId={directo.partidaId} titulo={directo.titulo} onCerrar={() => setDirecto(null)} />}
+          {perfilId && <PerfilJugadorPorId jugadorId={perfilId} onClose={() => setPerfilId(null)} />}
         </section>
       </main>
       <Footer simple />
