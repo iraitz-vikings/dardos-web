@@ -3,6 +3,7 @@ import BracketView from "./BracketView.jsx";
 import useResaltadoReciente from "./useResaltadoReciente.js";
 import { useLang } from "./i18n.jsx";
 import DirectoPartida, { BotonDirecto } from "./DirectoPartida.jsx";
+import PerfilJugadorPorId from "./PerfilJugadorPorId.jsx";
 
 function Partido({ p, mostrarCuadrante, onVerDirecto }) {
   const reciente = useResaltadoReciente(p.enCurso, p.actualizadoEn);
@@ -44,11 +45,11 @@ function ClasificacionCuadrante({ puntosJornada }) {
   );
 }
 
-function Cuadrante({ cuadrante, busqueda, onVerDirecto }) {
+function Cuadrante({ cuadrante, busqueda, onVerDirecto, onVerPerfil }) {
   return (
     <div className="live-tournament-cuadrante-visual">
       <h4>{cuadrante.nombre}</h4>
-      <BracketView cuadrante={cuadrante} busqueda={busqueda} onVerDirecto={onVerDirecto} />
+      <BracketView cuadrante={cuadrante} busqueda={busqueda} onVerDirecto={onVerDirecto} onVerPerfil={onVerPerfil} />
       <ClasificacionCuadrante puntosJornada={cuadrante.puntosJornada} />
     </div>
   );
@@ -61,6 +62,11 @@ export default function LiveTournament({ torneo }) {
   // Partido cuyo marcador en directo está abierto (ventanita, ver DirectoPartida.jsx).
   const [directo, setDirecto] = useState(null);
   const verDirecto = (p) => setDirecto({ partidaId: p.partidaHerramienta.id, titulo: `${p.jugador1 || "?"} vs ${p.jugador2 || "?"}` });
+  // Perfil al pulsar un nombre del cuadrante: solo para socios identificados
+  // (el modal enseña las medias, ver decisión "solo identificados").
+  const [perfilId, setPerfilId] = useState(null);
+  const identificado = !!localStorage.getItem("socioToken");
+  const verPerfil = identificado ? setPerfilId : undefined;
   const cuadrantes = torneo.cuadrantes || [];
   const partidos = cuadrantes.flatMap((c) => c.partidos.map((p) => ({ ...p, cuadranteNombre: c.nombre })));
 
@@ -120,10 +126,11 @@ export default function LiveTournament({ torneo }) {
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
-          {cuadrantes.map((c) => <Cuadrante key={c.id} cuadrante={c} busqueda={busqueda} onVerDirecto={verDirecto} />)}
+          {cuadrantes.map((c) => <Cuadrante key={c.id} cuadrante={c} busqueda={busqueda} onVerDirecto={verDirecto} onVerPerfil={verPerfil} />)}
         </div>
       )}
       {directo && <DirectoPartida partidaId={directo.partidaId} titulo={directo.titulo} onCerrar={() => setDirecto(null)} />}
+      {perfilId && <PerfilJugadorPorId jugadorId={perfilId} onClose={() => setPerfilId(null)} />}
     </div>
   );
 }

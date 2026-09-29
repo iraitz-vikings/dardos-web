@@ -1,7 +1,41 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import useResaltadoReciente from "./useResaltadoReciente.js";
 import { esPartidoEnDirecto } from "./DirectoPartida.jsx";
 import useTemporizadorPartido from "./useTemporizadorPartido.js";
+
+// Contexto para poder abrir el perfil de un jugador al pulsar su nombre en el
+// cuadrante, sin tener que pasar el handler por cada componente intermedio
+// (BracketRama, BracketMirror, Caja, final). Vale null cuando no aplica (p.ej.
+// visitante sin identificar, o en el panel de admin donde la caja ya es
+// clicable para editar). value = { onVerPerfil(jugadorId), jugadoresDeEtiqueta(etiqueta) }.
+const PerfilCuadranteContext = createContext(null);
+
+// Muestra el nombre de un lado de un enfrentamiento. Si el contexto de perfil
+// está activo y la etiqueta corresponde a participantes conocidos, cada
+// nombre es clicable y abre su perfil; si no, es texto plano.
+function NombreCuadrante({ etiqueta, textoPorDefecto }) {
+  const ctx = useContext(PerfilCuadranteContext);
+  const jugadores = ctx && etiqueta ? ctx.jugadoresDeEtiqueta(etiqueta) : null;
+  if (!jugadores || jugadores.length === 0) {
+    return <>{etiqueta || textoPorDefecto}</>;
+  }
+  return (
+    <>
+      {jugadores.map((j, i) => (
+        <span key={j.id}>
+          {i > 0 && " / "}
+          <button
+            type="button"
+            className="bracket-nombre-perfil"
+            onClick={(e) => { e.stopPropagation(); ctx.onVerPerfil(j.id); }}
+          >
+            {j.nombre}
+          </button>
+        </span>
+      ))}
+    </>
+  );
+}
 
 const BOX_W = 176;
 const BOX_H = 50;
@@ -169,10 +203,10 @@ function Caja({ x, y, partido, busqueda, ultimaAparicion, onClick: onClickAdmin,
           {partido.ronda}{partido.maquina ? ` · ${partido.maquina}` : ""}
         </div>
         <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador1 ? "bracket-box-ganador" : ""} ${coincideJ1 ? "bracket-box-jugador-encontrado" : ""}`}>
-          {partido.jugador1 || (partido.ganador ? "BYE" : "?")}
+          <NombreCuadrante etiqueta={partido.jugador1} textoPorDefecto={partido.ganador ? "BYE" : "?"} />
         </div>
         <div className={`bracket-box-jugador ${partido.ganador && partido.ganador === partido.jugador2 ? "bracket-box-ganador" : ""} ${coincideJ2 ? "bracket-box-jugador-encontrado" : ""}`}>
-          {partido.jugador2 || (partido.ganador ? "BYE" : "?")}
+          <NombreCuadrante etiqueta={partido.jugador2} textoPorDefecto={partido.ganador ? "BYE" : "?"} />
         </div>
       </div>
     </foreignObject>
@@ -370,13 +404,28 @@ function BracketMirror({ ganadores, perdedores, busqueda, ultimaAparicion, onCli
 // pasan y el cuadrante se queda de solo lectura. `partidosBloqueados` es un
 // Set opcional de ids de partidos cuya ronda anterior no ha terminado, para
 // marcarlos con un candado.
-export default function BracketView({ cuadrante, busqueda, onClickPartido, onVerDirecto, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
+export default function BracketView({ cuadrante, busqueda, onClickPartido, onVerDirecto, onVerPerfil, partidosBloqueados, temporizadorActivo, temporizadorMinutos }) {
   const ganadores = cuadrante.partidos.filter((p) => p.rama === "ganadores");
   const perdedores = cuadrante.partidos.filter((p) => p.rama === "perdedores");
   const finales = cuadrante.partidos.filter((p) => p.rama === "final").sort((a, b) => a.posicion - b.posicion);
   const ultimaAparicion = construirUltimaAparicion(cuadrante.partidos);
 
+  // Perfil al pulsar un nombre: solo si nos han pasado onVerPerfil (visitante
+  // identificado). Resuelve la etiqueta de un lado a sus jugadores usando los
+  // participantes del cuadrante (cada uno con su jugador1/jugador2).
+  const perfilCtx = onVerPerfil
+    ? {
+        onVerPerfil,
+        jugadoresDeEtiqueta: (etiqueta) => {
+          const p = (cuadrante.participantes || []).find((x) => x.etiqueta === etiqueta);
+          if (!p) return null;
+          return [p.jugador1, p.jugador2].filter((j) => j && j.id);
+        },
+      }
+    : null;
+
   return (
+    <PerfilCuadranteContext.Provider value={perfilCtx}>
     <div className="bracket-visual">
       {perdedores.length > 0 ? (
         <BracketMirror
@@ -425,11 +474,11 @@ export default function BracketView({ cuadrante, busqueda, onClickPartido, onVer
                 {i === 1 && <span className="bracket-final-desempate">Partido decisivo</span>}
                 {bloqueado && <span className="bracket-final-desempate">🔒</span>}
                 <span className={final.ganador && final.ganador === final.jugador1 ? "bracket-box-ganador" : ""}>
-                  {final.jugador1 || "?"}
+                  <NombreCuadrante etiqueta={final.jugador1} textoPorDefecto="?" />
                 </span>
                 <span className="bracket-vs">vs</span>
                 <span className={final.ganador && final.ganador === final.jugador2 ? "bracket-box-ganador" : ""}>
-                  {final.jugador2 || "?"}
+                  <NombreCuadrante etiqueta={final.jugador2} textoPorDefecto="?" />
                 </span>
               </div>
             );
@@ -437,5 +486,6 @@ export default function BracketView({ cuadrante, busqueda, onClickPartido, onVer
         </div>
       )}
     </div>
+    </PerfilCuadranteContext.Provider>
   );
 }

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
-import MediasFabricante from "./MediasFabricante.jsx";
-import AceroJugador from "./AceroJugador.jsx";
+import PerfilJugadorModal from "./PerfilJugadorModal.jsx";
 import { agruparPorSocio } from "./agruparJugadores.js";
 import { API_URL } from "./config.js";
 
@@ -111,47 +110,7 @@ export default function JugadoresClub() {
         </>
       )}
 
-      {seleccionado && (
-        <div className="perfil-jugador-modal" onClick={() => setSeleccionado(null)}>
-          <div className="perfil-jugador-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="perfil-jugador-panel-header">
-              <button type="button" className="admin-link-btn" onClick={() => setSeleccionado(null)}>{t("jugadoresClub.cerrar")}</button>
-            </div>
-            <div className="perfil-jugador-cabecera">
-              {seleccionado.avatarUrl ? (
-                <img
-                  src={seleccionado.avatarUrl}
-                  alt={seleccionado.nombre}
-                  style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover" }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 88, height: 88, borderRadius: "50%",
-                    background: "var(--iron-2)", display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "1.6rem", color: "var(--bone)",
-                  }}
-                >
-                  {seleccionado.nombre.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div>
-                <strong style={{ display: "block", fontSize: "1.15rem" }}>{seleccionado.nombre}</strong>
-                {seleccionado.apodo && <span style={{ display: "block", opacity: 0.85 }}>"{seleccionado.apodo}"</span>}
-                {seleccionado.usuarioId && (
-                  <span style={{ fontSize: ".7em", color: "var(--ember)" }}>{t("jugadoresClub.miembroBadge")}</span>
-                )}
-              </div>
-            </div>
-            {seleccionado.bio && <p className="perfil-jugador-bio">{seleccionado.bio}</p>}
-            <MediasFabricante idsFabricantes={seleccionado.idsFabricantes} />
-            {(seleccionado.idsFabricantes || []).filter((i) => (i.idExterno || "").trim()).length === 0 && (
-              <p className="chronicle-status">{t("jugadoresClub.sinAlias")}</p>
-            )}
-            <AceroJugador jugadorId={seleccionado.id} token={localStorage.getItem("socioToken")} />
-          </div>
-        </div>
-      )}
+      {seleccionado && <PerfilJugadorModal jugador={seleccionado} onClose={() => setSeleccionado(null)} />}
     </div>
   );
 }
