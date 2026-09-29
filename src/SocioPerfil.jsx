@@ -734,20 +734,27 @@ const IDIOMAS_AVISOS = [
   { id: "fr", etiqueta: "Français" },
 ];
 
-function SelectorIdiomaAvisos({ perfil, token, onGuardado }) {
+// `guardar` permite reutilizarlo en el perfil de invitados (PerfilInvitado.jsx),
+// que guarda con su token de PIN en otro endpoint; tiene que devolver true si
+// se guardó. Por defecto guarda en el perfil del socio.
+export function SelectorIdiomaAvisos({ perfil, token, onGuardado, guardar }) {
   const { t } = useLang();
   const [guardando, setGuardando] = useState(false);
+
+  async function guardarSocio(idioma) {
+    const res = await fetch(`${API_URL}/api/perfil`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ idiomaAvisos: idioma }),
+    });
+    return res.ok;
+  }
 
   async function cambiar(idioma) {
     if (idioma === perfil.idiomaAvisos || guardando) return;
     setGuardando(true);
     try {
-      const res = await fetch(`${API_URL}/api/perfil`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ idiomaAvisos: idioma }),
-      });
-      if (res.ok) onGuardado((prev) => ({ ...prev, idiomaAvisos: idioma }));
+      if (await (guardar || guardarSocio)(idioma)) onGuardado((prev) => ({ ...prev, idiomaAvisos: idioma }));
     } catch {
       // No crítico: si falla, se queda con el idioma anterior y puede
       // volver a intentarlo.
@@ -784,18 +791,27 @@ function SelectorIdiomaAvisos({ perfil, token, onGuardado }) {
 // AdminJugadores.jsx). Sobre todo útil en iPhone, donde Safari no siempre
 // puede mostrar la imagen grande de los avisos — Telegram sí la muestra
 // siempre, al ser una app nativa.
-function AvisosTelegram() {
+//
+// También lo usa el perfil de invitados (PerfilInvitado.jsx), pasándole su
+// propia forma de consultar el estado (con el token de PIN en vez del de
+// socio) y un texto de ayuda propio: allí no hay avisos del navegador, así
+// que Telegram no es una "alternativa" sino la única vía.
+function cargarEstadoTelegramSocio() {
+  return fetch(`${API_URL}/api/notificaciones/telegram/estado`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+  }).then((r) => (r.ok ? r.json() : Promise.reject()));
+}
+
+export function AvisosTelegram({ cargarEstado = cargarEstadoTelegramSocio, hintKey = "avisosTelegram.alternativaHint" }) {
   const { t } = useLang();
   const [estado, setEstado] = useState(null); // null mientras carga
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/notificaciones/telegram/estado`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+    cargarEstado()
       .then(setEstado)
       .catch(() => setError(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -816,7 +832,7 @@ function AvisosTelegram() {
       {estado && !estado.telegramVinculado && estado.urlTelegram && (
         <>
           <p className="admin-hint" style={{ marginTop: 0 }}>
-            {t("avisosTelegram.alternativaHint")}
+            {t(hintKey)}
           </p>
           <a href={estado.urlTelegram} target="_blank" rel="noreferrer">
             <button type="button" className="admin-link-btn">{t("avisosTelegram.activar")}</button>
