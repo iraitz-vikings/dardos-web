@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
 import { useLang } from "./i18n.jsx";
 import { API_URL } from "./config.js";
+import { CLUB } from "./club.js";
 
 
 function formatFecha(iso, lang) {
@@ -80,7 +81,7 @@ export default function Competiciones({ usuario }) {
 
   if (cargando) return <p className="chronicle-status">{t("competiciones.cargando")}</p>;
 
-  const pestanas = [{ id: "vikings", nombre: "Vikings" }, ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre }))];
+  const pestanas = [{ id: "vikings", nombre: CLUB.nombreCorto }, ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre }))];
 
   return (
     <div>
@@ -162,7 +163,7 @@ export default function Competiciones({ usuario }) {
                             onClick={() => setEquiposAbiertos((prev) => ({ ...prev, [eq.id]: !eqAbierto }))}
                           >
                             <span>
-                              {eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}
+                              {eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto}
                               {capitan ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
                             </span>
                             <span className="admin-ronda-toggle">{eqAbierto ? "Ocultar ▲" : "Ver ▼"}</span>

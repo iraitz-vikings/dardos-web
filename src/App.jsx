@@ -7,6 +7,7 @@ import VideoHome from "./VideoHome.jsx";
 import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
 import { API_URL } from "./config.js";
+import { CLUB } from "./club.js";
 
 
 function formatFecha(iso) {
@@ -57,8 +58,8 @@ function analizarVideo(url) {
   return null;
 }
 
-const HERO_LOGO_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/f_auto,q_auto/v1789382590/vikings-logo-transparente-2026.png";
-const TOURNAMENT_BADGE_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/v1785705038/dardos-club/ykdezhnoze0porj7fk8q.jpg";
+const HERO_LOGO_URL = CLUB.imagenes.logo;
+const TOURNAMENT_BADGE_URL = CLUB.imagenes.insigniaTorneo;
 
 const EMBERS = Array.from({ length: 14 }, (_, i) => ({
   left: (i * 7 + (i % 3) * 5) % 100,
@@ -205,7 +206,7 @@ export default function App() {
             ))}
           </div>
           <div className="hero-emblem-wrap">
-            <img src={HERO_LOGO_URL} alt="Escudo Vikings" className="hero-emblem" />
+            <img src={HERO_LOGO_URL} alt={`Escudo ${CLUB.nombreCorto}`} className="hero-emblem" />
           </div>
           <p className="eyebrow">{t("hero.eyebrow")}</p>
           <h1>{t("hero.title1")}<br /><span>{t("hero.title2")}</span></h1>
@@ -332,7 +333,7 @@ export default function App() {
               alt={torneo ? `Insignia ${torneo.nombre}` : "Insignia del torneo"}
               className="tournament-badge"
             />
-            <h3>{torneo ? torneo.nombre : "II Open Villa Errenteria"}</h3>
+            <h3>{torneo ? torneo.nombre : CLUB.torneoPorDefecto.nombre}</h3>
             {torneo?.cartelUrl && (
               <img
                 src={torneo.cartelUrl}
@@ -350,19 +351,16 @@ export default function App() {
               </div>
             ) : (
               <div className="event-dates">
-                <span>10</span>
+                <span>{CLUB.torneoPorDefecto.diaInicio}</span>
                 <em>—</em>
-                <span>11</span>
-                <small>Octubre 2026</small>
+                <span>{CLUB.torneoPorDefecto.diaFin}</span>
+                <small>{CLUB.torneoPorDefecto.mesAnio}</small>
               </div>
             )}
             {torneo?.descripcion && (
               <p className="event-description">{torneo.descripcion}</p>
             )}
-            <p className="event-note">
-              Vikings is coming. Próximamente más información: inscripciones,
-              horarios y categorías.
-            </p>
+            {CLUB.notaTorneo && <p className="event-note">{CLUB.notaTorneo}</p>}
           </div>
         </section>
 

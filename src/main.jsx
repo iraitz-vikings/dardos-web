@@ -12,6 +12,7 @@ import PaginaPartidas from "./PaginaPartidas.jsx";
 import PaginaTorneos from "./PaginaTorneos.jsx";
 import Carga from "./Carga.jsx";
 import { LanguageProvider } from "./i18n.jsx";
+import { CLUB } from "./club.js";
 // Fuentes servidas desde la propia web (paquetes @fontsource, empaquetados
 // por Vite) en vez de Google Fonts: cargarlas de fonts.googleapis.com manda
 // la IP de cada visitante a Google sin consentimiento, algo que el RGPD no
@@ -21,14 +22,14 @@ import "@fontsource/cinzel/700.css";
 import "@fontsource/cinzel/900.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
+import "./club.css";
 import "./styles.css";
 
 // Logos EN VERSIÓN TRANSPARENTE (no los iconos cuadrados opacos del
 // manifest) para la pantalla de carga inicial (pedido 2026-09-19) — cada
-// app con el suyo: el de la web principal ya se usa igual en App.jsx
-// (HERO_LOGO_URL), y el del admin en Admin.jsx (ADMIN_EMBLEM_URL).
-const LOGO_TRANSPARENTE_PRINCIPAL = "https://res.cloudinary.com/lodi1y1k/image/upload/f_auto,q_auto/v1789382590/vikings-logo-transparente-2026.png";
-const LOGO_TRANSPARENTE_ADMIN = "https://res.cloudinary.com/lodi1y1k/image/upload/e_background_removal/e_trim/b_transparent,c_pad,h_512,w_512/f_png/v1789816550/IMG-20260910-WA0004_o3n7ly.png";
+// app con el suyo, los mismos que la portada (App.jsx) y el admin (Admin.jsx).
+const LOGO_TRANSPARENTE_PRINCIPAL = CLUB.imagenes.logo;
+const LOGO_TRANSPARENTE_ADMIN = CLUB.imagenes.logoAdmin;
 
 const path = window.location.pathname;
 const isAdmin = path.startsWith("/admin");
@@ -36,32 +37,24 @@ const isAdmin = path.startsWith("/admin");
 // Instalar la web general y el admin como dos apps separadas (pedido de
 // Iraitz, 2026-09-18): index.html trae puesto el manifest general
 // (manifest.json, scope "/"). En /admin lo cambiamos por uno propio
-// (manifest-admin.json, scope "/admin", icono/nombre "Vikings Admin") ANTES
+// (manifest-admin.json, scope "/admin", con su propio icono/nombre) ANTES
 // de montar React — así "Instalar aplicación" (Chrome/Android) o "Añadir a
 // pantalla de inicio" (iOS) desde /admin registra una app distinta de la
 // web general, aunque sea el mismo dominio: cada manifest.json es una
 // identidad de instalación aparte, no hace falta tocar el servidor ni el
-// build para tener dos "apps".
+// build para tener dos "apps". Ambos manifests los genera vite.config.js a
+// partir de club.config.js.
 if (isAdmin) {
   document.querySelector('link[rel="manifest"]')?.setAttribute("href", "/manifest-admin.json");
-  document.title = "Vikings Dardos — Admin";
+  document.title = CLUB.admin.nombre;
   // Icono propio del admin (pedido 2026-09-18: misma imagen para instalar
   // el admin y para la pestaña/favicon mientras se navega por /admin).
-  // Para el favicon (fondo transparente, como en la web principal) se usa
-  // la versión con el fondo eliminado (e_background_removal); para el
-  // apple-touch-icon se mantiene la versión opaca, porque iOS rellena de
-  // negro las zonas transparentes de esos iconos.
-  const CLOUD_BASE = "https://res.cloudinary.com/lodi1y1k/image/upload";
-  const ADMIN_IMG = "v1789816550/IMG-20260910-WA0004_o3n7ly";
+  const iconos = CLUB.imagenes.faviconAdmin;
   const setIcon = (selector, href) => document.querySelector(selector)?.setAttribute("href", href);
-  setIcon('link[rel="icon"][type="image/x-icon"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_32,w_32/f_ico/${ADMIN_IMG}.ico`);
-  setIcon('link[rel="icon"][sizes="16x16"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_16,w_16/f_png/${ADMIN_IMG}.png`);
-  setIcon('link[rel="icon"][sizes="32x32"]', `${CLOUD_BASE}/e_background_removal/e_trim/b_transparent,c_pad,h_32,w_32/f_png/${ADMIN_IMG}.png`);
-  // La foto del admin trae mucho más margen de piedra alrededor de la
-  // moneda que el logo de la web principal (que ya la llena casi entera),
-  // así que recortamos primero al 70% central antes de encajarla en el
-  // icono, para que ambos iconos se vean del mismo tamaño relativo.
-  setIcon('link[rel="apple-touch-icon"]', `${CLOUD_BASE}/c_crop,g_center,h_0.7,w_0.7/c_fill,g_auto,h_180,w_180/f_png/${ADMIN_IMG}.png`);
+  setIcon('link[rel="icon"][type="image/x-icon"]', iconos.ico);
+  setIcon('link[rel="icon"][sizes="16x16"]', iconos.png16);
+  setIcon('link[rel="icon"][sizes="32x32"]', iconos.png32);
+  setIcon('link[rel="apple-touch-icon"]', iconos.apple);
 }
 const isGaleria = path.startsWith("/galeria");
 const isHistorico = path.startsWith("/historico");

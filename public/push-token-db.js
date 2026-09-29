@@ -11,7 +11,9 @@
 // importScripts() desde service-worker.js (queda en self) — un módulo ES no
 // se puede compartir así de simple entre ambos contextos.
 
-const PUSH_TOKEN_DB = "vikings-push-token-db";
+// El nombre sale de club.config.js (pushTokenDb) vía /club-config.js, que
+// se carga antes que este archivo tanto en index.html como en el service worker.
+const PUSH_TOKEN_DB = self.CLUB_CONFIG.pushTokenDb;
 const PUSH_TOKEN_STORE = "tokens";
 const PUSH_TOKEN_KEY = "resuscripcion";
 

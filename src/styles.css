@@ -1,14 +1,3 @@
-:root {
-    --iron: #0e0f13;
-    --iron-2: #191b22;
-    --bone: #e7e0cd;
-    --bone-dim: #e7e0cd8c;
-    --blood: #9a2b28;
-    --ember: #c96a2e;
-    --steel: #8891a0;
-    --line: #e7e0cd1f;
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
@@ -679,18 +668,18 @@ button {
 .hero-emblem-wrap { width: clamp(160px, 32vw, 240px); aspect-ratio: auto; overflow: visible; }
 .hero-emblem { width: 100%; height: auto; object-fit: contain; }
 
-.hero { background-image: linear-gradient(180deg, #0e0f13ee 0%, #0e0f13cc 35%, #0e0f13 100%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); background-size: cover; background-position: top center; background-repeat: no-repeat; }
+.hero { background-image: linear-gradient(180deg, #0e0f13ee 0%, #0e0f13cc 35%, #0e0f13 100%), var(--club-fondo); background-size: cover; background-position: top center; background-repeat: no-repeat; }
 .tournament-badge { width: 170px; height: 170px; }
 
-body { background-image: linear-gradient(180deg, #0e0f13aa 0%, #0e0f13cc 45%, #0e0f13 85%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); background-size: cover; background-position: top center; background-repeat: no-repeat; background-attachment: fixed; }
+body { background-image: linear-gradient(180deg, #0e0f13aa 0%, #0e0f13cc 45%, #0e0f13 85%), var(--club-fondo); background-size: cover; background-position: top center; background-repeat: no-repeat; background-attachment: fixed; }
 .hero { background-image: none; }
 
-body { background-image: linear-gradient(180deg, #0e0f1370 0%, #0e0f13a0 50%, #0e0f13e6 90%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); }
+body { background-image: linear-gradient(180deg, #0e0f1370 0%, #0e0f13a0 50%, #0e0f13e6 90%), var(--club-fondo); }
 
-body { background-image: linear-gradient(180deg, #0e0f1340 0%, #0e0f1370 50%, #0e0f13cc 88%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); }
+body { background-image: linear-gradient(180deg, #0e0f1340 0%, #0e0f1370 50%, #0e0f13cc 88%), var(--club-fondo); }
 .tournament-badge { width: 220px; height: 220px; }
 
-body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0e0f13a8 90%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); }
+body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0e0f13a8 90%), var(--club-fondo); }
 
 .admin-badge-preview { width: 90px; height: 90px; object-fit: contain; margin-top: .5rem; border: 1px solid var(--line); }
 

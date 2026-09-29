@@ -3,8 +3,9 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { useLang } from "./i18n.jsx";
 import { API_URL } from "./config.js";
+import { CLUB } from "./club.js";
 
-const AUDIO_GALERIA_URL = "https://res.cloudinary.com/lodi1y1k/video/upload/v1786204416/Sons_of_the_Northern_Light_h7lq9t.mp3";
+const AUDIO_GALERIA_URL = CLUB.audioGaleria;
 
 function idVideoYoutube(url) {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -106,7 +107,7 @@ export default function Galeria() {
     <>
       <Nav />
 
-      <audio ref={audioRef} src={AUDIO_GALERIA_URL} preload="auto" />
+      {AUDIO_GALERIA_URL && <audio ref={audioRef} src={AUDIO_GALERIA_URL} preload="auto" />}
 
       <main>
         <section className="gallery gallery-page">
