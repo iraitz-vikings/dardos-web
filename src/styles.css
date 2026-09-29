@@ -271,27 +271,13 @@ a { color: inherit; text-decoration: none; }
     overflow: hidden;
 }
 .footer-map-enlace { position: absolute; inset: 0; display: block; }
-.footer-map-enlace img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(.3) invert(.92) contrast(.9); transition: filter .2s; }
-.footer-map-enlace:hover img { filter: grayscale(.1) invert(.92) contrast(1); }
-.footer-map-pin {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 22px;
-  height: 22px;
-  margin: -27px 0 0 -11px; /* la punta (esquina girada) cae justo en el centro */
-  background: var(--ember);
-  border: 2px solid var(--bone);
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  transform-origin: 50% 50%;
-  box-shadow: 0 2px 6px #0008;
-}
+.footer-map-enlace img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter .2s; }
+.footer-map-enlace:hover img { filter: brightness(1.08); }
 .footer-map-abrir {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: 0;
   padding: .45rem .6rem;
   background: #0d0e11cc;
   color: var(--bone);
@@ -301,7 +287,6 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
 }
 .footer-map-enlace:hover .footer-map-abrir { color: var(--ember); }
-.footer-map-atribucion { position: absolute; top: 0; right: 0; padding: .1rem .35rem; background: #0d0e11b3; color: var(--bone-dim); font-size: .6rem; }
 .footer-contact-info {
     flex: 1 1 220px;
     display: flex;
