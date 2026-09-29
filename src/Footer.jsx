@@ -1,12 +1,12 @@
 import { useLang } from "./i18n.jsx";
 
-// Imagen fija del mapa (teselas de OpenStreetMap unidas y recortadas en
-// Cloudinary, centradas en el club) en vez del iframe de Google Maps: no
-// conecta con Google hasta que el visitante pulsa, y entonces abre Google
-// Maps en otra pestaña. La licencia de OpenStreetMap (ODbL) obliga a
-// mostrar la atribución. El marcador va en CSS, justo en el centro.
+// Imagen fija del mapa (captura de Google Maps con el club marcado, servida
+// desde la propia web: public/mapa-club.webp) en vez del iframe de Google
+// Maps: no conecta con Google hasta que el visitante pulsa, y entonces abre
+// Google Maps en otra pestaña. La atribución de Google va dentro de la
+// propia imagen (abajo), por eso la franja "Abrir en Google Maps" va arriba.
 const MAPA_URL = "https://www.google.com/maps?q=43.310774,-1.912812";
-const MAPA_IMG = "https://res.cloudinary.com/lodi1y1k/image/upload/f_auto,q_auto/v1790689431/vikings-mapa-club.png";
+const MAPA_IMG = "/mapa-club.webp";
 
 export default function Footer({ simple = false }) {
   const { t } = useLang();
@@ -24,10 +24,8 @@ export default function Footer({ simple = false }) {
         <div className="footer-map">
           <a href={MAPA_URL} target="_blank" rel="noopener noreferrer" className="footer-map-enlace">
             <img src={MAPA_IMG} alt="Mapa: ubicación del club en Errenteria" loading="lazy" />
-            <span className="footer-map-pin" aria-hidden="true" />
             <span className="footer-map-abrir">{t("footer.abrirMapa")}</span>
           </a>
-          <span className="footer-map-atribucion">© OpenStreetMap</span>
         </div>
         <div className="footer-contact-info">
           <p className="footer-address">
