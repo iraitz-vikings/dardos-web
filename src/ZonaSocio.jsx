@@ -11,8 +11,7 @@ import HistorialTorneos from "./HistorialTorneos.jsx";
 import HistoricoPrivado from "./HistoricoPrivado.jsx";
 import Competiciones from "./Competiciones.jsx";
 import CalendarioSocio from "./CalendarioSocio.jsx";
-import Marcadores from "./Marcadores.jsx";
-import RetarAmistoso from "./RetarAmistoso.jsx";
+import VikingsCounter from "./VikingsCounter.jsx";
 
 function useSecciones() {
   const { t } = useLang();
@@ -23,8 +22,7 @@ function useSecciones() {
     { id: "historico-privado", etiqueta: t("zona.historicoPrivado"), lista: true },
     { id: "competiciones", etiqueta: t("zona.competiciones"), lista: true },
     { id: "calendario", etiqueta: t("zona.calendario"), lista: true },
-    { id: "marcadores", etiqueta: t("zona.marcadores"), lista: true },
-    { id: "amistoso", etiqueta: t("zona.amistoso"), lista: true },
+    { id: "vikingscounter", etiqueta: t("zona.vikingsCounter"), lista: true },
     { id: "galeria-privada", etiqueta: t("zona.galeriaPrivada"), lista: true },
     { id: "trofeos", etiqueta: t("zona.trofeos"), lista: true },
     { id: "equipos", etiqueta: t("zona.equipos"), lista: true },
@@ -108,8 +106,7 @@ export default function ZonaSocio({ usuario, salir }) {
       {seccion === "historico-privado" && <HistoricoPrivado />}
       {seccion === "competiciones" && <Competiciones usuario={usuario} />}
       {seccion === "calendario" && <CalendarioSocio />}
-      {seccion === "marcadores" && <Marcadores />}
-      {seccion === "amistoso" && <RetarAmistoso />}
+      {seccion === "vikingscounter" && <VikingsCounter />}
       {seccion === "tablon" && <TablonAnuncios usuario={usuario} />}
       {seccion === "jugadores" && <JugadoresClub />}
       {seccion === "galeria-privada" && <GaleriaPrivada usuario={usuario} />}

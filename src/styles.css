@@ -1598,3 +1598,30 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .aviso-estado-push-bloqueado { border-left-color: #e5322d; }
 .aviso-estado-push summary { cursor: pointer; color: var(--ember); font-size: .85rem; }
+
+/* Botón "VikingsCounter" (abre el marcador en la página pública de un
+   torneo/liga). Pastilla con el color ember del club, un pelín más vistosa
+   que un botón normal: icono de diana, nombre en mayúsculas y un subtítulo. */
+.vikingscounter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .65rem 1.1rem;
+    background: linear-gradient(135deg, rgba(201,106,46,.22), rgba(25,27,34,.6));
+    border: 1px solid var(--ember);
+    border-radius: 12px;
+    color: var(--bone);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.vikingscounter-btn:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, rgba(201,106,46,.35), rgba(25,27,34,.6));
+    box-shadow: 0 6px 20px rgba(201,106,46,.3);
+}
+.vikingscounter-btn-icon { font-size: 1.5rem; line-height: 1; }
+.vikingscounter-btn-label { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.vikingscounter-btn-text { font-weight: 800; text-transform: uppercase; letter-spacing: .05em; font-size: 1rem; }
+.vikingscounter-btn-sub { font-size: .68rem; opacity: .72; text-transform: uppercase; letter-spacing: .06em; }
