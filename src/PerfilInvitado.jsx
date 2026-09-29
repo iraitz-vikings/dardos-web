@@ -3,6 +3,7 @@ import { useLang } from "./i18n.jsx";
 import { apiFetch, API_URL } from "./apiHerramienta.js";
 import EditorMediasFabricante, { construirIdsFabricantes, mapasDesdeIdsFabricantes } from "./EditorMediasFabricante.jsx";
 import MediasFabricante from "./MediasFabricante.jsx";
+import { AvisosTelegram, SelectorIdiomaAvisos } from "./SocioPerfil.jsx";
 
 // Pestaña "Perfil" de la página pública "Invitados": un amigo/invitado
 // identificado con su PIN edita su propia ficha (foto, nombre, apodo) y sus
@@ -167,6 +168,24 @@ export default function PerfilInvitado({ token, onNombreCambiado }) {
         </div>
         <MediasFabricante idsFabricantes={perfil?.idsFabricantes} />
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+        {/* Alta en los avisos por Telegram desde el propio perfil, además
+            del enlace /aviso/:token que el admin puede seguir mandando (es
+            el mismo token de check-in, así que da igual por dónde entre). */}
+        <AvisosTelegram
+          cargarEstado={() => apiFetch("/api/partidas-herramienta/mi-perfil/telegram", { token })}
+          hintKey="avisosTelegram.invitadoHint"
+        />
+        <SelectorIdiomaAvisos
+          perfil={perfil}
+          onGuardado={setPerfil}
+          guardar={(idioma) =>
+            apiFetch("/api/partidas-herramienta/mi-perfil", {
+              token,
+              method: "PUT",
+              body: JSON.stringify({ idiomaAvisos: idioma }),
+            }).then(() => true)
+          }
+        />
       </div>
     );
   }
