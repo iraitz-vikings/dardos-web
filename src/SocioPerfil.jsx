@@ -310,14 +310,18 @@ export default function SocioPerfil() {
                     además el nombre de un torneo/liga/campeonato en el que hayas
                     participado, para poder localizarte en su clasificación (ver
                     notaBusqueda) y entrar en tu ficha de jugador a leer tu media real. */}
-                {esRadikal && (
+                {/* Connection Darts permite el mismo alias a varios jugadores: la
+                    localidad (la que sale bajo el nombre en su perfil) sirve para
+                    saber cuál es el socio. Se guarda también en notaBusqueda. */}
+                {(esRadikal || esConnection) && (
                   <input
                     value={notasFabricantes[f.id] || ""}
                     onChange={(e) => cambiarNotaFabricante(f.id, e.target.value)}
-                    placeholder={t("perfil.notaRadikalPlaceholder")}
+                    placeholder={t(esRadikal ? "perfil.notaRadikalPlaceholder" : "perfil.notaConnectionPlaceholder")}
                     style={{ marginTop: ".3rem" }}
                   />
                 )}
+                {esConnection && <span className="admin-hint">{t("perfil.connectionLocalidadHint")}</span>}
                 {/* La web de Radikal Darts bloquea en silencio los intentos de login
                     automático (ver el error en el panel de admin), así que de
                     momento su media no se puede consultar sola: se escribe a mano

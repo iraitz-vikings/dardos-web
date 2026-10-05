@@ -22,6 +22,7 @@ export default function EditorMediasFabricante({ fabricantes, ids, notas, medias
         const alias = ids[f.id] || "";
         const nombreFab = f.nombre.toLowerCase();
         const esRadikal = nombreFab.includes("radikal");
+        const esConnection = nombreFab.includes("connection");
         const enlace =
           f.urlPerfilPlantilla && alias.trim()
             ? f.urlPerfilPlantilla.replace("{alias}", encodeURIComponent(alias.trim()))
@@ -43,14 +44,15 @@ export default function EditorMediasFabricante({ fabricantes, ids, notas, medias
               onChange={(e) => onId(f.id, e.target.value)}
               placeholder={t("perfil.aliasPlaceholder").replace("{fabricante}", f.nombre)}
             />
-            {esRadikal && (
+            {(esRadikal || esConnection) && (
               <input
                 value={notas[f.id] || ""}
                 onChange={(e) => onNota(f.id, e.target.value)}
-                placeholder={t("perfil.notaRadikalPlaceholder")}
+                placeholder={t(esRadikal ? "perfil.notaRadikalPlaceholder" : "perfil.notaConnectionPlaceholder")}
                 style={{ marginTop: ".3rem" }}
               />
             )}
+            {esConnection && <span className="admin-hint">{t("perfil.connectionLocalidadHint")}</span>}
             {esRadikal && (
               <span style={{ display: "flex", gap: ".5rem", marginTop: ".3rem" }}>
                 <input

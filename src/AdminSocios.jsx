@@ -206,7 +206,10 @@ export default function AdminSocios({ token, salir }) {
                     .map((i) => {
                       let texto = `${i.nombreFabricante}: ${i.idExterno}`;
                       const partes = [];
-                      if (i.notaBusqueda) partes.push(`torneo: ${i.notaBusqueda}`);
+                      if (i.notaBusqueda) {
+                        const etiqueta = i.nombreFabricante.toLowerCase().includes("connection") ? "localidad" : "torneo";
+                        partes.push(`${etiqueta}: ${i.notaBusqueda}`);
+                      }
                       if (i.mpr != null) partes.push(`MPR ${i.mpr}`);
                       if (i.ppd != null) partes.push(`PPD ${i.ppd}`);
                       if (i.mprVirtual != null) partes.push(`Virtual MPR ${i.mprVirtual}`);
