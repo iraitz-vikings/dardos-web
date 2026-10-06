@@ -42,6 +42,174 @@ function motivoFallo(cod) {
   return "—";
 }
 
+const ETIQUETAS_EVENTO = {
+  envio: { texto: "Enviado", color: "var(--ember)" },
+  error: { texto: "Error", color: "#e5484d" },
+  caida: { texto: "Caído", color: "#e5484d" },
+  sinDispositivo: { texto: "Sin dispositivo", color: "#f5a524" },
+  alta: { texto: "Activado", color: "#46a758" },
+  reactivada: { texto: "Reactivado solo", color: "#46a758" },
+};
+const EVENTOS_PROBLEMA = new Set(["error", "caida", "sinDispositivo"]);
+
+const ETIQUETAS_AVISO = {
+  bienvenida: "Bienvenida (sorteo)",
+  unMinuto: "Queda 1 minuto",
+  enCurso: "Partido en curso",
+  programado: "Partido programado",
+  eliminado: "Eliminado",
+  campeon: "Campeón",
+  recordatorio: "Recordatorio del día",
+  anuncio: "Anuncio",
+  partidoFijado: "Partido fijado",
+};
+
+function formatFechaHoraSegundos(iso) {
+  return new Date(iso).toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+// Historial de avisos push (envíos, errores, caídas y reactivaciones), para
+// diagnosticar un aviso que "no llegó" aunque el dispositivo ya vuelva a
+// estar activo: la lista de dispositivos de arriba solo enseña el estado
+// actual, y los avisos se reactivan solos. Se filtra por día y socio en el
+// servidor; "solo problemas" se aplica aquí.
+function HistorialPush({ token, salir }) {
+  const [registros, setRegistros] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
+  const [dia, setDia] = useState("");
+  const [jugadorId, setJugadorId] = useState("");
+  const [soloProblemas, setSoloProblemas] = useState(false);
+  // Socios que han aparecido en alguna carga, para el desplegable: así no se
+  // pierden de la lista al filtrar por uno de ellos.
+  const [socios, setSocios] = useState({});
+
+  const cargar = () => {
+    setCargando(true);
+    setError(null);
+    const params = new URLSearchParams({ limite: "1000" });
+    if (jugadorId) params.set("jugadorId", jugadorId);
+    if (dia) {
+      params.set("desde", new Date(`${dia}T00:00:00`).toISOString());
+      params.set("hasta", new Date(`${dia}T23:59:59.999`).toISOString());
+    }
+    fetch(`${API_URL}/api/notificaciones/push/admin/registro?${params}`, { headers: { "x-admin-token": token } })
+      .then((r) => {
+        if (r.status === 401) {
+          salir();
+          return [];
+        }
+        return r.ok ? r.json() : Promise.reject(new Error("No se pudo cargar el historial."));
+      })
+      .then((datos) => {
+        setRegistros(datos);
+        setSocios((prev) => {
+          const nuevo = { ...prev };
+          for (const r of datos) nuevo[r.jugadorId] = r.jugadorNombre;
+          return nuevo;
+        });
+      })
+      .catch((e) => setError(e.message || "Error de conexión."))
+      .finally(() => setCargando(false));
+  };
+
+  useEffect(() => {
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dia, jugadorId]);
+
+  const mostrados = soloProblemas ? registros.filter((r) => EVENTOS_PROBLEMA.has(r.evento)) : registros;
+  const problemas = registros.filter((r) => EVENTOS_PROBLEMA.has(r.evento)).length;
+  const listaSocios = Object.entries(socios).sort((a, b) => a[1].localeCompare(b[1], "es"));
+
+  return (
+    <>
+      <h2 style={{ marginTop: "2rem" }}>Historial de avisos (push)</h2>
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Cada aviso que se intenta mandar a cada dispositivo, con su resultado, y cuándo se activó o reactivó solo cada
+        uno. <strong>Enviado</strong> significa que Google/Apple lo aceptaron: si aun así no llegó, se perdió en el móvil
+        (ahorro de batería, permiso del sistema…). <strong>Sin dispositivo</strong> es que el socio no tenía ninguno activo
+        en ese momento. Se guarda 60 días.
+      </p>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center", margin: ".5rem 0 1rem" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: ".4rem", margin: 0 }}>
+          Día
+          <input type="date" value={dia} onChange={(e) => setDia(e.target.value)} style={{ width: "auto" }} />
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".4rem", margin: 0 }}>
+          Socio
+          <select value={jugadorId} onChange={(e) => setJugadorId(e.target.value)} style={{ width: "auto" }}>
+            <option value="">Todos</option>
+            {listaSocios.map(([id, nombre]) => (
+              <option key={id} value={id}>
+                {nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".4rem", margin: 0 }}>
+          <input
+            type="checkbox"
+            checked={soloProblemas}
+            onChange={(e) => setSoloProblemas(e.target.checked)}
+            style={{ width: "auto" }}
+          />
+          Solo problemas ({problemas})
+        </label>
+        <button type="button" className="admin-link-btn" onClick={cargar} disabled={cargando}>
+          {cargando ? "Actualizando…" : "Actualizar"}
+        </button>
+      </div>
+
+      {error && <p className="admin-msg admin-msg-error">{error}</p>}
+      {!cargando && mostrados.length === 0 && !error && (
+        <p className="chronicle-status">No hay nada registrado con estos filtros.</p>
+      )}
+
+      {mostrados.length > 0 && (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {mostrados.map((r) => {
+            const ev = ETIQUETAS_EVENTO[r.evento] || { texto: r.evento, color: "inherit" };
+            return (
+              <li
+                key={r.id}
+                className="admin-cuadrante"
+                style={{ marginBottom: ".5rem", padding: ".5rem .8rem", borderLeft: `3px solid ${ev.color}` }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: ".5rem" }}>
+                  <span>
+                    <strong>{r.jugadorNombre}</strong>
+                    {r.tipoAviso && <> · {ETIQUETAS_AVISO[r.tipoAviso] || r.tipoAviso}</>}
+                  </span>
+                  <span style={{ fontSize: ".8em", fontWeight: "bold", color: ev.color }}>
+                    {ev.texto}
+                    {r.codigo ? ` ${r.codigo}` : ""}
+                  </span>
+                </div>
+                <div style={{ fontSize: ".8em", opacity: 0.85, display: "grid", gap: ".15rem" }}>
+                  <span>
+                    {formatFechaHoraSegundos(r.creadoEn)}
+                    {r.userAgent && <> · {resumenDispositivo(r.userAgent)}</>}
+                  </span>
+                  {r.titulo && <span>{r.titulo}</span>}
+                  {r.detalle && <span style={{ wordBreak: "break-word" }}>{r.detalle}</span>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
+}
+
 // Panel de admin para diagnosticar los avisos push que "se desactivan solos":
 // lista todos los dispositivos suscritos del club con su estado (activo o
 // caído), cuántos avisos han recibido, cuándo el último y, si el navegador lo
@@ -166,6 +334,8 @@ export default function AdminDispositivosPush({ token, salir }) {
           ))}
         </ul>
       )}
+
+      <HistorialPush token={token} salir={salir} />
     </section>
   );
 }
