@@ -42,10 +42,14 @@ export default function EquiposClub() {
       .finally(() => setCargando(false));
   }, []);
 
-  // Equipos (varios jugadores) y parejas (dos) en pestañas separadas.
-  const parejas = equipos.filter((eq) => eq.tipo === "pareja");
-  const equiposReales = equipos.filter((eq) => eq.tipo !== "pareja");
-  const lista = vista === "parejas" ? parejas : equiposReales;
+  // Equipos (varios jugadores) y parejas (dos) en pestañas separadas; los
+  // que ya terminaron sus competiciones (marcados inactivos en el panel de
+  // admin) van todos juntos a una tercera pestaña.
+  const activos = equipos.filter((eq) => eq.activo !== false);
+  const inactivos = equipos.filter((eq) => eq.activo === false);
+  const parejas = activos.filter((eq) => eq.tipo === "pareja");
+  const equiposReales = activos.filter((eq) => eq.tipo !== "pareja");
+  const lista = vista === "parejas" ? parejas : vista === "inactivos" ? inactivos : equiposReales;
 
   const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1rem" };
 
@@ -68,12 +72,25 @@ export default function EquiposClub() {
         >
           {t("equiposClub.parejas")}
         </button>
+        {inactivos.length > 0 && (
+          <button
+            type="button"
+            className={`admin-tab ${vista === "inactivos" ? "admin-tab-active" : ""}`}
+            onClick={() => setVista("inactivos")}
+          >
+            {t("equiposClub.inactivos")} ({inactivos.length})
+          </button>
+        )}
       </nav>
 
       {cargando && <p className="chronicle-status">{t("equiposClub.cargando")}</p>}
       {!cargando && lista.length === 0 && (
         <p className="chronicle-status">
-          {vista === "parejas" ? t("equiposClub.vacioParejas") : t("equiposClub.vacioEquipos")}
+          {vista === "parejas"
+            ? t("equiposClub.vacioParejas")
+            : vista === "inactivos"
+            ? t("equiposClub.vacioInactivos")
+            : t("equiposClub.vacioEquipos")}
         </p>
       )}
 

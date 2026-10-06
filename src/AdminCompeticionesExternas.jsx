@@ -50,6 +50,8 @@ export default function AdminCompeticionesExternas({ token, salir }) {
   const [mensajeClasificacion, setMensajeClasificacion] = useState({});
   const [actualizandoTodas, setActualizandoTodas] = useState(false);
   const [resumenActualizacionTodas, setResumenActualizacionTodas] = useState(null);
+  // "activas" o "historico" (competiciones marcadas como terminadas).
+  const [vistaTorneos, setVistaTorneos] = useState("activas");
 
   const nombrePlataformaPorId = (id) => plataformas.find((p) => p.id === id)?.nombre || "";
 
@@ -116,6 +118,26 @@ export default function AdminCompeticionesExternas({ token, salir }) {
     });
     cargarTodo();
   }
+  // Terminar pasa la competición al histórico y deja de actualizarse su
+  // clasificación (cron nocturno incluido); reabrir la devuelve a la lista.
+  async function cambiarTerminado(t, terminado) {
+    const pregunta = terminado
+      ? `¿Dar por terminada "${t.nombre}"? Pasará al histórico y dejará de actualizarse su clasificación.`
+      : `¿Reabrir "${t.nombre}"? Volverá a la lista principal y a actualizarse cada noche.`;
+    if (!confirm(pregunta)) return;
+    const res = await fetch(`${API_URL}/api/competiciones-externas/torneos/${t.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ terminado }),
+    });
+    if (!res.ok) {
+      setMensaje({ tipo: "error", texto: "No se pudo cambiar el estado de la competición." });
+      return;
+    }
+    if (abiertoId === t.id) setAbiertoId(null);
+    cargarTodo();
+  }
+
   async function actualizarClasificacion(id) {
     setClasificando(id);
     setMensajeClasificacion((m) => ({ ...m, [id]: null }));
@@ -181,8 +203,8 @@ export default function AdminCompeticionesExternas({ token, salir }) {
       <section style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1.2rem" }}>
         <h3 style={{ marginTop: 0 }}>Clasificación de todos los torneos/ligas</h3>
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          Actualiza de golpe la clasificación de todos los torneos/ligas dados de alta (Radikal, Phoenix y
-          Connection Darts). Se ejecuta también sola cada noche, media
+          Actualiza de golpe la clasificación de todos los torneos/ligas en juego (Radikal, Phoenix y
+          Connection Darts); los marcados como terminados se saltan. Se ejecuta también sola cada noche, media
           hora después de las medias.
         </p>
         <button type="button" onClick={actualizarTodasLasClasificaciones} disabled={actualizandoTodas}>
@@ -254,13 +276,30 @@ export default function AdminCompeticionesExternas({ token, salir }) {
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
       </form>
 
-      {torneos.map((t) => (
+      <div className="admin-tabs" style={{ marginTop: "1.2rem" }}>
+        <button type="button" className={`admin-tab ${vistaTorneos === "activas" ? "admin-tab-active" : ""}`} onClick={() => setVistaTorneos("activas")}>
+          En juego ({torneos.filter((t) => !t.terminado).length})
+        </button>
+        <button type="button" className={`admin-tab ${vistaTorneos === "historico" ? "admin-tab-active" : ""}`} onClick={() => setVistaTorneos("historico")}>
+          Histórico ({torneos.filter((t) => t.terminado).length})
+        </button>
+      </div>
+      {torneos.filter((t) => (vistaTorneos === "historico") === !!t.terminado).length === 0 && (
+        <p className="chronicle-status">
+          {vistaTorneos === "historico" ? "Todavía no hay competiciones terminadas." : "No hay competiciones en juego."}
+        </p>
+      )}
+
+      {torneos.filter((t) => (vistaTorneos === "historico") === !!t.terminado).map((t) => (
         <div key={t.id} className="admin-cuadrante" style={{ marginTop: "1rem" }}>
           <div className="admin-cuadrante-header">
             <h4>{t.nombre} — {t.plataforma?.nombre}{t.nivel ? ` · ${t.nivel}` : ""}{t.temporada ? ` · ${t.temporada}` : ""}</h4>
             <div style={{ display: "flex", gap: ".5rem" }}>
               <button className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === t.id ? null : t.id)}>
                 {abiertoId === t.id ? "Cerrar" : "Gestionar"}
+              </button>
+              <button className="admin-link-btn" onClick={() => cambiarTerminado(t, !t.terminado)}>
+                {t.terminado ? "Reabrir" : "Terminado"}
               </button>
               <button className="admin-link-btn" onClick={() => borrarTorneo(t.id)}>Borrar</button>
             </div>
@@ -279,9 +318,13 @@ export default function AdminCompeticionesExternas({ token, salir }) {
               </label>
 
               <div style={{ marginTop: ".6rem", display: "flex", gap: ".5rem", alignItems: "center" }}>
-                <button type="button" disabled={clasificando === t.id} onClick={() => actualizarClasificacion(t.id)}>
-                  {clasificando === t.id ? "Actualizando…" : "Actualizar clasificación"}
-                </button>
+                {t.terminado ? (
+                  <span className="admin-hint">Competición terminada: su clasificación ya no se actualiza.</span>
+                ) : (
+                  <button type="button" disabled={clasificando === t.id} onClick={() => actualizarClasificacion(t.id)}>
+                    {clasificando === t.id ? "Actualizando…" : "Actualizar clasificación"}
+                  </button>
+                )}
                 {t.clasificacion?.length > 0 && (
                   <span className="admin-hint">
                     Última actualización: {new Date(t.clasificacion[0].actualizadoEn).toLocaleString("es-ES")}
