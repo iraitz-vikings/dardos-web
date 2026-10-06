@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
+import CalendarioJornadas from "./CalendarioJornadas.jsx";
 import { useLang } from "./i18n.jsx";
 import { API_URL } from "./config.js";
 import { CLUB } from "./club.js";
@@ -29,6 +30,9 @@ export default function Competiciones({ usuario }) {
   const [cargando, setCargando] = useState(true);
   const [competicionesAbiertas, setCompeticionesAbiertas] = useState({});
   const [equiposAbiertos, setEquiposAbiertos] = useState({});
+  // Dentro de cada plataforma: competiciones en juego o las ya terminadas
+  // (histórico, marcadas como "Terminado" desde el panel de admin).
+  const [verHistorico, setVerHistorico] = useState(false);
 
   const token = () => localStorage.getItem("socioToken");
 
@@ -81,6 +85,10 @@ export default function Competiciones({ usuario }) {
 
   if (cargando) return <p className="chronicle-status">{t("competiciones.cargando")}</p>;
 
+  const delaPlataforma = torneosExternos.filter((tx) => tx.plataformaId === pestana);
+  const terminadas = delaPlataforma.filter((tx) => tx.terminado);
+  const visibles = verHistorico ? terminadas : delaPlataforma.filter((tx) => !tx.terminado);
+
   const pestanas = [{ id: "vikings", nombre: CLUB.nombreCorto }, ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre }))];
 
   return (
@@ -92,7 +100,7 @@ export default function Competiciones({ usuario }) {
             key={p.id}
             type="button"
             className={`admin-tab ${pestana === p.id ? "admin-tab-active" : ""}`}
-            onClick={() => setPestana(p.id)}
+            onClick={() => { setPestana(p.id); setVerHistorico(false); }}
           >
             {p.nombre}
           </button>
@@ -125,10 +133,20 @@ export default function Competiciones({ usuario }) {
 
       {pestana !== "vikings" && (
         <div>
-          {torneosExternos.filter((tx) => tx.plataformaId === pestana).length === 0 && (
+          {terminadas.length > 0 && (
+            <div className="admin-tabs" style={{ marginBottom: "1rem", fontSize: ".85em" }}>
+              <button type="button" className={`admin-tab ${!verHistorico ? "admin-tab-active" : ""}`} onClick={() => setVerHistorico(false)}>
+                {t("competiciones.enJuego")}
+              </button>
+              <button type="button" className={`admin-tab ${verHistorico ? "admin-tab-active" : ""}`} onClick={() => setVerHistorico(true)}>
+                {t("competiciones.historico")} ({terminadas.length})
+              </button>
+            </div>
+          )}
+          {visibles.length === 0 && (
             <p className="chronicle-status">{t("competiciones.sinExternos")}</p>
           )}
-          {torneosExternos.filter((tx) => tx.plataformaId === pestana).map((tx) => {
+          {visibles.map((tx) => {
             const abierta = !!competicionesAbiertas[tx.id];
             return (
               <div key={tx.id} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
@@ -175,8 +193,10 @@ export default function Competiciones({ usuario }) {
                               {esCapitan && (
                                 <NuevoPartidoCapitanForm onCrear={(fecha, rival) => crearPartido(eq.id, fecha, rival)} t={t} />
                               )}
-                              <ul>
-                                {eq.partidos.map((p) => (
+                              <CalendarioJornadas
+                                partidos={eq.partidos}
+                                vacio={t("competiciones.sinPartidos")}
+                                renderPartido={(p) => (
                                   esCapitan ? (
                                     <PartidoCapitanRow key={p.id} p={p} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
                                   ) : (
@@ -186,9 +206,8 @@ export default function Competiciones({ usuario }) {
                                       {p.maquina ? ` (${p.maquina.nombre})` : ""}
                                     </li>
                                   )
-                                ))}
-                                {eq.partidos.length === 0 && <li style={{ fontSize: ".85em", opacity: 0.7 }}>{t("competiciones.sinPartidos")}</li>}
-                              </ul>
+                                )}
+                              />
                             </div>
                           )}
                         </div>
