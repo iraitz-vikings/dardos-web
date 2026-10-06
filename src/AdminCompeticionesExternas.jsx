@@ -19,13 +19,17 @@ function hintIdExterno(nombrePlataforma) {
   if (p.includes("radikal")) {
     return "Nombre EXACTO de la competición tal como aparece en la web de Radikal Darts.";
   }
-  return 'Nombre EXACTO tal como aparece en la web de la plataforma. Hace falta para poder actualizar la clasificación automáticamente (por ahora solo Radikal Darts y Phoenix Darts).';
+  if (p.includes("connection")) {
+    return 'Ids de liga de Connection Darts separados por comas (cada día de la semana es una liga distinta, ej. 25201,25202,25203,25204). Cada equipo se localiza solo por su nombre; si no lo encuentra, pon su nombre exacto de Connection en su inscripción (pestaña "Equipos").';
+  }
+  return 'Nombre EXACTO tal como aparece en la web de la plataforma. Hace falta para poder actualizar la clasificación automáticamente (Radikal, Phoenix y Connection Darts).';
 }
 
 function placeholderIdExterno(nombrePlataforma) {
   const p = (nombrePlataforma || "").toLowerCase();
   if (p.includes("phoenix")) return "Ej: VDC Gentlemen";
   if (p.includes("radikal")) return "Ej: 13 Vegas 2026";
+  if (p.includes("connection")) return "Ej: 25201,25202,25203,25204";
   return "";
 }
 
@@ -177,8 +181,8 @@ export default function AdminCompeticionesExternas({ token, salir }) {
       <section style={{ border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: ".8rem 1rem", marginBottom: "1.2rem" }}>
         <h3 style={{ marginTop: 0 }}>Clasificación de todos los torneos/ligas</h3>
         <p className="admin-hint" style={{ marginTop: 0 }}>
-          Actualiza de golpe la clasificación de todos los torneos/ligas dados de alta (Radikal Darts y Phoenix
-          Darts; Connection Darts se omite hasta que tenga soporte). Se ejecuta también sola cada noche, media
+          Actualiza de golpe la clasificación de todos los torneos/ligas dados de alta (Radikal, Phoenix y
+          Connection Darts). Se ejecuta también sola cada noche, media
           hora después de las medias.
         </p>
         <button type="button" onClick={actualizarTodasLasClasificaciones} disabled={actualizandoTodas}>
