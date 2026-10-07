@@ -69,6 +69,8 @@ export default function AdminTorneosClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  // De acero: torneo organizado con la web que no es del club (ver schema).
+  const [acero, setAcero] = useState(false);
   const [temporizadorActivo, setTemporizadorActivo] = useState(false);
   const [temporizadorMinutos, setTemporizadorMinutos] = useState("");
   const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
@@ -128,7 +130,7 @@ useEffect(() => {
         headers: { "Content-Type": "application/json", "x-admin-token": token },
         body: JSON.stringify({
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl,
-          afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
+          afectaCalendario, notificaciones, acero, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
           temporizadorActivo, temporizadorMinutos: temporizadorActivo ? temporizadorMinutos : undefined,
           modoJornadas, puntosPorPosicion: modoJornadas ? puntosPorPosicion : undefined,
         }),
@@ -154,6 +156,7 @@ useEffect(() => {
       setInsigniaUrl("");
       setAfectaCalendario(true);
       setNotificaciones(true);
+      setAcero(false);
       setTemporizadorActivo(false);
       setTemporizadorMinutos("");
       setImagenEliminadoUrl("");
@@ -193,6 +196,15 @@ useEffect(() => {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({ notificaciones: nuevo }),
+    });
+    cargarTorneos();
+  }
+
+  async function cambiarAcero(torneo, nuevo) {
+    await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ acero: nuevo }),
     });
     cargarTorneos();
   }
@@ -614,6 +626,10 @@ async function programarCalendario(partidoId, datos) {
           Avisar a los socios de sus partidos de este torneo
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+          <input type="checkbox" checked={acero} onChange={(e) => setAcero(e.target.checked)} style={{ width: "auto" }} />
+          De acero (no es del club: sale en la pestaña "Acero" de Competiciones)
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
           <input type="checkbox" checked={temporizadorActivo} onChange={(e) => setTemporizadorActivo(e.target.checked)} style={{ width: "auto" }} />
           Dar un tiempo máximo para empezar cada partido
         </label>
@@ -761,6 +777,7 @@ async function programarCalendario(partidoId, datos) {
                     {t.finalizado ? " · Finalizado" : ""}
                     {t.notificaciones === false ? " · Sin avisos" : ""}
                     {t.anclarInicio ? " · Anclado a inicio" : ""}
+                    {t.acero ? " · Acero" : ""}
                     {t.temporizadorActivo && t.temporizadorMinutos ? ` · Temporizador ${t.temporizadorMinutos} min` : ""}
                   </time>
                 </div>
@@ -780,6 +797,9 @@ async function programarCalendario(partidoId, datos) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarAnclarInicio(t, !t.anclarInicio)}>
                     {t.anclarInicio ? "Desanclar de inicio" : "Anclar a inicio"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarAcero(t, !t.acero)}>
+                    {t.acero ? "Quitar de acero" : "Marcar de acero"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(t.id)}>Gestionar</button>
                   <a className="admin-link-btn" href={`${window.location.origin}/torneo/${t.id}`} target="_blank" rel="noopener noreferrer">

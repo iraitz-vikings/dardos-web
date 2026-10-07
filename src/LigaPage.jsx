@@ -178,6 +178,7 @@ export default function LigaPage({ id }) {
               <p className="torneo-pagina-fechas">
                 {formatFecha(liga.fechaInicio)} – {formatFecha(liga.fechaFin)}
                 {liga.finalizado ? ` · ${t("ligaPage.finalizada")}` : ""}
+                {liga.acero ? ` · ${t("competiciones.acero")}` : ""}
               </p>
               {liga.insigniaUrl && <img src={liga.insigniaUrl} alt={`Insignia ${liga.nombre}`} className="torneo-pagina-insignia" />}
               {liga.descripcion && <p className="event-description">{liga.descripcion}</p>}

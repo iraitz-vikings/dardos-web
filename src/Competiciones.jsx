@@ -89,7 +89,17 @@ export default function Competiciones({ usuario }) {
   const terminadas = delaPlataforma.filter((tx) => tx.terminado);
   const visibles = verHistorico ? terminadas : delaPlataforma.filter((tx) => !tx.terminado);
 
-  const pestanas = [{ id: "vikings", nombre: CLUB.nombreCorto }, ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre }))];
+  // Torneos/ligas creados con la web: los del club van en su pestaña y los
+  // "de acero" (no son del club ni tienen plataforma) en la suya.
+  const esAcero = pestana === "acero";
+  const torneosInternos = torneosVikings.filter((x) => !!x.acero === esAcero);
+  const ligasInternas = ligasVikings.filter((x) => !!x.acero === esAcero);
+
+  const pestanas = [
+    { id: "vikings", nombre: CLUB.nombreCorto },
+    { id: "acero", nombre: t("competiciones.acero") },
+    ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre })),
+  ];
 
   return (
     <div>
@@ -107,12 +117,12 @@ export default function Competiciones({ usuario }) {
         ))}
       </div>
 
-      {pestana === "vikings" && (
+      {(pestana === "vikings" || esAcero) && (
         <div>
-          {torneosVikings.length === 0 && ligasVikings.length === 0 && (
-            <p className="chronicle-status">{t("competiciones.sinInternas")}</p>
+          {torneosInternos.length === 0 && ligasInternas.length === 0 && (
+            <p className="chronicle-status">{t(esAcero ? "competiciones.sinAcero" : "competiciones.sinInternas")}</p>
           )}
-          {torneosVikings.map((tv) => (
+          {torneosInternos.map((tv) => (
             <div key={`t-${tv.id}`} className="admin-list-item">
               <div>
                 <a href={`/torneo/${tv.id}`} target="_blank" rel="noopener noreferrer"><strong>{tv.nombre}</strong></a>
@@ -120,7 +130,7 @@ export default function Competiciones({ usuario }) {
               </div>
             </div>
           ))}
-          {ligasVikings.map((l) => (
+          {ligasInternas.map((l) => (
             <div key={`l-${l.id}`} className="admin-list-item">
               <div>
                 <a href={`/liga/${l.id}`} target="_blank" rel="noopener noreferrer"><strong>{l.nombre}</strong></a>
@@ -131,7 +141,7 @@ export default function Competiciones({ usuario }) {
         </div>
       )}
 
-      {pestana !== "vikings" && (
+      {pestana !== "vikings" && !esAcero && (
         <div>
           {terminadas.length > 0 && (
             <div className="admin-tabs" style={{ marginBottom: "1rem", fontSize: ".85em" }}>
