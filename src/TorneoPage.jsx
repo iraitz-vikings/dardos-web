@@ -108,6 +108,7 @@ export default function TorneoPage({ id }) {
               <p className="torneo-pagina-fechas">
                 {formatFecha(torneo.fechaInicio)} – {formatFecha(torneo.fechaFin)}
                 {torneo.finalizado ? " · Finalizado" : ""}
+                {torneo.acero ? ` · ${t("competiciones.acero")}` : ""}
               </p>
               {torneo.insigniaUrl && (
                 <img src={torneo.insigniaUrl} alt={`Insignia ${torneo.nombre}`} className="torneo-pagina-insignia" />

@@ -80,6 +80,8 @@ export default function AdminLigasClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  // De acero: liga organizada con la web que no es del club (ver schema).
+  const [acero, setAcero] = useState(false);
   const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
   const [imagenCampeonUrl, setImagenCampeonUrl] = useState("");
   const [imagenBienvenidaUrl, setImagenBienvenidaUrl] = useState("");
@@ -130,7 +132,7 @@ export default function AdminLigasClub({ token, salir }) {
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, modalidad, vueltas, numeroParticipantes,
           numeroGrupos: numeroGrupos === "" ? undefined : Number(numeroGrupos),
           metodoSorteoParejas: modalidad === "parejas_ciegas" ? metodoSorteoParejas : undefined,
-          insigniaUrl, afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
+          insigniaUrl, afectaCalendario, notificaciones, acero, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
         }),
       });
       if (res.status === 401) {
@@ -146,7 +148,7 @@ export default function AdminLigasClub({ token, salir }) {
       setNombre(""); setDescripcion(""); setFechaInicio(""); setFechaFin("");
       setVisibilidad("privado"); setModalidad("individual"); setVueltas(1);
       setNumeroParticipantes(8); setNumeroGrupos(""); setMetodoSorteoParejas("AB"); setInsigniaUrl("");
-      setAfectaCalendario(true);
+      setAfectaCalendario(true); setAcero(false);
       setImagenEliminadoUrl(""); setImagenCampeonUrl(""); setImagenBienvenidaUrl("");
       setMensaje({ tipo: "ok", texto: "Liga creada." });
       setMostrarFormulario(false);
@@ -182,6 +184,15 @@ export default function AdminLigasClub({ token, salir }) {
     });
     cargarLigas();
   }
+  async function cambiarAcero(liga, nuevo) {
+    await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ acero: nuevo }),
+    });
+    cargarLigas();
+  }
+
   async function cambiarAnclarInicio(liga, nuevo) {
     await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
       method: "PUT",
@@ -408,6 +419,10 @@ export default function AdminLigasClub({ token, salir }) {
             <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
             Avisar a los socios de sus partidos de esta liga
           </label>
+          <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+            <input type="checkbox" checked={acero} onChange={(e) => setAcero(e.target.checked)} style={{ width: "auto" }} />
+            De acero (no es del club: sale en la pestaña "Acero" de Competiciones)
+          </label>
           <label>
             Imagen de aviso de bienvenida al sortear (opcional)
             <SelectorImagen
@@ -528,6 +543,7 @@ export default function AdminLigasClub({ token, salir }) {
                     {l.finalizado ? " · Finalizada" : ""}
                     {l.notificaciones === false ? " · Sin avisos" : ""}
                     {l.anclarInicio ? " · Anclada a inicio" : ""}
+                    {l.acero ? " · Acero" : ""}
                   </time>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -542,6 +558,9 @@ export default function AdminLigasClub({ token, salir }) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarAnclarInicio(l, !l.anclarInicio)}>
                     {l.anclarInicio ? "Desanclar de inicio" : "Anclar a inicio"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarAcero(l, !l.acero)}>
+                    {l.acero ? "Quitar de acero" : "Marcar de acero"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(l.id)}>Gestionar</button>
                   <a className="admin-link-btn" href={`${window.location.origin}/liga/${l.id}`} target="_blank" rel="noopener noreferrer">
