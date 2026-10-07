@@ -11,6 +11,7 @@ import AdminLigasClub from "./AdminLigasClub.jsx";
 import AdminTrofeos from "./AdminTrofeos.jsx";
 import AdminEquiposClub from "./AdminEquiposClub.jsx";
 import AdminDispositivosPush from "./AdminDispositivosPush.jsx";
+import AvisoPermisoAdmin from "./AvisoPermisoAdmin.jsx";
 import AdminMaquinas from "./AdminMaquinas.jsx";
 import AdminFabricantes from "./AdminFabricantes.jsx";
 import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
@@ -565,6 +566,8 @@ function cancelarEdicionNoticia() {
         <span>Panel del club</span>
         <button className="admin-link-btn" onClick={salir}>Salir</button>
       </header>
+
+      <AvisoPermisoAdmin />
 
       <nav className="admin-tabs">
         {TABS.map((t) => (
