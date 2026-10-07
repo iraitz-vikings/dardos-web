@@ -171,7 +171,11 @@ export default function Competiciones({ usuario }) {
                       // (eq.equipoClub.capitan); el de la inscripción concreta
                       // (eq.capitan) casi nunca se usa, pero se comprueban los dos.
                       const capitan = eq.equipoClub?.capitan || eq.capitan;
-                      const esCapitan = usuario && capitan?.usuarioId === usuario.id;
+                      // Co-capitanes (miembros de la plantilla marcados como
+                      // tal): mismos permisos que el capitán.
+                      const cocapitanes = (eq.equipoClub?.miembros || []).map((m) => m.jugador).filter((j) => j.id !== capitan?.id);
+                      const esCapitan =
+                        !!usuario && [capitan, ...cocapitanes].some((j) => j?.usuarioId && j.usuarioId === usuario.id);
                       const eqAbierto = !!equiposAbiertos[eq.id];
                       return (
                         <div key={eq.id} style={{ marginTop: ".8rem", paddingLeft: ".6rem", borderLeft: "2px solid var(--line)" }}>
@@ -183,6 +187,9 @@ export default function Competiciones({ usuario }) {
                             <span>
                               {eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto}
                               {capitan ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
+                              {cocapitanes.length > 0
+                                ? ` · ${t("competiciones.cocapitan")} ${cocapitanes.map((j) => j.apodo || j.nombre).join(", ")}`
+                                : ""}
                             </span>
                             <span className="admin-ronda-toggle">{eqAbierto ? "Ocultar ▲" : "Ver ▼"}</span>
                           </h4>

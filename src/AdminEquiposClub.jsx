@@ -189,6 +189,18 @@ export default function AdminEquiposClub({ token, salir }) {
     cargarEquipos();
   }
 
+  // Co-capitán: mismos permisos que el capitán sobre los partidos del
+  // equipo/pareja. Puede haber varios.
+  async function marcarCocapitan(equipoId, jugadorId, cocapitan) {
+    const res = await fetch(`${API_URL}/api/equipos-club/${equipoId}/miembros/${jugadorId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ cocapitan }),
+    }).catch(() => null);
+    if (!res?.ok) setMensaje({ tipo: "error", texto: "No se pudo cambiar el co-capitán." });
+    cargarEquipos();
+  }
+
   // ---------- Inscripciones en competiciones externas ----------
   async function inscribir(equipoId, torneoId) {
     if (!torneoId) return;
@@ -387,10 +399,18 @@ export default function AdminEquiposClub({ token, salir }) {
                   <ul>
                     {eq.miembros.map((m) => (
                       <li key={m.id} className="admin-list-item">
-                        <span>{m.jugador.nombre}{eq.capitanId === m.jugadorId ? " — Capitán" : ""}</span>
-                        <div style={{ display: "flex", gap: ".5rem" }}>
+                        <span>
+                          {m.jugador.nombre}
+                          {eq.capitanId === m.jugadorId ? " — Capitán" : m.cocapitan ? " — Co-capitán" : ""}
+                        </span>
+                        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                           {eq.capitanId !== m.jugadorId && (
                             <button className="admin-link-btn" onClick={() => marcarCapitan(eq.id, m.jugadorId)}>Hacer capitán</button>
+                          )}
+                          {eq.capitanId !== m.jugadorId && (
+                            <button className="admin-link-btn" onClick={() => marcarCocapitan(eq.id, m.jugadorId, !m.cocapitan)}>
+                              {m.cocapitan ? "Quitar co-capitán" : "Hacer co-capitán"}
+                            </button>
                           )}
                           <button className="admin-link-btn" onClick={() => quitarMiembro(eq.id, m.jugadorId)}>Quitar</button>
                         </div>
