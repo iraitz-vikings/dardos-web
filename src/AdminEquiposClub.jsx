@@ -464,6 +464,7 @@ export default function AdminEquiposClub({ token, salir }) {
                     <InscripcionBloque
                       key={inscripcion.id}
                       inscripcion={inscripcion}
+                      nombreEquipo={eq.nombre}
                       miembrosClub={eq.miembros}
                       maquinas={maquinas}
                       onQuitarInscripcion={() => quitarInscripcion(eq.id, inscripcion.id)}
@@ -517,7 +518,7 @@ function InscribirEnCompeticion({ opciones, onInscribir }) {
   );
 }
 
-function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscripcion, onAsignarCapitan, onGuardarIdExterno, onAnadirJugador, onQuitarJugador, onCrearPartido, onActualizarPartido, onBorrarPartido }) {
+function InscripcionBloque({ inscripcion, nombreEquipo, miembrosClub, maquinas, onQuitarInscripcion, onAsignarCapitan, onGuardarIdExterno, onAnadirJugador, onQuitarJugador, onCrearPartido, onActualizarPartido, onBorrarPartido }) {
   const [fechaPartido, setFechaPartido] = useState("");
   const [rivalPartido, setRivalPartido] = useState("");
   const [anadiendoJugador, setAnadiendoJugador] = useState(false);
@@ -616,7 +617,7 @@ function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscri
         renderPartido={(p) => (
           <li key={p.id} className="admin-list-item" style={{ flexWrap: "wrap" }}>
             <div>
-              <strong>{new Date(p.fecha).toLocaleString("es-ES")}</strong> — vs {p.rival || "?"}
+              <strong>{new Date(p.fecha).toLocaleString("es-ES")}</strong> — {nombreEquipo} vs {p.rival || "?"}
               {p.fijado ? " · confirmado" : " · sin confirmar"}
               {p.maquina ? ` · ${p.maquina.nombre}` : ""}
               {p.resultado ? ` · ${p.resultado}` : ""}

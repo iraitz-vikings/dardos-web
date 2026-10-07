@@ -177,6 +177,10 @@ export default function Competiciones({ usuario }) {
                       const esCapitan =
                         !!usuario && [capitan, ...cocapitanes].some((j) => j?.usuarioId && j.usuarioId === usuario.id);
                       const eqAbierto = !!equiposAbiertos[eq.id];
+                      // Nombre de NUESTRO equipo en cada partido ("VIKINGS X vs
+                      // RIVAL"): con solo "vs RIVAL" parecía un partido entre
+                      // el rival y otro equipo.
+                      const nombreEq = eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto;
                       return (
                         <div key={eq.id} style={{ marginTop: ".8rem", paddingLeft: ".6rem", borderLeft: "2px solid var(--line)" }}>
                           <h4
@@ -205,10 +209,10 @@ export default function Competiciones({ usuario }) {
                                 vacio={t("competiciones.sinPartidos")}
                                 renderPartido={(p) => (
                                   esCapitan ? (
-                                    <PartidoCapitanRow key={p.id} p={p} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
+                                    <PartidoCapitanRow key={p.id} p={p} nombreEquipo={nombreEq} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
                                   ) : (
                                     <li key={p.id} style={{ fontSize: ".85em" }}>
-                                      {formatFecha(p.fecha, lang)} — {t("partido.vs")} {p.rival || "?"}
+                                      {formatFecha(p.fecha, lang)} — {nombreEq} {t("partido.vs")} {p.rival || "?"}
                                       {p.resultado ? ` — ${p.resultado}` : p.fijado ? ` — ${t("competiciones.confirmado")}` : ` — ${t("competiciones.sinConfirmar")}`}
                                       {p.maquina ? ` (${p.maquina.nombre})` : ""}
                                     </li>
@@ -267,13 +271,13 @@ function NuevoPartidoCapitanForm({ onCrear, t }) {
 // rival, máquina, resultado y una nota, y confirmar/desconfirmar el
 // partido. Solo se muestra cuando el socio logueado es el capitán de este
 // equipo concreto (comprobado también en el backend).
-function PartidoCapitanRow({ p, maquinas, onActualizar, t, lang }) {
+function PartidoCapitanRow({ p, nombreEquipo, maquinas, onActualizar, t, lang }) {
   const [nota, setNota] = useState(p.notaCapitan || "");
 
   return (
     <li className="admin-list-item" style={{ flexWrap: "wrap", fontSize: ".85em" }}>
       <div>
-        <strong>{formatFecha(p.fecha, lang)}</strong> — {t("partido.vs")} {p.rival || "?"}
+        <strong>{formatFecha(p.fecha, lang)}</strong> — {nombreEquipo} {t("partido.vs")} {p.rival || "?"}
         {p.fijado ? ` · ${t("competiciones.confirmado")}` : ` · ${t("competiciones.sinConfirmar")}`}
         {p.maquina ? ` · ${p.maquina.nombre}` : ""}
         {p.resultado ? ` · ${p.resultado}` : ""}
