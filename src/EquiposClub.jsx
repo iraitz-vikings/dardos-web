@@ -5,6 +5,7 @@ import { API_URL } from "./config.js";
 
 // Tarjeta de un equipo/pareja del club en la zona pública.
 function TarjetaEquipo({ eq, t }) {
+  const cocapitanes = eq.miembros.filter((m) => m.cocapitan && m.jugadorId !== eq.capitanId);
   return (
     <div className="admin-form" style={{ padding: "1rem" }}>
       {eq.escudoUrl && (
@@ -15,10 +16,15 @@ function TarjetaEquipo({ eq, t }) {
       {eq.capitan && (
         <p style={{ fontSize: ".8em", color: "var(--ember)", margin: ".3rem 0" }}>{t("equiposClub.capitan")} {eq.capitan.nombre}</p>
       )}
+      {cocapitanes.length > 0 && (
+        <p style={{ fontSize: ".8em", color: "var(--ember)", margin: ".3rem 0" }}>
+          {t("equiposClub.cocapitan")} {cocapitanes.map((m) => m.jugador.nombre).join(", ")}
+        </p>
+      )}
       <ul style={{ marginTop: ".5rem" }}>
         {eq.miembros.map((m) => (
           <li key={m.id} style={{ fontSize: ".85em" }}>
-            {m.jugador.nombre}{eq.capitanId === m.jugadorId ? " (C)" : ""}
+            {m.jugador.nombre}{eq.capitanId === m.jugadorId ? " (C)" : m.cocapitan ? " (CC)" : ""}
           </li>
         ))}
         {eq.miembros.length === 0 && <li style={{ fontSize: ".85em", opacity: 0.7 }}>{t("equiposClub.sinJugadores")}</li>}
