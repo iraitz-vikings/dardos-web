@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
 import CalendarioJornadas from "./CalendarioJornadas.jsx";
 import { useLang } from "./i18n.jsx";
@@ -163,7 +164,7 @@ export default function Competiciones({ usuario }) {
                 <h4
                   className="admin-ronda-header"
                   style={{ margin: 0 }}
-                  onClick={() => setCompeticionesAbiertas((prev) => ({ ...prev, [tx.id]: !abierta }))}
+                  {...propsCabeceraDesplegable(abierta, () => setCompeticionesAbiertas((prev) => ({ ...prev, [tx.id]: !abierta })))}
                 >
                   <span>
                     {tx.nombre}
@@ -196,7 +197,7 @@ export default function Competiciones({ usuario }) {
                           <h4
                             className="admin-ronda-header"
                             style={{ margin: 0, fontSize: ".85em", textTransform: "none" }}
-                            onClick={() => setEquiposAbiertos((prev) => ({ ...prev, [eq.id]: !eqAbierto }))}
+                            {...propsCabeceraDesplegable(eqAbierto, () => setEquiposAbiertos((prev) => ({ ...prev, [eq.id]: !eqAbierto })))}
                           >
                             <span>
                               {eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto}

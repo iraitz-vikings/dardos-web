@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
@@ -1327,7 +1328,7 @@ function CalendarioLigaGrupo({ partidos, maquinas, afectaCalendario, onActualiza
         const desplegada = jornadasManual[j] !== undefined ? jornadasManual[j] : estado === "en_curso";
         return (
           <div key={j} className="admin-cuadro-maquina">
-            <h4 className="admin-ronda-header" onClick={() => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada }))}>
+            <h4 className="admin-ronda-header" {...propsCabeceraDesplegable(desplegada, () => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada })))}>
               <span>
                 Jornada {j} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_JORNADA[estado]}</span>
               </span>
@@ -1755,7 +1756,7 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
                     <div key={ronda} className="admin-cuadro-maquina">
                       <h4
                         className="admin-ronda-header"
-                        onClick={() => setRondasManual((prev) => ({ ...prev, [key]: !desplegada }))}
+                        {...propsCabeceraDesplegable(desplegada, () => setRondasManual((prev) => ({ ...prev, [key]: !desplegada })))}
                       >
                         <span>
                           Ronda {ronda}{" "}

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLang } from "./i18n.jsx";
 import MediasFabricante from "./MediasFabricante.jsx";
 import AceroJugador from "./AceroJugador.jsx";
@@ -9,6 +10,13 @@ import AceroJugador from "./AceroJugador.jsx";
 // /api/jugadores/directorio o /api/jugadores/:id/ficha.
 export default function PerfilJugadorModal({ jugador, onClose }) {
   const { t } = useLang();
+  // Escape cierra la ventana, como el resto de ventanas de la web.
+  useEffect(() => {
+    if (!jugador) return undefined;
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [jugador, onClose]);
   if (!jugador) return null;
   const sinAlias = (jugador.idsFabricantes || []).filter((i) => (i.idExterno || "").trim()).length === 0;
 
@@ -16,7 +24,7 @@ export default function PerfilJugadorModal({ jugador, onClose }) {
     <div className="perfil-jugador-modal" onClick={onClose}>
       <div className="perfil-jugador-panel" onClick={(e) => e.stopPropagation()}>
         <div className="perfil-jugador-panel-header">
-          <button type="button" className="admin-link-btn" onClick={onClose}>{t("jugadoresClub.cerrar")}</button>
+          <button type="button" className="admin-link-btn" onClick={onClose} autoFocus>{t("jugadoresClub.cerrar")}</button>
         </div>
         <div className="perfil-jugador-cabecera">
           {jugador.avatarUrl ? (
