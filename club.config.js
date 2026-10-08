@@ -104,6 +104,15 @@ export default {
   },
 
   // ---------- Contacto (footer) ----------
+  // ---------- Titular de la web (aviso legal y política de privacidad) ----------
+  // Datos fiscales del club tal como constan en Hacienda (LSSI art. 10). Los
+  // usan src/PaginaLegal.jsx y src/textosLegales.js.
+  titular: {
+    razonSocial: "Asociación Vikings Darts Club Beraun",
+    nif: "G75268516",
+    domicilio: "Aita Donostia kalea 4, 00 A, 20100 Errenteria (Gipuzkoa)",
+  },
+
   contacto: {
     email: "vikingsdartsclub@hotmail.com",
     direccion: ["Aita Donostia Kalea, Nº 2 (trasera)", "20100 Errenteria, Gipuzkoa"],

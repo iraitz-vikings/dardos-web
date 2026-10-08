@@ -422,6 +422,8 @@ const dic = {
 
     "externo.aviso": "Se carga desde {servicio}, que recibirá tu IP y puede guardar cookies.",
     "footer.abrirMapa": "Abrir en Google Maps ↗",
+    "footer.avisoLegal": "Aviso legal",
+    "footer.privacidad": "Privacidad",
   },
   eu: {
     "nav.cronica": "Kronika",
@@ -843,6 +845,8 @@ const dic = {
 
     "externo.aviso": "{servicio}-etik kargatzen da; zure IPa jasoko du eta cookieak gorde ditzake.",
     "footer.abrirMapa": "Google Maps-en ireki ↗",
+    "footer.avisoLegal": "Lege-oharra",
+    "footer.privacidad": "Pribatutasuna",
   },
   // Francés: cubre las páginas públicas de la web (Nav, Inicio, Histórico,
   // Galería, página de torneo/liga, login) — a petición de Iraitz,
@@ -964,6 +968,8 @@ const dic = {
 
     "externo.aviso": "Chargé depuis {servicio}, qui recevra votre IP et peut enregistrer des cookies.",
     "footer.abrirMapa": "Ouvrir dans Google Maps ↗",
+    "footer.avisoLegal": "Mentions légales",
+    "footer.privacidad": "Confidentialité",
   },
 };
 

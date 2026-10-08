@@ -10,12 +10,23 @@ import { CLUB } from "./club.js";
 const MAPA_URL = CLUB.contacto.mapaUrl;
 const MAPA_IMG = "/mapa-club.webp";
 
+// Enlaces al aviso legal y la política de privacidad (PaginaLegal.jsx), en
+// todos los pies de página.
+function EnlacesLegales({ t }) {
+  return (
+    <p className="footer-legal">
+      <a href="/aviso-legal">{t("footer.avisoLegal")}</a> · <a href="/privacidad">{t("footer.privacidad")}</a>
+    </p>
+  );
+}
+
 export default function Footer({ simple = false }) {
   const { t } = useLang();
   if (simple) {
     return (
       <footer className="footer">
         <p className="footer-copy">© {new Date().getFullYear()} · {t("footer.copy")}</p>
+        <EnlacesLegales t={t} />
       </footer>
     );
   }
@@ -41,6 +52,7 @@ export default function Footer({ simple = false }) {
         </div>
       </div>
       <p className="footer-copy">© {new Date().getFullYear()} · {t("footer.copy")}</p>
+      <EnlacesLegales t={t} />
     </footer>
   );
 }

@@ -34,6 +34,8 @@ function archivosDelClub(apiUrl) {
     { ruta: "/", frecuencia: "weekly", prioridad: "1.0" },
     { ruta: "/galeria", frecuencia: "weekly", prioridad: "0.6" },
     { ruta: "/historico", frecuencia: "monthly", prioridad: "0.5" },
+    { ruta: "/aviso-legal", frecuencia: "yearly", prioridad: "0.2" },
+    { ruta: "/privacidad", frecuencia: "yearly", prioridad: "0.2" },
   ];
   const hoy = new Date().toISOString().slice(0, 10);
 

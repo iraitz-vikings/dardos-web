@@ -6,6 +6,7 @@ import Galeria from "./Galeria.jsx";
 import TorneoPage from "./TorneoPage.jsx";
 import LigaPage from "./LigaPage.jsx";
 import Historico from "./Historico.jsx";
+import PaginaLegal from "./PaginaLegal.jsx";
 import Socios from "./Socios.jsx";
 import AvisoCheckIn from "./AvisoCheckIn.jsx";
 import PaginaPartidas from "./PaginaPartidas.jsx";
@@ -67,6 +68,8 @@ const isTorneos = path === "/torneos" || path === "/torneos/";
 const matchTorneo = path.match(/^\/torneo\/([^/]+)/);
 const matchLiga = path.match(/^\/liga\/([^/]+)/);
 const matchAviso = path.match(/^\/aviso\/([^/]+)/);
+const isAvisoLegal = path === "/aviso-legal" || path === "/aviso-legal/";
+const isPrivacidad = path === "/privacidad" || path === "/privacidad/";
 
 function Pagina() {
   if (isAdmin) return <Admin />;
@@ -78,6 +81,8 @@ function Pagina() {
   if (matchTorneo) return <TorneoPage id={matchTorneo[1]} />;
   if (matchLiga) return <LigaPage id={matchLiga[1]} />;
   if (matchAviso) return <AvisoCheckIn token={matchAviso[1]} />;
+  if (isAvisoLegal) return <PaginaLegal tipo="avisoLegal" />;
+  if (isPrivacidad) return <PaginaLegal tipo="privacidad" />;
   return <App />;
 }
 
