@@ -66,9 +66,11 @@ Todo por variables de entorno: ver `.env.example` y el README del backend.
 - **Idiomas**: la web está en castellano, euskera y francés (`src/i18n.jsx`,
   selector en `src/Nav.jsx`, y los avisos del backend). Quitar o añadir un
   idioma requiere tocar código.
-- **Textos legales / RGPD** (avisos de cookies y servicios externos en
-  `src/i18n.jsx`): revisar que el responsable del tratamiento sea el club
-  nuevo.
+- **Textos legales / RGPD**: los datos del titular (razón social, NIF,
+  domicilio) van en `titular` de `club.config.js`, pero el texto del aviso
+  legal y de la política de privacidad (`src/textosLegales.js`) y los avisos
+  de cookies y servicios externos (`src/i18n.jsx`) hay que revisarlos por si
+  el club nuevo usa otros proveedores.
 - **Tonos derivados de la paleta**: `src/styles.css` tiene algunos colores
   semitransparentes escritos a mano a partir de la paleta de Vikings (busca
   `#0e0f13` y `#9a2b28`). Si la paleta nueva es muy distinta, conviene
