@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
@@ -2130,7 +2131,7 @@ function CuadranteDetalle({
                     <div key={ronda} className="admin-cuadro-maquina">
                       <h4
                         className="admin-ronda-header"
-                        onClick={() => setRondasManual((prev) => ({ ...prev, [key]: !desplegada }))}
+                        {...propsCabeceraDesplegable(desplegada, () => setRondasManual((prev) => ({ ...prev, [key]: !desplegada })))}
                       >
                         <span>
                           Ronda {ronda}{" "}

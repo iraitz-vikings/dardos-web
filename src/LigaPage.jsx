@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import QrPagina from "./QrPagina.jsx";
@@ -72,7 +73,7 @@ function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t, onVerDirecto }) {
         const desplegada = jornadasManual[j] !== undefined ? jornadasManual[j] : estado === "en_curso";
         return (
           <div key={j} className="admin-cuadro-maquina">
-            <h4 className="admin-ronda-header" onClick={() => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada }))}>
+            <h4 className="admin-ronda-header" {...propsCabeceraDesplegable(desplegada, () => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada })))}>
               <span>
                 {t("ligaPage.jornada").replace("{n}", j)} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{etiquetaEstadoJornada(t, estado)}</span>
               </span>

@@ -378,6 +378,7 @@ const dic = {
     "cronica.title": "Últimas noticias",
 
     "galeria.eyebrow": "Galería",
+    "galeria.ampliarFoto": "Ampliar foto",
     "galeria.title": "Fotos y vídeos del club",
     "galeria.teaser": "Revive los mejores momentos del club: fotos de eventos y vídeos de partidas.",
     "galeria.cta": "Ver galería completa →",
@@ -805,6 +806,7 @@ const dic = {
     "cronica.title": "Azken berriak",
 
     "galeria.eyebrow": "Galeria",
+    "galeria.ampliarFoto": "Argazkia handitu",
     "galeria.title": "Klubaren argazkiak eta bideoak",
     "galeria.teaser": "Berrikusi klubaren momenturik onenak: ekitaldien argazkiak eta partiden bideoak.",
     "galeria.cta": "Galeria osoa ikusi →",
@@ -932,6 +934,7 @@ const dic = {
     "cronica.title": "Dernières actualités",
 
     "galeria.eyebrow": "Galerie",
+    "galeria.ampliarFoto": "Agrandir la photo",
     "galeria.title": "Photos et vidéos du club",
     "galeria.teaser": "Revivez les meilleurs moments du club : photos d'événements et vidéos de matchs.",
     "galeria.cta": "Voir la galerie complète →",

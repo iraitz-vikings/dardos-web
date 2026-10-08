@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { propsAmpliable } from "./cabeceraDesplegable.js";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { useLang } from "./i18n.jsx";
@@ -138,9 +139,10 @@ export default function Galeria() {
                       key={i}
                       src={item.src}
                       alt=""
+                      aria-label={t("galeria.ampliarFoto")}
                       loading="lazy"
                       className="gallery-item gallery-photo"
-                      onClick={() => setLightbox({ tipo: "foto", src: item.src })}
+                      {...propsAmpliable(() => setLightbox({ tipo: "foto", src: item.src }))}
                     />
                   );
                 }

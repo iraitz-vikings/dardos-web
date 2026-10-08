@@ -82,7 +82,7 @@ a { color: inherit; text-decoration: none; }
     line-height: 1.05;
     text-transform: uppercase;
 }
-.hero h1 span { color: var(--blood); }
+.hero h1 span { color: var(--blood-texto); }
 
 .hero-sub {
     max-width: 480px;
@@ -466,7 +466,7 @@ button {
 
 .admin-msg { font-size: .82rem; }
 .admin-msg-ok { color: #8fbf8f; }
-.admin-msg-error { color: var(--blood); }
+.admin-msg-error { color: var(--blood-texto); }
 
 .admin-list ul { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
 .admin-list-item {
@@ -665,9 +665,11 @@ button {
    navegación rota justo en el rango típico de una tablet). */
 @media (max-width: 1024px) {
       .nav-toggle { display: flex; }
-      .nav-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; gap: 0; background: #0e0f13f2; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+      .nav-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; gap: 0; background: #0e0f13f2; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); max-height: 0; overflow: hidden; visibility: hidden; transition: max-height .25s ease, visibility 0s linear .25s; }
       .nav-links a { padding: 1rem clamp(1.2rem, 5vw, 3rem); border-top: 1px solid var(--line); }
-      .nav-links-open { max-height: 460px; overflow-y: auto; }
+      /* visibility: con el menú cerrado (max-height 0) los enlaces seguían
+         recibiendo el foco al tabular, aunque no se vieran. */
+      .nav-links-open { max-height: 460px; overflow-y: auto; visibility: visible; transition: max-height .25s ease, visibility 0s; }
 }
 
 
@@ -1051,7 +1053,7 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 /* Selector de idioma ES/EU en el menú */
 .nav-lang { display: flex; align-items: center; gap: .3rem; font-size: .74rem; color: var(--bone-dim); }
 .nav-lang button { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: inherit; text-transform: uppercase; }
-.nav-lang-activo { color: var(--ember) !important; font-weight: 600; }
+.nav-lang-activo { color: var(--ember-texto) !important; font-weight: 600; }
 
 /* Buscador global (barra de navegación) */
 .nav-buscador { position: relative; }
@@ -1123,6 +1125,9 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .jugador-tarjeta:hover { background: rgba(255,255,255,.04); }
 .jugador-tarjeta:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.admin-ronda-header:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+img[role="button"] { cursor: zoom-in; }
+img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
 
 .perfil-jugador-modal {
   position: fixed;

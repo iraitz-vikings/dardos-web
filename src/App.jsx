@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { propsAmpliable } from "./cabeceraDesplegable.js";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import CargaExterna from "./CargaExterna.jsx";
@@ -282,8 +283,9 @@ export default function App() {
                             key={i}
                             src={src}
                             alt=""
+                            aria-label={t("galeria.ampliarFoto")}
                             loading="lazy"
-                            onClick={() => setLightbox({ tipo: "foto", src })}
+                            {...propsAmpliable(() => setLightbox({ tipo: "foto", src }))}
                             className="timeline-photo-thumb"
                           />
                         ))}
@@ -339,7 +341,7 @@ export default function App() {
                 src={torneo.cartelUrl}
                 alt={`Cartel ${torneo.nombre}`}
                 className="tournament-poster"
-                onClick={() => setLightbox({ tipo: "foto", src: torneo.cartelUrl })}
+                {...propsAmpliable(() => setLightbox({ tipo: "foto", src: torneo.cartelUrl }))}
               />
             )}
             {fechas ? (
@@ -381,7 +383,7 @@ export default function App() {
                   src={p.logoUrl}
                   alt={p.nombre}
                   title={p.nombre}
-                  onClick={() => setLightbox({ tipo: "foto", src: p.logoUrl })}
+                  {...propsAmpliable(() => setLightbox({ tipo: "foto", src: p.logoUrl }))}
                   />
               ))}
             </div>

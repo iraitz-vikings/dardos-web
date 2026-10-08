@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import { useLang } from "./i18n.jsx";
 
 // Calendario de partidos de un equipo en una competición externa, agrupado
@@ -63,7 +64,7 @@ export default function CalendarioJornadas({ partidos, renderPartido, vacio }) {
     const abierta = manual[clave] !== undefined ? manual[clave] : abiertaPorDefecto;
     return (
       <div key={clave} className="admin-cuadro-maquina">
-        <h4 className="admin-ronda-header" onClick={() => setManual((prev) => ({ ...prev, [clave]: !abierta }))}>
+        <h4 className="admin-ronda-header" {...propsCabeceraDesplegable(abierta, () => setManual((prev) => ({ ...prev, [clave]: !abierta })))}>
           <span>
             {titulo}
             {estado && <> <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{etiquetaEstado(t, estado)}</span></>}
