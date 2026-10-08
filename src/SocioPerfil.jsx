@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AvisoPrivacidad from "./AvisoPrivacidad.jsx";
 import { useLang } from "./i18n.jsx";
 import MediasFabricante from "./MediasFabricante.jsx";
 import AceroJugador from "./AceroJugador.jsx";
@@ -381,6 +382,7 @@ export default function SocioPerfil() {
       )}
 
       <div style={{ display: "flex", gap: ".6rem" }}>
+        <AvisoPrivacidad tipo="perfil" />
         <button type="submit" disabled={guardando}>{guardando ? t("perfil.guardando") : t("perfil.guardarPerfil")}</button>
         <button
           type="button"

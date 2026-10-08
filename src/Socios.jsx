@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AvisoPrivacidad from "./AvisoPrivacidad.jsx";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { useLang } from "./i18n.jsx";
@@ -192,6 +193,7 @@ export default function Socios() {
                     {t("socios.codigoInvitacion")}
                     <input value={codigoInvitacion} onChange={(e) => setCodigoInvitacion(e.target.value)} required />
                   </label>
+                  <AvisoPrivacidad tipo="registro" />
                   <button type="submit" disabled={enviando}>{enviando ? t("socios.creando") : t("socios.tabRegistro")}</button>
                 </form>
               )}

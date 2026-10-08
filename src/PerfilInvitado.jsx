@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AvisoPrivacidad from "./AvisoPrivacidad.jsx";
 import { useLang } from "./i18n.jsx";
 import { apiFetch, API_URL } from "./apiHerramienta.js";
 import EditorMediasFabricante, { construirIdsFabricantes, mapasDesdeIdsFabricantes } from "./EditorMediasFabricante.jsx";
@@ -223,6 +224,7 @@ export default function PerfilInvitado({ token, onNombreCambiado }) {
         onMedia={(id, campo, v) => setMedias((p) => ({ ...p, [id]: { ...p[id], [campo]: v } }))}
       />
 
+      <AvisoPrivacidad tipo="perfil" />
       <div style={{ display: "flex", gap: ".6rem" }}>
         <button type="submit" disabled={guardando}>{guardando ? t("perfil.guardando") : t("perfil.guardarPerfil")}</button>
         <button

@@ -295,6 +295,7 @@ a { color: inherit; text-decoration: none; }
 .footer-copy { margin: 0; }
 .footer-legal { margin: .8rem 0 0; }
 .footer-legal a { color: inherit; }
+.aviso-privacidad { font-size: .8em; margin: .4rem 0 .8rem; }
 
 /* Aviso legal y política de privacidad (PaginaLegal.jsx): texto corrido,
    legible, sin las mayúsculas de los títulos de sección. */
