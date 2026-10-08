@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { propsAmpliable } from "./cabeceraDesplegable.js";
 import { apiFetch } from "./apiHerramienta.js";
 
 // Cámaras en directo durante un partido (plan "camaras-partidas", guardado en
@@ -104,7 +105,11 @@ function pararStream(stream) {
 // Iraitz 2026-09-18).
 function VideoCamara({ videoRef, etiqueta }) {
   return (
-    <div className="camaras-partida-video-caja" onClick={() => videoRef.current?.requestFullscreen?.().catch(() => {})}>
+    <div
+      className="camaras-partida-video-caja"
+      aria-label={etiqueta}
+      {...propsAmpliable(() => videoRef.current?.requestFullscreen?.().catch(() => {}))}
+    >
       <video ref={videoRef} className="camaras-partida-video" autoPlay playsInline muted />
       <span className="camaras-partida-video-etiqueta">{etiqueta}</span>
     </div>

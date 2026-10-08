@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
+import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
@@ -2226,6 +2226,7 @@ function TemporizadorAviso({ p, temporizadorActivo, temporizador, onActualizar }
 // ganador, resultado, máquina, en curso y calendario), pero en un popup que
 // se abre al clicar la caja del enfrentamiento en el cuadrante.
 function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloqueado, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, onCerrar }) {
+  useCerrarConEscape(true, onCerrar);
   const temporizador = useTemporizadorPartido(p, temporizadorActivo, temporizadorMinutos);
   return (
     <div className="admin-partido-modal" onClick={onCerrar}>

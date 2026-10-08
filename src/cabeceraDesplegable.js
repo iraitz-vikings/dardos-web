@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 // Props para las cabeceras que abren/cierran un bloque (jornadas, rondas,
 // competiciones, equipos...). Son <h4> con onClick, así que con teclado no
 // se podían usar (revisión de accesibilidad 2026-10-08): con esto se pueden
@@ -32,4 +34,15 @@ export function propsAmpliable(abrir) {
       }
     },
   };
+}
+
+// Cierra una ventana (modal, visor de fotos...) con la tecla Escape mientras
+// `activo` sea true.
+export function useCerrarConEscape(activo, cerrar) {
+  useEffect(() => {
+    if (!activo) return undefined;
+    const onKey = (e) => e.key === "Escape" && cerrar();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activo, cerrar]);
 }
