@@ -145,7 +145,7 @@ a { color: inherit; text-decoration: none; }
 .live-tournament-machine h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--bone-dim); margin-bottom: .6rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
 .live-tournament-toggle { display: flex; gap: .5rem; margin: .8rem 0 .5rem; }
 .live-tournament-toggle button { background: transparent; border: 1px solid var(--line); color: var(--bone-dim); padding: .4rem .9rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
-.live-tournament-toggle button.active { border-color: var(--ember); color: var(--ember); }
+.live-tournament-toggle button.active { border-color: var(--ember); color: var(--ember-texto); }
 .bracket-sin-actual { font-size: .78rem; color: var(--steel); font-style: italic; padding: .5rem 0; }
 .bracket-maquina { font-size: .64rem; text-transform: uppercase; color: var(--steel); background: #ffffff0d; padding: .1rem .4rem; }
 .bracket-cuadrante { font-size: .64rem; text-transform: uppercase; color: var(--ember); background: #9a2b2822; padding: .1rem .4rem; }
@@ -442,7 +442,7 @@ button {
 }
 .admin-tab-active {
       border-color: var(--ember);
-      color: var(--ember);
+      color: var(--ember-texto);
       background: #9a2b2814;
 }
 .admin-link-btn {
@@ -550,7 +550,7 @@ button {
 .admin-temporizador-texto-urgente { border-color: #ffb066; color: #ffb066; animation: admin-temporizador-texto-parpadeo 1s ease-in-out infinite; }
 .admin-temporizador-texto-agotado { border-color: var(--blood); color: #ff8a80; background: #9a2b2833; animation: admin-temporizador-texto-parpadeo .7s ease-in-out infinite; }
 @keyframes admin-temporizador-texto-parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-.admin-ganador-activo { border-color: var(--ember) !important; color: var(--ember) !important; }
+.admin-ganador-activo { border-color: var(--ember) !important; color: var(--ember-texto) !important; }
 .admin-cuadrante { border: 1px solid var(--line); padding: .8rem 1rem; margin-top: 1rem; }
 
 /* Se sale del ancho estrecho del panel de admin (640px, ver .admin) para

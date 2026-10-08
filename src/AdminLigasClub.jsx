@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
+import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
@@ -1806,6 +1806,7 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
 // vienen fijados por la clasificación, a diferencia del cuadrante de un
 // torneo del club).
 function PartidoFinalModal({ p, maquinas, afectaCalendario, bloqueado, onActualizar, onProgramar, onCerrar }) {
+  useCerrarConEscape(true, onCerrar);
   return (
     <div className="admin-partido-modal" onClick={onCerrar}>
       <div className="admin-partido-panel" onClick={(e) => e.stopPropagation()}>

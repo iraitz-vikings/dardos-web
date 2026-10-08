@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCerrarConEscape } from "./cabeceraDesplegable.js";
 import { API_URL } from "./config.js";
 
 
@@ -11,6 +12,7 @@ function miniatura(url) {
 export default function SelectorImagen({ token, valor, onCambiar, onError, etiqueta }) {
   const [subiendo, setSubiendo] = useState(false);
   const [mostrarExistentes, setMostrarExistentes] = useState(false);
+  useCerrarConEscape(mostrarExistentes, () => setMostrarExistentes(false));
   const [existentes, setExistentes] = useState([]);
   const [cargandoExistentes, setCargandoExistentes] = useState(false);
 
