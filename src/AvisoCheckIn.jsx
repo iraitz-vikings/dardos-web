@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AvisoPrivacidad from "./AvisoPrivacidad.jsx";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { API_URL } from "./config.js";
@@ -113,6 +114,7 @@ export default function AvisoCheckIn({ token }) {
                   <button type="button">Activar avisos por Telegram</button>
                 </a>
               )}
+              {!info.telegramVinculado && info.urlTelegram && <AvisoPrivacidad tipo="telegram" />}
 
               {!info.urlTelegram && (
                 <p className="chronicle-status">
