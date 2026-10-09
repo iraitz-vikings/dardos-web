@@ -20,7 +20,7 @@ function hintIdExterno(nombrePlataforma) {
     return "Nombre EXACTO de la competición tal como aparece en la web de Radikal Darts.";
   }
   if (p.includes("connection")) {
-    return 'Ids de liga de Connection Darts separados por comas (cada día de la semana es una liga distinta, ej. 25201,25202,25203,25204). Cada equipo se localiza solo por su nombre; si no lo encuentra, pon su nombre exacto de Connection en su inscripción (pestaña "Equipos").';
+    return 'Ids de liga de Connection Darts separados por comas (cada día de la semana es una liga distinta, ej. 25201,25202,25203,25204). Cada equipo se localiza solo por su nombre; si no lo encuentra, pon su nombre exacto de Connection en su inscripción (pestaña "Equipos"). Liga INDIVIDUAL (ej. Super One: 25233,25234,25235): no inscribas ningún equipo; se buscan solos los jugadores del club por su alias de Connection.';
   }
   return 'Nombre EXACTO tal como aparece en la web de la plataforma. Hace falta para poder actualizar la clasificación automáticamente (Radikal, Phoenix y Connection Darts).';
 }

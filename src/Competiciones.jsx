@@ -201,7 +201,8 @@ export default function Competiciones({ usuario }) {
                           >
                             <span>
                               {eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto}
-                              {capitan ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
+                              {/* Inscripción individual (liga individual de Connection, sin equipo del club): no hay "capitán" que mostrar */}
+                              {capitan && eq.equipoClub ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
                               {cocapitanes.length > 0
                                 ? ` · ${t("competiciones.cocapitan")} ${cocapitanes.map((j) => j.apodo || j.nombre).join(", ")}`
                                 : ""}
