@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { propsAmpliable } from "./cabeceraDesplegable.js";
 import { apiFetch } from "./apiHerramienta.js";
 
@@ -36,7 +37,7 @@ const ICE_SERVERS = [
 // jugador con su PIN (`token`) o un espectador de una partida con las
 // cámaras encendidas (`partidaId`) — por eso se mandan los dos.
 const iceServersCache = new Map(); // partidaId -> { promesa, momento }
-function obtenerIceServers(partidaId, token) {
+export function obtenerIceServers(partidaId, token) {
   const clave = partidaId || "";
   const actual = iceServersCache.get(clave);
   if (!actual || Date.now() - actual.momento > 30 * 60 * 1000) {
@@ -55,9 +56,9 @@ function obtenerIceServers(partidaId, token) {
 
 // Calidad de emisión (probar con 640×480 a 15 fps; si se ve mal, subir aquí:
 // p. ej. 1280×720 y 1000 kbps). Es lo que la web PIDE: el móvil pone el techo.
-const VIDEO_ANCHO = 640;
-const VIDEO_ALTO = 480;
-const VIDEO_FPS = 15;
+export const VIDEO_ANCHO = 640;
+export const VIDEO_ALTO = 480;
+export const VIDEO_FPS = 15;
 const VIDEO_BITRATE_MAX = 500_000; // bits/s por cámara
 // Espectadores del público (ventanita "En directo" de la página del
 // torneo/liga): solo reciben la cámara de la diana y a menos bitrate, para
@@ -116,6 +117,232 @@ function VideoCamara({ videoRef, etiqueta }) {
   );
 }
 
+// --- Cámara auxiliar (otro dispositivo para la diana) ----------------------
+//
+// Pedido de Iraitz (2026-10-09): en vez de un dispositivo con dos cámaras,
+// usar dos dispositivos — el principal (p. ej. una tablet bajo la diana, con
+// el marcador) pone la cámara del lanzador, y otro (p. ej. un móvil en un
+// trípode) solo la de la diana. El auxiliar abre /camara desde un QR que
+// enseña el principal (CamaraAuxiliar.jsx) y le manda su vídeo por WebRTC;
+// el principal lo reenvía al rival/público como su propia cámara de la
+// diana, así que el lado receptor no cambia. Ver "Cámara auxiliar" en
+// partidasHerramienta.js (backend) para la señalización.
+export const CAMARA_AUXILIAR = "__auxiliar__";
+const claveTokenAuxiliar = (partidaId) => `camaraAuxiliar.${partidaId}`;
+
+function sesionDelToken(token) {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64)).sesion || null;
+  } catch {
+    return null;
+  }
+}
+
+// Mantiene el enlace con la cámara auxiliar mientras `habilitada`: genera (o
+// reutiliza, si se ha recargado la página) el token del QR, contesta cada
+// oferta nueva del auxiliar y devuelve el stream recibido. Al deshabilitarse
+// cierra la conexión y anula el enlace.
+function useCamaraAuxiliar({ partidaId, token, habilitada }) {
+  const [enlace, setEnlace] = useState("");
+  const [qr, setQr] = useState("");
+  const [stream, setStream] = useState(null);
+  const [estado, setEstado] = useState("esperando"); // esperando | conectando | conectado | desconectado | error
+  const [generacion, setGeneracion] = useState(0);
+
+  useEffect(() => {
+    if (!habilitada) return undefined;
+    let cancelado = false;
+    let pc = null;
+    let intento = null;
+    let iceAplicados = 0;
+    let iceGenerados = [];
+    let iceEnviados = 0;
+    let reinicioPedido = false;
+    let intervalo = null;
+
+    function cerrarPc() {
+      if (pc) pc.close();
+      pc = null;
+    }
+
+    async function prepararToken() {
+      const clave = claveTokenAuxiliar(partidaId);
+      let guardado = "";
+      try { guardado = (generacion === 0 && sessionStorage.getItem(clave)) || ""; } catch { /* sin almacenamiento */ }
+      if (guardado) {
+        // Recarga de la página: si el enlace sigue vigente, se reutiliza (el
+        // móvil no tiene que volver a escanear) y se le pide una oferta nueva,
+        // porque la conexión anterior se ha perdido con la recarga.
+        try {
+          const data = await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, { token });
+          if (data.sesion === sesionDelToken(guardado)) {
+            await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, {
+              token, method: "PUT", body: JSON.stringify({ reinicio: true }),
+            });
+            return guardado;
+          }
+        } catch { /* no hay enlace vigente: se genera uno nuevo */ }
+      }
+      const { token: nuevo } = await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, { token, method: "POST" });
+      try { sessionStorage.setItem(clave, nuevo); } catch { /* sin almacenamiento */ }
+      return nuevo;
+    }
+
+    async function sondear() {
+      let data;
+      try {
+        data = await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, { token });
+      } catch {
+        return;
+      }
+      if (cancelado) return;
+
+      // Oferta nueva del auxiliar (primera conexión o reconexión).
+      if (data.offer && data.intento !== intento) {
+        cerrarPc();
+        intento = data.intento;
+        iceAplicados = 0;
+        iceGenerados = [];
+        iceEnviados = 0;
+        reinicioPedido = false;
+        setEstado("conectando");
+        const nuevo = new RTCPeerConnection({ iceServers: await obtenerIceServers(partidaId, token) });
+        if (cancelado) { nuevo.close(); return; }
+        pc = nuevo;
+        nuevo.ontrack = (e) => {
+          if (pc !== nuevo) return;
+          setStream(e.streams[0] || new MediaStream([e.track]));
+        };
+        nuevo.onicecandidate = (e) => {
+          if (e.candidate && pc === nuevo) iceGenerados.push(e.candidate.toJSON());
+        };
+        nuevo.onconnectionstatechange = () => {
+          if (pc !== nuevo) return;
+          const s = nuevo.connectionState;
+          if (s === "connected") setEstado("conectado");
+          else if (s === "disconnected" || s === "failed") setEstado("desconectado");
+        };
+        try {
+          await nuevo.setRemoteDescription(data.offer);
+          const answer = await nuevo.createAnswer();
+          await nuevo.setLocalDescription(answer);
+          await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, {
+            token, method: "PUT", body: JSON.stringify({ intento, answer: nuevo.localDescription }),
+          });
+        } catch {
+          setEstado("error");
+        }
+        return;
+      }
+
+      if (!pc) return;
+      try {
+        const nuevosIce = (data.iceAux || []).slice(iceAplicados);
+        for (const c of nuevosIce) await pc.addIceCandidate(c);
+        iceAplicados = (data.iceAux || []).length;
+        if (iceGenerados.length > iceEnviados) {
+          const pendientes = iceGenerados.slice(iceEnviados);
+          iceEnviados = iceGenerados.length;
+          await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, {
+            token, method: "PUT", body: JSON.stringify({ intento, iceTablet: pendientes }),
+          });
+        }
+        // Conexión caída: se pide al móvil que vuelva a ofrecer (una vez por
+        // intento; el móvil también reintenta por su cuenta).
+        if (pc.connectionState === "failed" && !reinicioPedido) {
+          reinicioPedido = true;
+          await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, {
+            token, method: "PUT", body: JSON.stringify({ reinicio: true }),
+          });
+        }
+      } catch {
+        // Best-effort, se reintenta en el siguiente sondeo.
+      }
+    }
+
+    setEstado("esperando");
+    setStream(null);
+    prepararToken()
+      .then((tok) => {
+        if (cancelado) return;
+        const url = `${window.location.origin}/camara#p=${encodeURIComponent(partidaId)}&t=${encodeURIComponent(tok)}`;
+        setEnlace(url);
+        QRCode.toDataURL(url, { width: 240, margin: 2 }).then((d) => { if (!cancelado) setQr(d); }).catch(() => {});
+        sondear();
+        intervalo = setInterval(sondear, 2000);
+      })
+      .catch(() => { if (!cancelado) setEstado("error"); });
+
+    return () => {
+      cancelado = true;
+      clearInterval(intervalo);
+      cerrarPc();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habilitada, partidaId, generacion]);
+
+  // Al dejar de usarla, el enlace deja de valer (el móvil lo verá y parará).
+  // Solo al pasar de habilitada a no habilitada: al montar (p. ej. tras
+  // recargar la página) se conserva, para poder reutilizarlo sin re-escanear.
+  const habilitadaAntesRef = useRef(habilitada);
+  useEffect(() => {
+    const antes = habilitadaAntesRef.current;
+    habilitadaAntesRef.current = habilitada;
+    if (habilitada || !antes) return undefined;
+    setStream(null);
+    setEnlace("");
+    setQr("");
+    let guardado = "";
+    try { guardado = sessionStorage.getItem(claveTokenAuxiliar(partidaId)) || ""; } catch { /* sin almacenamiento */ }
+    if (guardado) {
+      try { sessionStorage.removeItem(claveTokenAuxiliar(partidaId)); } catch { /* sin almacenamiento */ }
+      apiFetch(`/api/partidas-herramienta/${partidaId}/camara/auxiliar`, { token, method: "DELETE" }).catch(() => {});
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [habilitada, partidaId]);
+
+  return { enlace, qr, stream, estado, nuevoEnlace: () => setGeneracion((g) => g + 1) };
+}
+
+// Panel del QR y del estado de la cámara auxiliar (dentro del selector).
+function PanelCamaraAuxiliar({ aux }) {
+  const textos = {
+    esperando: "Escanea este QR con el móvil que mirará a la diana y deja esa página abierta.",
+    conectando: "📱 Conectando con el móvil…",
+    conectado: "📱 Cámara de la diana conectada ✓",
+    desconectado: "📱 Se ha perdido la conexión con el móvil. Esperando a que vuelva…",
+    error: "No se ha podido preparar la cámara auxiliar. Prueba con «Generar otro QR».",
+  };
+  const mostrarQr = aux.estado !== "conectado";
+  return (
+    <div className="camara-auxiliar-panel">
+      <p className="chronicle-status" style={{ margin: "0 0 .4rem" }}>{textos[aux.estado] || ""}</p>
+      {aux.stream && aux.estado === "conectado" && (
+        <div className="camaras-partida-videos">
+          <VideoStream stream={aux.stream} etiqueta="Diana (móvil)" />
+        </div>
+      )}
+      {mostrarQr && aux.qr && (
+        <img className="camara-auxiliar-qr" src={aux.qr} alt="QR para conectar el móvil como cámara de la diana" />
+      )}
+      <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
+        {mostrarQr && aux.enlace && (
+          <button
+            type="button"
+            className="admin-link-btn"
+            onClick={() => navigator.clipboard?.writeText(aux.enlace).catch(() => {})}
+          >
+            Copiar enlace
+          </button>
+        )}
+        <button type="button" className="admin-link-btn" onClick={aux.nuevoEnlace}>Generar otro QR</button>
+      </div>
+    </div>
+  );
+}
+
 // --- Lado emisor: quien tiene el dispositivo con las dos cámaras ----------
 
 function SelectorCamaras({ partidaId, token, onMiRevisada }) {
@@ -149,6 +376,9 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
+  const dianaAuxiliar = dianaId === CAMARA_AUXILIAR;
+  const aux = useCamaraAuxiliar({ partidaId, token, habilitada: dianaAuxiliar && (abierto || activa) });
+
   const streamsRef = useRef({ diana: null, lanzador: null });
   const videoDianaRef = useRef(null);
   const videoLanzadorRef = useRef(null);
@@ -170,7 +400,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
         if (cancelado) return;
         setDispositivos(lista);
         setDianaId((actual) => actual || adivinarCamara(lista, ["target", "diana"])?.deviceId || "");
-        setLanzadorId((actual) => actual || adivinarCamara(lista, ["thrower", "lanzador"])?.deviceId || "");
+        setLanzadorId((actual) => actual || adivinarCamara(lista, ["thrower", "lanzador", "front", "frontal", "user"])?.deviceId || "");
       } catch {
         if (!cancelado) setError("No se ha podido acceder a la cámara: revisa los permisos del navegador.");
       }
@@ -181,7 +411,9 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
   function cerrarTodo() {
     for (const { pc } of conexionesRef.current.values()) pc.close();
     conexionesRef.current.clear();
-    pararStream(streamsRef.current.diana);
+    // La diana de la cámara auxiliar es una pista recibida del móvil: no se
+    // para (dejaría de llegar para siempre), solo se deja de reenviar.
+    if (!streamsRef.current.dianaAuxiliar) pararStream(streamsRef.current.diana);
     pararStream(streamsRef.current.lanzador);
     streamsRef.current = { diana: null, lanzador: null };
   }
@@ -191,17 +423,21 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
       setError("Elige las dos cámaras antes de activarlas.");
       return;
     }
+    if (dianaAuxiliar && !aux.stream) {
+      setError("Conecta primero el móvil de la diana escaneando el QR.");
+      return;
+    }
     setError("");
     setCargando(true);
     try {
       obtenerIceServers(partidaId, token);
       const [streamDiana, streamLanzador] = await Promise.all([
-        navigator.mediaDevices.getUserMedia(restriccionesVideo(dianaId)),
+        dianaAuxiliar ? aux.stream : navigator.mediaDevices.getUserMedia(restriccionesVideo(dianaId)),
         navigator.mediaDevices.getUserMedia(restriccionesVideo(lanzadorId)),
       ]);
       // Orden diana→lanzador consistente con VisorCamaras, que distingue las
       // pistas que le llegan por orden de llegada (WebRTC no manda nombres).
-      streamsRef.current = { diana: streamDiana, lanzador: streamLanzador };
+      streamsRef.current = { diana: streamDiana, lanzador: streamLanzador, dianaAuxiliar };
       try {
         localStorage.setItem(CLAVE_DIANA, dianaId);
         localStorage.setItem(CLAVE_LANZADOR, lanzadorId);
@@ -230,6 +466,22 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
   // el stream se engancha aquí, ya con los elementos montados (antes se
   // asignaba dentro de activar(), cuando los refs todavía eran null, y las
   // miniaturas propias se quedaban en negro).
+  // Cámara auxiliar que se reconecta (o vuelve tras un corte) con las cámaras
+  // ya activas: la pista nueva sustituye a la vieja en todas las conexiones
+  // abiertas, sin renegociar con el rival ni con el público.
+  useEffect(() => {
+    if (!activa || !streamsRef.current.dianaAuxiliar || !aux.stream || aux.stream === streamsRef.current.diana) return;
+    const pistaNueva = aux.stream.getVideoTracks()[0];
+    streamsRef.current = { ...streamsRef.current, diana: aux.stream };
+    for (const entrada of conexionesRef.current.values()) {
+      entrada.senderDiana?.replaceTrack(pistaNueva || null).catch(() => {});
+    }
+    if (videoDianaRef.current) {
+      videoDianaRef.current.srcObject = aux.stream;
+      videoDianaRef.current.play?.().catch(() => {});
+    }
+  }, [activa, aux.stream]);
+
   useEffect(() => {
     if (!activa || revisada) return;
     for (const [ref, stream] of [[videoDianaRef, streamsRef.current.diana], [videoLanzadorRef, streamsRef.current.lanzador]]) {
@@ -279,7 +531,12 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
           pc.onicecandidate = (e) => {
             if (e.candidate) entrada.iceGenerados.push(e.candidate.toJSON());
           };
-          if (streamsRef.current.diana) streamsRef.current.diana.getTracks().forEach((t) => pc.addTrack(t, streamsRef.current.diana));
+          if (streamsRef.current.diana) {
+            streamsRef.current.diana.getTracks().forEach((t) => {
+              const sender = pc.addTrack(t, streamsRef.current.diana);
+              if (t.kind === "video") entrada.senderDiana = sender;
+            });
+          }
           // Al público solo la diana (ver VIDEO_BITRATE_PUBLICO).
           if (streamsRef.current.lanzador && !entrada.publico) {
             streamsRef.current.lanzador.getTracks().forEach((t) => pc.addTrack(t, streamsRef.current.lanzador));
@@ -359,8 +616,10 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
               {dispositivos.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>{d.label || "Cámara sin nombre"}</option>
               ))}
+              <option value={CAMARA_AUXILIAR}>📱 Otro dispositivo (móvil con QR)</option>
             </select>
           </label>
+          {dianaAuxiliar && <PanelCamaraAuxiliar aux={aux} />}
           <label>
             Cámara lanzador
             <select value={lanzadorId} onChange={(e) => setLanzadorId(e.target.value)}>
@@ -372,7 +631,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
           </label>
           {error && <p className="admin-msg admin-msg-error">{error}</p>}
           <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
-            <button type="button" onClick={activar} disabled={cargando}>
+            <button type="button" onClick={activar} disabled={cargando || (dianaAuxiliar && !aux.stream)}>
               {cargando ? "Activando…" : "🎥 Activar mis cámaras"}
             </button>
             <button type="button" className="admin-link-btn" onClick={() => setAbierto(false)}>
@@ -380,6 +639,11 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
             </button>
           </div>
         </div>
+      )}
+      {activa && dianaAuxiliar && aux.estado !== "conectado" && (
+        <p className="admin-msg admin-msg-error" style={{ margin: "0 0 .4rem" }}>
+          📱 La cámara de la diana (móvil) se ha desconectado. Se volverá a conectar sola si la página sigue abierta en el móvil.
+        </p>
       )}
       {activa && !revisada && (
         <>

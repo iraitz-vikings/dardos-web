@@ -11,6 +11,7 @@ import Socios from "./Socios.jsx";
 import AvisoCheckIn from "./AvisoCheckIn.jsx";
 import PaginaPartidas from "./PaginaPartidas.jsx";
 import PaginaTorneos from "./PaginaTorneos.jsx";
+import CamaraAuxiliar from "./CamaraAuxiliar.jsx";
 import Carga from "./Carga.jsx";
 import { LanguageProvider } from "./i18n.jsx";
 import { CLUB } from "./club.js";
@@ -64,6 +65,9 @@ const isSocios = path.startsWith("/socios");
 // "partido-amistoso-remoto", guardado en el proyecto), independiente de
 // cualquier torneo/liga concretos — ver PaginaPartidas.jsx.
 const isPartidas = path.startsWith("/partidas");
+// /camara: dispositivo auxiliar de las cámaras de un partido (un móvil que
+// solo pone la cámara de la diana), se abre desde un QR — ver CamaraAuxiliar.jsx.
+const isCamaraAuxiliar = path === "/camara" || path === "/camara/";
 const isTorneos = path === "/torneos" || path === "/torneos/";
 const matchTorneo = path.match(/^\/torneo\/([^/]+)/);
 const matchLiga = path.match(/^\/liga\/([^/]+)/);
@@ -77,6 +81,7 @@ function Pagina() {
   if (isHistorico) return <Historico />;
   if (isSocios) return <Socios />;
   if (isPartidas) return <PaginaPartidas />;
+  if (isCamaraAuxiliar) return <CamaraAuxiliar />;
   if (isTorneos) return <PaginaTorneos />;
   if (matchTorneo) return <TorneoPage id={matchTorneo[1]} />;
   if (matchLiga) return <LigaPage id={matchLiga[1]} />;
