@@ -163,7 +163,8 @@ export default function Competiciones({ usuario }) {
                           >
                             <span>
                               {eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}
-                              {capitan ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
+                              {/* Inscripción individual (liga individual de Connection, sin equipo del club): no hay "capitán" que mostrar */}
+                              {capitan && eq.equipoClub ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
                             </span>
                             <span className="admin-ronda-toggle">{eqAbierto ? "Ocultar ▲" : "Ver ▼"}</span>
                           </h4>
