@@ -5,13 +5,16 @@ import { LoginPin, CLAVE_TOKEN, CLAVE_JUGADOR } from "./JuegoHerramienta.jsx";
 import { apiFetch } from "./apiHerramienta.js";
 import { useLang } from "./i18n.jsx";
 import PerfilInvitado from "./PerfilInvitado.jsx";
+import CompeticionesExternasInvitado from "./CompeticionesExternasInvitado.jsx";
 
 // Pestaña pública "Invitados" (/torneos): identificación con PIN (mismo
 // sistema y misma sesión que la herramienta de marcador, sirve para
 // miembros, amigos e invitados) y, una vez dentro, dos pestañas: "Perfil"
 // (foto, nombre, apodo y medias de fabricante, para amigos/invitados sin
 // cuenta) y "Competiciones" (los torneos/ligas en los que participa el
-// jugador Y que el admin ha marcado "anclar a inicio", ver /mis-competiciones).
+// jugador Y que el admin ha marcado "anclar a inicio", ver /mis-competiciones,
+// y debajo sus equipos y competiciones externas, ver
+// CompeticionesExternasInvitado.jsx).
 
 function fmtFecha(iso) {
   return new Date(iso).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
@@ -137,6 +140,7 @@ export default function PaginaTorneos() {
                       ))}
                     </div>
                   )}
+                  <CompeticionesExternasInvitado token={token} onSesionCaducada={salir} />
                 </>
               )}
             </>
