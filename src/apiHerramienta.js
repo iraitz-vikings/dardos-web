@@ -6,7 +6,8 @@
 // partida (PIN) si se pasa, y lanza un Error con el mensaje del backend si
 // la respuesta no es ok.
 
-export const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
+export { API_URL } from "./config.js";
+import { API_URL } from "./config.js";
 
 export async function apiFetch(path, { token, ...opciones } = {}) {
   const resp = await fetch(`${API_URL}${path}`, {

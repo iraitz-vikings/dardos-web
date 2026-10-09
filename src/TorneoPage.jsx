@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import QrPagina from "./QrPagina.jsx";
 import LiveTournament from "./LiveTournament.jsx";
 import AccesoHerramienta from "./JuegoHerramienta.jsx";
 import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso) {
   const d = new Date(iso);
@@ -107,6 +108,7 @@ export default function TorneoPage({ id }) {
               <p className="torneo-pagina-fechas">
                 {formatFecha(torneo.fechaInicio)} – {formatFecha(torneo.fechaFin)}
                 {torneo.finalizado ? " · Finalizado" : ""}
+                {torneo.acero ? ` · ${t("competiciones.acero")}` : ""}
               </p>
               {torneo.insigniaUrl && (
                 <img src={torneo.insigniaUrl} alt={`Insignia ${torneo.nombre}`} className="torneo-pagina-insignia" />
@@ -115,12 +117,7 @@ export default function TorneoPage({ id }) {
 
               <details className="torneo-pagina-qr">
                 <summary>{t("torneoPage.share")}</summary>
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
-                  alt="Código QR de esta página"
-                  width={160}
-                  height={160}
-                />
+                <QrPagina />
                 <p className="torneo-pagina-qr-url">{window.location.href}</p>
               </details>
 

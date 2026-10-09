@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso, lang) {
   const d = new Date(iso);

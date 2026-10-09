@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { propsAmpliable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso, lang) {
   const d = new Date(iso);
@@ -16,6 +17,7 @@ export default function GaleriaPrivada({ usuario }) {
   const [descripcion, setDescripcion] = useState("");
   const [mensaje, setMensaje] = useState(null);
   const [lightbox, setLightbox] = useState(null);
+  useCerrarConEscape(!!lightbox, () => setLightbox(null));
 
   const token = () => localStorage.getItem("socioToken");
 
@@ -130,7 +132,7 @@ export default function GaleriaPrivada({ usuario }) {
               src={f.url}
               alt={f.descripcion || t("galeriaPriv.altFoto")}
               style={{ width: "100%", aspectRatio: "1", objectFit: "cover", cursor: "zoom-in" }}
-              onClick={() => setLightbox(f)}
+              {...propsAmpliable(() => setLightbox(f))}
             />
             <div style={{ fontSize: ".75em", marginTop: ".3rem", display: "flex", justifyContent: "space-between" }}>
               <span>{f.autor?.nombre} · {formatFecha(f.fechaSubida, lang)}</span>

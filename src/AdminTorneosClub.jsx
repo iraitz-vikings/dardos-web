@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
@@ -6,8 +7,9 @@ import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
 import useTemporizadorPartido, { formatoCuentaAtras } from "./useTemporizadorPartido.js";
+import { API_URL } from "./config.js";
+import { DEFECTOS_MENSAJE_AVISO, IDIOMAS_MENSAJE_AVISO } from "./mensajesAvisosDefecto.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 const TAMANOS = [4, 8, 16, 32, 64, 128];
 
 const MODALIDADES = [
@@ -68,6 +70,8 @@ export default function AdminTorneosClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  // De acero: torneo organizado con la web que no es del club (ver schema).
+  const [acero, setAcero] = useState(false);
   const [temporizadorActivo, setTemporizadorActivo] = useState(false);
   const [temporizadorMinutos, setTemporizadorMinutos] = useState("");
   const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
@@ -127,7 +131,7 @@ useEffect(() => {
         headers: { "Content-Type": "application/json", "x-admin-token": token },
         body: JSON.stringify({
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, numeroMaquinas, tipoEliminacion, modalidad, insigniaUrl,
-          afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
+          afectaCalendario, notificaciones, acero, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
           temporizadorActivo, temporizadorMinutos: temporizadorActivo ? temporizadorMinutos : undefined,
           modoJornadas, puntosPorPosicion: modoJornadas ? puntosPorPosicion : undefined,
         }),
@@ -153,6 +157,7 @@ useEffect(() => {
       setInsigniaUrl("");
       setAfectaCalendario(true);
       setNotificaciones(true);
+      setAcero(false);
       setTemporizadorActivo(false);
       setTemporizadorMinutos("");
       setImagenEliminadoUrl("");
@@ -192,6 +197,15 @@ useEffect(() => {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({ notificaciones: nuevo }),
+    });
+    cargarTorneos();
+  }
+
+  async function cambiarAcero(torneo, nuevo) {
+    await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ acero: nuevo }),
     });
     cargarTorneos();
   }
@@ -600,7 +614,7 @@ async function programarCalendario(partidoId, datos) {
         <label>
           Visibilidad
           <select value={visibilidad} onChange={(e) => setVisibilidad(e.target.value)}>
-            <option value="privado">Privado (solo socios)</option>
+            <option value="privado">Privado (no sale en la web pública)</option>
             <option value="publico">Público (visible en la web)</option>
           </select>
         </label>
@@ -611,6 +625,10 @@ async function programarCalendario(partidoId, datos) {
         <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
           <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
           Avisar a los socios de sus partidos de este torneo
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+          <input type="checkbox" checked={acero} onChange={(e) => setAcero(e.target.checked)} style={{ width: "auto" }} />
+          De acero (no es del club: sale en la pestaña "Acero" de Competiciones)
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
           <input type="checkbox" checked={temporizadorActivo} onChange={(e) => setTemporizadorActivo(e.target.checked)} style={{ width: "auto" }} />
@@ -760,6 +778,7 @@ async function programarCalendario(partidoId, datos) {
                     {t.finalizado ? " · Finalizado" : ""}
                     {t.notificaciones === false ? " · Sin avisos" : ""}
                     {t.anclarInicio ? " · Anclado a inicio" : ""}
+                    {t.acero ? " · Acero" : ""}
                     {t.temporizadorActivo && t.temporizadorMinutos ? ` · Temporizador ${t.temporizadorMinutos} min` : ""}
                   </time>
                 </div>
@@ -779,6 +798,9 @@ async function programarCalendario(partidoId, datos) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarAnclarInicio(t, !t.anclarInicio)}>
                     {t.anclarInicio ? "Desanclar de inicio" : "Anclar a inicio"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarAcero(t, !t.acero)}>
+                    {t.acero ? "Quitar de acero" : "Marcar de acero"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(t.id)}>Gestionar</button>
                   <a className="admin-link-btn" href={`${window.location.origin}/torneo/${t.id}`} target="_blank" rel="noopener noreferrer">
@@ -1026,89 +1048,18 @@ const TIPOS_MENSAJE_AVISO = [
   { clave: "programado", etiqueta: "Partido programado", placeholders: "{competicion}, {enfrentamiento}, {fecha}, {maquina}" },
   { clave: "eliminado", etiqueta: "Eliminado", placeholders: "{competicion}" },
   { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
-];
-const IDIOMAS_MENSAJE_AVISO = [
-  { id: "es", etiqueta: "Castellano" },
-  { id: "eu", etiqueta: "Euskera" },
-  { id: "fr", etiqueta: "Francés" },
+  { clave: "unMinuto", etiqueta: "Falta 1 minuto (temporizador)", placeholders: "{competicion}, {enfrentamiento}" },
 ];
 
-// Texto por defecto del club para cada tipo de aviso, tal cual está escrito
-// en src/routes/torneosClub.js (resolverMensaje) — se muestra como ejemplo
-// de referencia en el panel, con un botón para copiarlo al campo y partir
-// de ahí en vez de escribir desde cero. Si el texto por defecto cambia en
-// el backend, actualizar también aquí para que el ejemplo no se desincronice.
-const DEFECTOS_MENSAJE_AVISO = {
-  bienvenida: {
-    titulo: {
-      es: "¡Ya estás en el cuadro! {competicion}",
-      eu: "Jada koadroan zaude! {competicion}",
-      fr: "Tu es dans le tableau ! {competicion}",
-    },
-    cuerpo: {
-      es: "Se ha hecho el sorteo y ya tienes tu sitio en el cuadro. ¡Mucha suerte!",
-      eu: "Zozketa egin da eta jada baduzu zure lekua koadroan. Zorte on!",
-      fr: "Le tirage au sort a eu lieu et tu as déjà ta place dans le tableau. Bonne chance !",
-    },
-  },
-  enCurso: {
-    titulo: {
-      es: "¡Tu partido empieza ahora! {competicion}",
-      eu: "Zure partida orain hasten da! {competicion}",
-      fr: "Ton match commence maintenant ! {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} en {maquina}.{minutos}",
-      eu: "{enfrentamiento} ({maquina} makinan).{minutos}",
-      fr: "{enfrentamiento} sur {maquina}.{minutos}",
-    },
-  },
-  programado: {
-    titulo: {
-      es: "Partido programado: {competicion}",
-      eu: "Partida programatuta: {competicion}",
-      fr: "Match programmé : {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} el {fecha} en {maquina}.",
-      eu: "{enfrentamiento} ({fecha}) — {maquina} makina.",
-      fr: "{enfrentamiento} le {fecha} sur {maquina}.",
-    },
-  },
-  eliminado: {
-    titulo: {
-      es: "Eliminado: {competicion}",
-      eu: "Kanporatuta: {competicion}",
-      fr: "Éliminé : {competicion}",
-    },
-    cuerpo: {
-      es: "Has quedado eliminado del cuadrante. ¡Gracias por participar!",
-      eu: "Koadrotik kanporatuta zaude. Eskerrik asko parte hartzeagatik!",
-      fr: "Tu as été éliminé du tableau. Merci d'avoir participé !",
-    },
-  },
-  campeon: {
-    titulo: {
-      es: "¡Campeón! {competicion}",
-      eu: "Txapelduna! {competicion}",
-      fr: "Champion ! {competicion}",
-    },
-    cuerpo: {
-      es: "¡Enhorabuena, has ganado el cuadrante!",
-      eu: "Zorionak, koadroa irabazi duzu!",
-      fr: "Félicitations, tu as remporté le tableau !",
-    },
-  },
-};
 
 // Panel para sobreescribir, opcionalmente y en cualquier idioma, el texto de
-// los 5 avisos automáticos (bienvenida/en curso/programado/eliminado/
-// campeón) de un torneo o liga concreto — p.ej. un mensaje especial para el
+// los 6 avisos automáticos (bienvenida/en curso/programado/eliminado/
+// campeón/falta 1 minuto) de un torneo o liga concreto — p.ej. un mensaje especial para el
 // Open. Un campo vacío sigue usando el texto por defecto del club en ese
 // idioma. Mismo patrón de guardado que ImagenesAvisos (PUT con el campo
 // mensajesAvisos), pero aquí el selector de idioma es un único interruptor
-// que cambia los 10 campos a la vez (5 tipos × título/cuerpo) en vez de
-// mostrar los 30 campos posibles de golpe.
+// que cambia los 12 campos a la vez (6 tipos × título/cuerpo) en vez de
+// mostrar los 36 campos posibles de golpe.
 function MensajesAvisos({ torneo, onGuardar }) {
   const [idioma, setIdioma] = useState("es");
   const [mensajes, setMensajes] = useState(() => torneo.mensajesAvisos || {});
@@ -1169,6 +1120,18 @@ function MensajesAvisos({ torneo, onGuardar }) {
           <div key={t.clave} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
             <h4 style={{ marginTop: 0 }}>{t.etiqueta}</h4>
             <p className="admin-hint" style={{ marginTop: 0 }}>Datos disponibles: {t.placeholders}</p>
+            {t.clave === "enCurso" && (
+              <p className="admin-hint" style={{ marginTop: 0 }}>
+                Con el temporizador activo, {"{minutos}"} se convierte en «Tienes X min para empezar. Si no empezáis
+                antes de que se acabe el tiempo, el partido se dará por perdido.» Si prefieres otra redacción, quita{" "}
+                {"{minutos}"} y escribe el texto a tu gusto.
+              </p>
+            )}
+            {t.clave === "unMinuto" && (
+              <p className="admin-hint" style={{ marginTop: 0 }}>
+                Solo se envía si el torneo tiene el temporizador activo, cuando queda 1 minuto del plazo.
+              </p>
+            )}
             <p className="admin-hint" style={{ marginTop: 0, fontStyle: "italic" }}>
               Mensaje por defecto del club: «{defecto.titulo[idioma]}» — «{defecto.cuerpo[idioma]}»
             </p>
@@ -1251,7 +1214,9 @@ function TemporizadorPanel({ torneo, onGuardar }) {
       <p className="admin-hint" style={{ marginTop: 0 }}>
         Da un tiempo máximo para que un jugador empiece a jugar desde que su partido se marca "en curso" (botón
         "Marcar en curso" en Cuadrantes). Es solo informativo: el aviso automático de "tu partido empieza ahora"
-        indicará estos minutos, pero nada se bloquea ni se cierra en automático al agotarse el plazo.
+        indicará estos minutos y avisará de que, si no se empieza antes del límite, el partido se dará por perdido;
+        cuando quede 1 minuto se manda otro aviso. El texto de ambos avisos se cambia en "Mensajes de avisos". La web
+        no da el partido por perdido sola al agotarse el plazo: eso lo decide el admin.
       </p>
       <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
         <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} style={{ width: "auto" }} />
@@ -2166,7 +2131,7 @@ function CuadranteDetalle({
                     <div key={ronda} className="admin-cuadro-maquina">
                       <h4
                         className="admin-ronda-header"
-                        onClick={() => setRondasManual((prev) => ({ ...prev, [key]: !desplegada }))}
+                        {...propsCabeceraDesplegable(desplegada, () => setRondasManual((prev) => ({ ...prev, [key]: !desplegada })))}
                       >
                         <span>
                           Ronda {ronda}{" "}
@@ -2261,6 +2226,7 @@ function TemporizadorAviso({ p, temporizadorActivo, temporizador, onActualizar }
 // ganador, resultado, máquina, en curso y calendario), pero en un popup que
 // se abre al clicar la caja del enfrentamiento en el cuadrante.
 function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloqueado, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, onCerrar }) {
+  useCerrarConEscape(true, onCerrar);
   const temporizador = useTemporizadorPartido(p, temporizadorActivo, temporizadorMinutos);
   return (
     <div className="admin-partido-modal" onClick={onCerrar}>

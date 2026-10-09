@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
 import SocioPerfil, { sincronizarSuscripcionPush } from "./SocioPerfil.jsx";
+import AvisoEstadoPush from "./AvisoEstadoPush.jsx";
 import TablonAnuncios from "./TablonAnuncios.jsx";
 import JugadoresClub from "./JugadoresClub.jsx";
 import GaleriaPrivada from "./GaleriaPrivada.jsx";
@@ -10,8 +11,7 @@ import HistorialTorneos from "./HistorialTorneos.jsx";
 import HistoricoPrivado from "./HistoricoPrivado.jsx";
 import Competiciones from "./Competiciones.jsx";
 import CalendarioSocio from "./CalendarioSocio.jsx";
-import Marcadores from "./Marcadores.jsx";
-import RetarAmistoso from "./RetarAmistoso.jsx";
+import VikingsCounter from "./VikingsCounter.jsx";
 
 function useSecciones() {
   const { t } = useLang();
@@ -22,8 +22,7 @@ function useSecciones() {
     { id: "historico-privado", etiqueta: t("zona.historicoPrivado"), lista: true },
     { id: "competiciones", etiqueta: t("zona.competiciones"), lista: true },
     { id: "calendario", etiqueta: t("zona.calendario"), lista: true },
-    { id: "marcadores", etiqueta: t("zona.marcadores"), lista: true },
-    { id: "amistoso", etiqueta: t("zona.amistoso"), lista: true },
+    { id: "vikingscounter", etiqueta: t("zona.vikingsCounter"), lista: true },
     { id: "galeria-privada", etiqueta: t("zona.galeriaPrivada"), lista: true },
     { id: "trofeos", etiqueta: t("zona.trofeos"), lista: true },
     { id: "equipos", etiqueta: t("zona.equipos"), lista: true },
@@ -59,8 +58,12 @@ export default function ZonaSocio({ usuario, salir }) {
   // (ZonaSocio no se remonta al cambiar de sección); si falla o el
   // navegador no soporta algo, no hace nada visible — AvisosPush en "Mi
   // perfil" sigue siendo el sitio para verlo y activarlo a mano.
+  //
+  // El resultado se usa para AvisoEstadoPush: si en este dispositivo las
+  // notificaciones están bloqueadas o sin activar, se avisa aquí mismo.
+  const [estadoPush, setEstadoPush] = useState(null);
   useEffect(() => {
-    sincronizarSuscripcionPush().catch(() => {});
+    sincronizarSuscripcionPush().then(setEstadoPush).catch(() => {});
   }, []);
 
   return (
@@ -97,13 +100,13 @@ export default function ZonaSocio({ usuario, salir }) {
         </nav>
       </div>
 
+      <AvisoEstadoPush estado={estadoPush} onActivado={() => setEstadoPush((e) => ({ ...e, activo: true }))} />
       {seccion === "perfil" && <SocioPerfil usuario={usuario} />}
       {seccion === "historial" && <HistorialTorneos />}
       {seccion === "historico-privado" && <HistoricoPrivado />}
       {seccion === "competiciones" && <Competiciones usuario={usuario} />}
       {seccion === "calendario" && <CalendarioSocio />}
-      {seccion === "marcadores" && <Marcadores />}
-      {seccion === "amistoso" && <RetarAmistoso />}
+      {seccion === "vikingscounter" && <VikingsCounter />}
       {seccion === "tablon" && <TablonAnuncios usuario={usuario} />}
       {seccion === "jugadores" && <JugadoresClub />}
       {seccion === "galeria-privada" && <GaleriaPrivada usuario={usuario} />}

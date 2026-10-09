@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
+import CalendarioJornadas from "./CalendarioJornadas.jsx";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
+import { CLUB } from "./club.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso, lang) {
   const d = new Date(iso);
@@ -28,6 +31,9 @@ export default function Competiciones({ usuario }) {
   const [cargando, setCargando] = useState(true);
   const [competicionesAbiertas, setCompeticionesAbiertas] = useState({});
   const [equiposAbiertos, setEquiposAbiertos] = useState({});
+  // Dentro de cada plataforma: competiciones en juego o las ya terminadas
+  // (histórico, marcadas como "Terminado" desde el panel de admin).
+  const [verHistorico, setVerHistorico] = useState(false);
 
   const token = () => localStorage.getItem("socioToken");
 
@@ -80,7 +86,21 @@ export default function Competiciones({ usuario }) {
 
   if (cargando) return <p className="chronicle-status">{t("competiciones.cargando")}</p>;
 
-  const pestanas = [{ id: "vikings", nombre: "Vikings" }, ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre }))];
+  const delaPlataforma = torneosExternos.filter((tx) => tx.plataformaId === pestana);
+  const terminadas = delaPlataforma.filter((tx) => tx.terminado);
+  const visibles = verHistorico ? terminadas : delaPlataforma.filter((tx) => !tx.terminado);
+
+  // Torneos/ligas creados con la web: los del club van en su pestaña y los
+  // "de acero" (no son del club ni tienen plataforma) en la suya.
+  const esAcero = pestana === "acero";
+  const torneosInternos = torneosVikings.filter((x) => !!x.acero === esAcero);
+  const ligasInternas = ligasVikings.filter((x) => !!x.acero === esAcero);
+
+  const pestanas = [
+    { id: "vikings", nombre: CLUB.nombreCorto },
+    { id: "acero", nombre: t("competiciones.acero") },
+    ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre })),
+  ];
 
   return (
     <div>
@@ -91,19 +111,19 @@ export default function Competiciones({ usuario }) {
             key={p.id}
             type="button"
             className={`admin-tab ${pestana === p.id ? "admin-tab-active" : ""}`}
-            onClick={() => setPestana(p.id)}
+            onClick={() => { setPestana(p.id); setVerHistorico(false); }}
           >
             {p.nombre}
           </button>
         ))}
       </div>
 
-      {pestana === "vikings" && (
+      {(pestana === "vikings" || esAcero) && (
         <div>
-          {torneosVikings.length === 0 && ligasVikings.length === 0 && (
-            <p className="chronicle-status">{t("competiciones.sinInternas")}</p>
+          {torneosInternos.length === 0 && ligasInternas.length === 0 && (
+            <p className="chronicle-status">{t(esAcero ? "competiciones.sinAcero" : "competiciones.sinInternas")}</p>
           )}
-          {torneosVikings.map((tv) => (
+          {torneosInternos.map((tv) => (
             <div key={`t-${tv.id}`} className="admin-list-item">
               <div>
                 <a href={`/torneo/${tv.id}`} target="_blank" rel="noopener noreferrer"><strong>{tv.nombre}</strong></a>
@@ -111,7 +131,7 @@ export default function Competiciones({ usuario }) {
               </div>
             </div>
           ))}
-          {ligasVikings.map((l) => (
+          {ligasInternas.map((l) => (
             <div key={`l-${l.id}`} className="admin-list-item">
               <div>
                 <a href={`/liga/${l.id}`} target="_blank" rel="noopener noreferrer"><strong>{l.nombre}</strong></a>
@@ -122,19 +142,29 @@ export default function Competiciones({ usuario }) {
         </div>
       )}
 
-      {pestana !== "vikings" && (
+      {pestana !== "vikings" && !esAcero && (
         <div>
-          {torneosExternos.filter((tx) => tx.plataformaId === pestana).length === 0 && (
+          {terminadas.length > 0 && (
+            <div className="admin-tabs" style={{ marginBottom: "1rem", fontSize: ".85em" }}>
+              <button type="button" className={`admin-tab ${!verHistorico ? "admin-tab-active" : ""}`} onClick={() => setVerHistorico(false)}>
+                {t("competiciones.enJuego")}
+              </button>
+              <button type="button" className={`admin-tab ${verHistorico ? "admin-tab-active" : ""}`} onClick={() => setVerHistorico(true)}>
+                {t("competiciones.historico")} ({terminadas.length})
+              </button>
+            </div>
+          )}
+          {visibles.length === 0 && (
             <p className="chronicle-status">{t("competiciones.sinExternos")}</p>
           )}
-          {torneosExternos.filter((tx) => tx.plataformaId === pestana).map((tx) => {
+          {visibles.map((tx) => {
             const abierta = !!competicionesAbiertas[tx.id];
             return (
               <div key={tx.id} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
                 <h4
                   className="admin-ronda-header"
                   style={{ margin: 0 }}
-                  onClick={() => setCompeticionesAbiertas((prev) => ({ ...prev, [tx.id]: !abierta }))}
+                  {...propsCabeceraDesplegable(abierta, () => setCompeticionesAbiertas((prev) => ({ ...prev, [tx.id]: !abierta })))}
                 >
                   <span>
                     {tx.nombre}
@@ -152,19 +182,30 @@ export default function Competiciones({ usuario }) {
                       // (eq.equipoClub.capitan); el de la inscripción concreta
                       // (eq.capitan) casi nunca se usa, pero se comprueban los dos.
                       const capitan = eq.equipoClub?.capitan || eq.capitan;
-                      const esCapitan = usuario && capitan?.usuarioId === usuario.id;
+                      // Co-capitanes (miembros de la plantilla marcados como
+                      // tal): mismos permisos que el capitán.
+                      const cocapitanes = (eq.equipoClub?.miembros || []).map((m) => m.jugador).filter((j) => j.id !== capitan?.id);
+                      const esCapitan =
+                        !!usuario && [capitan, ...cocapitanes].some((j) => j?.usuarioId && j.usuarioId === usuario.id);
                       const eqAbierto = !!equiposAbiertos[eq.id];
+                      // Nombre de NUESTRO equipo en cada partido ("VIKINGS X vs
+                      // RIVAL"): con solo "vs RIVAL" parecía un partido entre
+                      // el rival y otro equipo.
+                      const nombreEq = eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto;
                       return (
                         <div key={eq.id} style={{ marginTop: ".8rem", paddingLeft: ".6rem", borderLeft: "2px solid var(--line)" }}>
                           <h4
                             className="admin-ronda-header"
                             style={{ margin: 0, fontSize: ".85em", textTransform: "none" }}
-                            onClick={() => setEquiposAbiertos((prev) => ({ ...prev, [eq.id]: !eqAbierto }))}
+                            {...propsCabeceraDesplegable(eqAbierto, () => setEquiposAbiertos((prev) => ({ ...prev, [eq.id]: !eqAbierto })))}
                           >
                             <span>
-                              {eq.equipoClub?.nombre || eq.nombreEquipo || "Vikings"}
+                              {eq.equipoClub?.nombre || eq.nombreEquipo || CLUB.nombreCorto}
                               {/* Inscripción individual (liga individual de Connection, sin equipo del club): no hay "capitán" que mostrar */}
                               {capitan && eq.equipoClub ? ` — ${t("competiciones.capitan")} ${capitan.apodo || capitan.nombre}` : ""}
+                              {cocapitanes.length > 0
+                                ? ` · ${t("competiciones.cocapitan")} ${cocapitanes.map((j) => j.apodo || j.nombre).join(", ")}`
+                                : ""}
                             </span>
                             <span className="admin-ronda-toggle">{eqAbierto ? "Ocultar ▲" : "Ver ▼"}</span>
                           </h4>
@@ -175,20 +216,21 @@ export default function Competiciones({ usuario }) {
                               {esCapitan && (
                                 <NuevoPartidoCapitanForm onCrear={(fecha, rival) => crearPartido(eq.id, fecha, rival)} t={t} />
                               )}
-                              <ul>
-                                {eq.partidos.map((p) => (
+                              <CalendarioJornadas
+                                partidos={eq.partidos}
+                                vacio={t("competiciones.sinPartidos")}
+                                renderPartido={(p) => (
                                   esCapitan ? (
-                                    <PartidoCapitanRow key={p.id} p={p} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
+                                    <PartidoCapitanRow key={p.id} p={p} nombreEquipo={nombreEq} maquinas={maquinas} onActualizar={(datos) => actualizarPartido(p.id, datos)} t={t} lang={lang} />
                                   ) : (
                                     <li key={p.id} style={{ fontSize: ".85em" }}>
-                                      {formatFecha(p.fecha, lang)} — {t("partido.vs")} {p.rival || "?"}
+                                      {formatFecha(p.fecha, lang)} — {nombreEq} {t("partido.vs")} {p.rival || "?"}
                                       {p.resultado ? ` — ${p.resultado}` : p.fijado ? ` — ${t("competiciones.confirmado")}` : ` — ${t("competiciones.sinConfirmar")}`}
                                       {p.maquina ? ` (${p.maquina.nombre})` : ""}
                                     </li>
                                   )
-                                ))}
-                                {eq.partidos.length === 0 && <li style={{ fontSize: ".85em", opacity: 0.7 }}>{t("competiciones.sinPartidos")}</li>}
-                              </ul>
+                                )}
+                              />
                             </div>
                           )}
                         </div>
@@ -241,13 +283,13 @@ function NuevoPartidoCapitanForm({ onCrear, t }) {
 // rival, máquina, resultado y una nota, y confirmar/desconfirmar el
 // partido. Solo se muestra cuando el socio logueado es el capitán de este
 // equipo concreto (comprobado también en el backend).
-function PartidoCapitanRow({ p, maquinas, onActualizar, t, lang }) {
+function PartidoCapitanRow({ p, nombreEquipo, maquinas, onActualizar, t, lang }) {
   const [nota, setNota] = useState(p.notaCapitan || "");
 
   return (
     <li className="admin-list-item" style={{ flexWrap: "wrap", fontSize: ".85em" }}>
       <div>
-        <strong>{formatFecha(p.fecha, lang)}</strong> — {t("partido.vs")} {p.rival || "?"}
+        <strong>{formatFecha(p.fecha, lang)}</strong> — {nombreEquipo} {t("partido.vs")} {p.rival || "?"}
         {p.fijado ? ` · ${t("competiciones.confirmado")}` : ` · ${t("competiciones.sinConfirmar")}`}
         {p.maquina ? ` · ${p.maquina.nombre}` : ""}
         {p.resultado ? ` · ${p.resultado}` : ""}

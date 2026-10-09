@@ -1,5 +1,6 @@
   import { useEffect, useState } from "react";
-const ADMIN_EMBLEM_URL = "https://res.cloudinary.com/lodi1y1k/image/upload/e_background_removal/e_trim/b_transparent,c_pad,h_512,w_512/f_png/v1789816550/IMG-20260910-WA0004_o3n7ly.png";
+import { CLUB } from "./club.js";
+const ADMIN_EMBLEM_URL = CLUB.imagenes.logoAdmin;
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
 import AdminPatrocinadores from "./AdminPatrocinadores.jsx";
 import AdminSocios from "./AdminSocios.jsx";
@@ -9,12 +10,14 @@ import AdminJugadores from "./AdminJugadores.jsx";
 import AdminLigasClub from "./AdminLigasClub.jsx";
 import AdminTrofeos from "./AdminTrofeos.jsx";
 import AdminEquiposClub from "./AdminEquiposClub.jsx";
+import AdminDispositivosPush from "./AdminDispositivosPush.jsx";
+import AvisoPermisoAdmin from "./AvisoPermisoAdmin.jsx";
 import AdminMaquinas from "./AdminMaquinas.jsx";
 import AdminFabricantes from "./AdminFabricantes.jsx";
 import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
 import AdminCalendario from "./AdminCalendario.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso) {
   const d = new Date(iso);
@@ -519,7 +522,7 @@ function cancelarEdicionNoticia() {
   if (!token) {
     return (
       <div className="admin-gate">
-        <img src={ADMIN_EMBLEM_URL} alt="Escudo Vikings" className="admin-emblem" />
+        <img src={ADMIN_EMBLEM_URL} alt={`Escudo ${CLUB.nombreCorto}`} className="admin-emblem" />
         <h1>Panel del club</h1>
         <form onSubmit={entrar} className="admin-login-form">
           <input
@@ -554,6 +557,7 @@ function cancelarEdicionNoticia() {
     { id: "calendario", etiqueta: "Calendario" },
     { id: "fabricantes", etiqueta: "Fabricantes" },
     { id: "competiciones-externas", etiqueta: "Comp. externas" },
+    { id: "dispositivos-push", etiqueta: "Avisos push" },
   ];
 
   return (
@@ -562,6 +566,8 @@ function cancelarEdicionNoticia() {
         <span>Panel del club</span>
         <button className="admin-link-btn" onClick={salir}>Salir</button>
       </header>
+
+      <AvisoPermisoAdmin />
 
       <nav className="admin-tabs">
         {TABS.map((t) => (
@@ -757,6 +763,7 @@ function cancelarEdicionNoticia() {
       {pestana === "calendario" && <AdminCalendario token={token} salir={salir} />}
       {pestana === "fabricantes" && <AdminFabricantes token={token} salir={salir} />}
       {pestana === "competiciones-externas" && <AdminCompeticionesExternas token={token} salir={salir} />}
+      {pestana === "dispositivos-push" && <AdminDispositivosPush token={token} salir={salir} />}
     </div>
   );
 }

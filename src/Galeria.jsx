@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { propsAmpliable } from "./cabeceraDesplegable.js";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
+import { CLUB } from "./club.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
-const AUDIO_GALERIA_URL = "https://res.cloudinary.com/lodi1y1k/video/upload/v1786204416/Sons_of_the_Northern_Light_h7lq9t.mp3";
+const AUDIO_GALERIA_URL = CLUB.audioGaleria;
 
 function idVideoYoutube(url) {
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -106,7 +108,7 @@ export default function Galeria() {
     <>
       <Nav />
 
-      <audio ref={audioRef} src={AUDIO_GALERIA_URL} preload="auto" />
+      {AUDIO_GALERIA_URL && <audio ref={audioRef} src={AUDIO_GALERIA_URL} preload="auto" />}
 
       <main>
         <section className="gallery gallery-page">
@@ -137,9 +139,10 @@ export default function Galeria() {
                       key={i}
                       src={item.src}
                       alt=""
+                      aria-label={t("galeria.ampliarFoto")}
                       loading="lazy"
                       className="gallery-item gallery-photo"
-                      onClick={() => setLightbox({ tipo: "foto", src: item.src })}
+                      {...propsAmpliable(() => setLightbox({ tipo: "foto", src: item.src }))}
                     />
                   );
                 }
@@ -179,7 +182,7 @@ export default function Galeria() {
           {lightbox.tipo === "youtube" && (
             <div className="lightbox-video" onClick={(e) => e.stopPropagation()}>
               <iframe
-                src={`https://www.youtube.com/embed/${lightbox.id}?autoplay=1`}
+                src={`https://www.youtube-nocookie.com/embed/${lightbox.id}?autoplay=1`}
                 title="Vídeo"
                 allow="autoplay; encrypted-media"
                 allowFullScreen

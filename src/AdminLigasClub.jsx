@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
 import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
+import { API_URL } from "./config.js";
+import { DEFECTOS_MENSAJE_AVISO_LIGA, IDIOMAS_MENSAJE_AVISO } from "./mensajesAvisosDefecto.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 const MODALIDADES = [
   { id: "individual", etiqueta: "Individual" },
@@ -79,6 +81,8 @@ export default function AdminLigasClub({ token, salir }) {
   const [insigniaUrl, setInsigniaUrl] = useState("");
   const [afectaCalendario, setAfectaCalendario] = useState(true);
   const [notificaciones, setNotificaciones] = useState(true);
+  // De acero: liga organizada con la web que no es del club (ver schema).
+  const [acero, setAcero] = useState(false);
   const [imagenEliminadoUrl, setImagenEliminadoUrl] = useState("");
   const [imagenCampeonUrl, setImagenCampeonUrl] = useState("");
   const [imagenBienvenidaUrl, setImagenBienvenidaUrl] = useState("");
@@ -129,7 +133,7 @@ export default function AdminLigasClub({ token, salir }) {
           nombre, descripcion, fechaInicio, fechaFin, visibilidad, modalidad, vueltas, numeroParticipantes,
           numeroGrupos: numeroGrupos === "" ? undefined : Number(numeroGrupos),
           metodoSorteoParejas: modalidad === "parejas_ciegas" ? metodoSorteoParejas : undefined,
-          insigniaUrl, afectaCalendario, notificaciones, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
+          insigniaUrl, afectaCalendario, notificaciones, acero, imagenEliminadoUrl, imagenCampeonUrl, imagenBienvenidaUrl,
         }),
       });
       if (res.status === 401) {
@@ -145,7 +149,7 @@ export default function AdminLigasClub({ token, salir }) {
       setNombre(""); setDescripcion(""); setFechaInicio(""); setFechaFin("");
       setVisibilidad("privado"); setModalidad("individual"); setVueltas(1);
       setNumeroParticipantes(8); setNumeroGrupos(""); setMetodoSorteoParejas("AB"); setInsigniaUrl("");
-      setAfectaCalendario(true);
+      setAfectaCalendario(true); setAcero(false);
       setImagenEliminadoUrl(""); setImagenCampeonUrl(""); setImagenBienvenidaUrl("");
       setMensaje({ tipo: "ok", texto: "Liga creada." });
       setMostrarFormulario(false);
@@ -181,6 +185,15 @@ export default function AdminLigasClub({ token, salir }) {
     });
     cargarLigas();
   }
+  async function cambiarAcero(liga, nuevo) {
+    await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ acero: nuevo }),
+    });
+    cargarLigas();
+  }
+
   async function cambiarAnclarInicio(liga, nuevo) {
     await fetch(`${API_URL}/api/ligas-club/${liga.id}`, {
       method: "PUT",
@@ -310,7 +323,8 @@ export default function AdminLigasClub({ token, salir }) {
       <h2>Ligas del club</h2>
       <p className="admin-hint">
         Ligas todos-contra-todos, con calendario generado automáticamente. Marca "Público" para que aparezca en la
-        web; "Privado" para que solo se vea desde el admin.
+        web; "Privado" para que no aparezca en los listados públicos (su página sigue siendo accesible por enlace
+        directo en ambos casos).
       </p>
 
       {!mostrarFormulario && (
@@ -405,6 +419,10 @@ export default function AdminLigasClub({ token, salir }) {
           <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
             <input type="checkbox" checked={notificaciones} onChange={(e) => setNotificaciones(e.target.checked)} style={{ width: "auto" }} />
             Avisar a los socios de sus partidos de esta liga
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+            <input type="checkbox" checked={acero} onChange={(e) => setAcero(e.target.checked)} style={{ width: "auto" }} />
+            De acero (no es del club: sale en la pestaña "Acero" de Competiciones)
           </label>
           <label>
             Imagen de aviso de bienvenida al sortear (opcional)
@@ -526,6 +544,7 @@ export default function AdminLigasClub({ token, salir }) {
                     {l.finalizado ? " · Finalizada" : ""}
                     {l.notificaciones === false ? " · Sin avisos" : ""}
                     {l.anclarInicio ? " · Anclada a inicio" : ""}
+                    {l.acero ? " · Acero" : ""}
                   </time>
                 </div>
                 <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -540,6 +559,9 @@ export default function AdminLigasClub({ token, salir }) {
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => cambiarAnclarInicio(l, !l.anclarInicio)}>
                     {l.anclarInicio ? "Desanclar de inicio" : "Anclar a inicio"}
+                  </button>
+                  <button type="button" className="admin-link-btn" onClick={() => cambiarAcero(l, !l.acero)}>
+                    {l.acero ? "Quitar de acero" : "Marcar de acero"}
                   </button>
                   <button type="button" className="admin-link-btn" onClick={() => setGestionandoId(l.id)}>Gestionar</button>
                   <a className="admin-link-btn" href={`${window.location.origin}/liga/${l.id}`} target="_blank" rel="noopener noreferrer">
@@ -756,79 +778,7 @@ const TIPOS_MENSAJE_AVISO_LIGA = [
   { clave: "eliminado", etiqueta: "Eliminado", placeholders: "{competicion}" },
   { clave: "campeon", etiqueta: "Campeón", placeholders: "{competicion}" },
 ];
-const IDIOMAS_MENSAJE_AVISO_LIGA = [
-  { id: "es", etiqueta: "Castellano" },
-  { id: "eu", etiqueta: "Euskera" },
-  { id: "fr", etiqueta: "Francés" },
-];
 
-// Texto por defecto del club para cada tipo de aviso, tal cual está escrito
-// en src/routes/torneosClub.js (resolverMensaje) — se muestra como ejemplo
-// de referencia en el panel, con un botón para copiarlo al campo y partir
-// de ahí en vez de escribir desde cero. Mismo contenido que
-// DEFECTOS_MENSAJE_AVISO de AdminTorneosClub.jsx.
-const DEFECTOS_MENSAJE_AVISO_LIGA = {
-  bienvenida: {
-    titulo: {
-      es: "¡Ya estás en el cuadro! {competicion}",
-      eu: "Jada koadroan zaude! {competicion}",
-      fr: "Tu es dans le tableau ! {competicion}",
-    },
-    cuerpo: {
-      es: "Se ha hecho el sorteo y ya tienes tu sitio en el cuadro. ¡Mucha suerte!",
-      eu: "Zozketa egin da eta jada baduzu zure lekua koadroan. Zorte on!",
-      fr: "Le tirage au sort a eu lieu et tu as déjà ta place dans le tableau. Bonne chance !",
-    },
-  },
-  enCurso: {
-    titulo: {
-      es: "¡Tu partido empieza ahora! {competicion}",
-      eu: "Zure partida orain hasten da! {competicion}",
-      fr: "Ton match commence maintenant ! {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} en {maquina}.",
-      eu: "{enfrentamiento} ({maquina} makinan).",
-      fr: "{enfrentamiento} sur {maquina}.",
-    },
-  },
-  programado: {
-    titulo: {
-      es: "Partido programado: {competicion}",
-      eu: "Partida programatuta: {competicion}",
-      fr: "Match programmé : {competicion}",
-    },
-    cuerpo: {
-      es: "{enfrentamiento} el {fecha} en {maquina}.",
-      eu: "{enfrentamiento} ({fecha}) — {maquina} makina.",
-      fr: "{enfrentamiento} le {fecha} sur {maquina}.",
-    },
-  },
-  eliminado: {
-    titulo: {
-      es: "Eliminado: {competicion}",
-      eu: "Kanporatuta: {competicion}",
-      fr: "Éliminé : {competicion}",
-    },
-    cuerpo: {
-      es: "Has quedado eliminado del cuadrante. ¡Gracias por participar!",
-      eu: "Koadrotik kanporatuta zaude. Eskerrik asko parte hartzeagatik!",
-      fr: "Tu as été éliminé du tableau. Merci d'avoir participé !",
-    },
-  },
-  campeon: {
-    titulo: {
-      es: "¡Campeón! {competicion}",
-      eu: "Txapelduna! {competicion}",
-      fr: "Champion ! {competicion}",
-    },
-    cuerpo: {
-      es: "¡Enhorabuena, has ganado el cuadrante!",
-      eu: "Zorionak, koadroa irabazi duzu!",
-      fr: "Félicitations, tu as remporté le tableau !",
-    },
-  },
-};
 
 // Igual que MensajesAvisos de AdminTorneosClub.jsx pero para el cuadrante
 // final de una liga: sobreescribe, opcionalmente y en cualquier idioma, el
@@ -883,7 +833,7 @@ function MensajesAvisosLiga({ liga, token, onRecargar }) {
       </p>
 
       <div className="nav-lang" style={{ marginBottom: "1.2rem" }}>
-        {IDIOMAS_MENSAJE_AVISO_LIGA.map((i, idx) => (
+        {IDIOMAS_MENSAJE_AVISO.map((i, idx) => (
           <span key={i.id}>
             {idx > 0 && <span> / </span>}
             <button
@@ -1378,7 +1328,7 @@ function CalendarioLigaGrupo({ partidos, maquinas, afectaCalendario, onActualiza
         const desplegada = jornadasManual[j] !== undefined ? jornadasManual[j] : estado === "en_curso";
         return (
           <div key={j} className="admin-cuadro-maquina">
-            <h4 className="admin-ronda-header" onClick={() => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada }))}>
+            <h4 className="admin-ronda-header" {...propsCabeceraDesplegable(desplegada, () => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada })))}>
               <span>
                 Jornada {j} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{ETIQUETA_ESTADO_JORNADA[estado]}</span>
               </span>
@@ -1806,7 +1756,7 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
                     <div key={ronda} className="admin-cuadro-maquina">
                       <h4
                         className="admin-ronda-header"
-                        onClick={() => setRondasManual((prev) => ({ ...prev, [key]: !desplegada }))}
+                        {...propsCabeceraDesplegable(desplegada, () => setRondasManual((prev) => ({ ...prev, [key]: !desplegada })))}
                       >
                         <span>
                           Ronda {ronda}{" "}
@@ -1856,6 +1806,7 @@ function CuadranteFinalLiga({ liga, token, maquinas, onRecargar }) {
 // vienen fijados por la clasificación, a diferencia del cuadrante de un
 // torneo del club).
 function PartidoFinalModal({ p, maquinas, afectaCalendario, bloqueado, onActualizar, onProgramar, onCerrar }) {
+  useCerrarConEscape(true, onCerrar);
   return (
     <div className="admin-partido-modal" onClick={onCerrar}>
       <div className="admin-partido-panel" onClick={(e) => e.stopPropagation()}>

@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useCerrarConEscape } from "./cabeceraDesplegable.js";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // Pide a Cloudinary una versión pequeña y optimizada de la imagen (en vez de descargar
 // el archivo original entero solo para mostrar una miniatura de 90px).
@@ -11,6 +12,7 @@ function miniatura(url) {
 export default function SelectorImagen({ token, valor, onCambiar, onError, etiqueta }) {
   const [subiendo, setSubiendo] = useState(false);
   const [mostrarExistentes, setMostrarExistentes] = useState(false);
+  useCerrarConEscape(mostrarExistentes, () => setMostrarExistentes(false));
   const [existentes, setExistentes] = useState([]);
   const [cargandoExistentes, setCargandoExistentes] = useState(false);
 

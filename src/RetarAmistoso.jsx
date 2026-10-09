@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_URL } from "./config.js";
 
 // "Retar a un amistoso" (plan "partido-amistoso-remoto", guardado en el
 // proyecto): un socio, desde la Zona de miembros, reta a otro jugador del
@@ -7,7 +8,6 @@ import { useEffect, useState } from "react";
 // Sin i18n a propósito, igual que JuegoHerramienta.jsx (todo el flujo de la
 // herramienta de marcador es solo en castellano).
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 const ORIGEN = typeof window !== "undefined" ? window.location.origin : "";
 

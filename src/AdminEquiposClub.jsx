@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
+import CalendarioJornadas from "./CalendarioJornadas.jsx";
 import { agruparPorSocio } from "./agruparJugadores.js";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 export default function AdminEquiposClub({ token, salir }) {
   const [equipos, setEquipos] = useState([]);
@@ -12,6 +13,7 @@ export default function AdminEquiposClub({ token, salir }) {
   const [maquinas, setMaquinas] = useState([]);
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [tipo, setTipo] = useState("equipo");
   const [escudoUrl, setEscudoUrl] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
@@ -21,7 +23,14 @@ export default function AdminEquiposClub({ token, salir }) {
   const [editandoId, setEditandoId] = useState(null);
   const [nombreEdicion, setNombreEdicion] = useState("");
   const [descripcionEdicion, setDescripcionEdicion] = useState("");
+  const [tipoEdicion, setTipoEdicion] = useState("equipo");
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  // "activos" o "inactivos": los equipos que ya terminaron sus competiciones
+  // se marcan inactivos y pasan a su propia pestaña.
+  const [vistaEquipos, setVistaEquipos] = useState("activos");
+  // Equipo cuya lista de jugadores para añadir está desplegada (solo se
+  // enseña al pulsar "Añadir jugador", para no llenar la ficha).
+  const [anadiendoEn, setAnadiendoEn] = useState(null);
 
   const cargarEquipos = () => {
     fetch(`${API_URL}/api/equipos-club/admin`, { headers: { "x-admin-token": token } })
@@ -63,7 +72,7 @@ export default function AdminEquiposClub({ token, salir }) {
       const res = await fetch(`${API_URL}/api/equipos-club`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre, descripcion, escudoUrl }),
+        body: JSON.stringify({ nombre, descripcion, tipo, escudoUrl }),
       });
       if (res.status === 401) {
         setMensaje({ tipo: "error", texto: "Contraseña incorrecta. Vuelve a entrar." });
@@ -75,8 +84,8 @@ export default function AdminEquiposClub({ token, salir }) {
         setMensaje({ tipo: "error", texto: data.error || "No se pudo crear el equipo." });
         return;
       }
-      setNombre(""); setDescripcion(""); setEscudoUrl("");
-      setMensaje({ tipo: "ok", texto: "Equipo creado." });
+      setNombre(""); setDescripcion(""); setTipo("equipo"); setEscudoUrl("");
+      setMensaje({ tipo: "ok", texto: tipo === "pareja" ? "Pareja creada." : "Equipo creado." });
       cargarEquipos();
     } catch {
       setMensaje({ tipo: "error", texto: "Error de conexión." });
@@ -111,6 +120,7 @@ export default function AdminEquiposClub({ token, salir }) {
     setEditandoId(eq.id);
     setNombreEdicion(eq.nombre);
     setDescripcionEdicion(eq.descripcion || "");
+    setTipoEdicion(eq.tipo || "equipo");
   }
   function cancelarEdicion() {
     setEditandoId(null);
@@ -123,7 +133,7 @@ export default function AdminEquiposClub({ token, salir }) {
       const res = await fetch(`${API_URL}/api/equipos-club/${equipoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ nombre: nombreEdicion.trim(), descripcion: descripcionEdicion }),
+        body: JSON.stringify({ nombre: nombreEdicion.trim(), descripcion: descripcionEdicion, tipo: tipoEdicion }),
       });
       if (!res.ok) {
         setMensaje({ tipo: "error", texto: "No se pudo guardar el cambio." });
@@ -156,12 +166,38 @@ export default function AdminEquiposClub({ token, salir }) {
       setMensaje({ tipo: "error", texto: "Error de conexión." });
     }
   }
+  async function cambiarActivo(eq, activo) {
+    setMensaje(null);
+    const res = await fetch(`${API_URL}/api/equipos-club/${eq.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ activo }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setMensaje({ tipo: "error", texto: "No se pudo cambiar el estado del equipo." });
+      return;
+    }
+    if (abiertoId === eq.id) setAbiertoId(null);
+    cargarEquipos();
+  }
   async function marcarCapitan(equipoId, capitanId) {
     await fetch(`${API_URL}/api/equipos-club/${equipoId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({ capitanId }),
     });
+    cargarEquipos();
+  }
+
+  // Co-capitán: mismos permisos que el capitán sobre los partidos del
+  // equipo/pareja. Puede haber varios.
+  async function marcarCocapitan(equipoId, jugadorId, cocapitan) {
+    const res = await fetch(`${API_URL}/api/equipos-club/${equipoId}/miembros/${jugadorId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ cocapitan }),
+    }).catch(() => null);
+    if (!res?.ok) setMensaje({ tipo: "error", texto: "No se pudo cambiar el co-capitán." });
     cargarEquipos();
   }
 
@@ -252,6 +288,13 @@ export default function AdminEquiposClub({ token, salir }) {
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} required />
         </label>
         <label>
+          Tipo
+          <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
+            <option value="equipo">Equipo</option>
+            <option value="pareja">Pareja</option>
+          </select>
+        </label>
+        <label>
           Descripción (opcional)
           <textarea rows={2} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
         </label>
@@ -269,15 +312,27 @@ export default function AdminEquiposClub({ token, salir }) {
         {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
       </form>
 
-      {equipos.length === 0 && <p className="chronicle-status">Todavía no hay equipos.</p>}
+      <div className="admin-tabs" style={{ marginBottom: "1rem" }}>
+        <button type="button" className={`admin-tab ${vistaEquipos === "activos" ? "admin-tab-active" : ""}`} onClick={() => setVistaEquipos("activos")}>
+          Activos ({equipos.filter((eq) => eq.activo !== false).length})
+        </button>
+        <button type="button" className={`admin-tab ${vistaEquipos === "inactivos" ? "admin-tab-active" : ""}`} onClick={() => setVistaEquipos("inactivos")}>
+          Inactivos ({equipos.filter((eq) => eq.activo === false).length})
+        </button>
+      </div>
+
+      {equipos.filter((eq) => (eq.activo === false) === (vistaEquipos === "inactivos")).length === 0 && (
+        <p className="chronicle-status">{vistaEquipos === "inactivos" ? "No hay equipos inactivos." : "Todavía no hay equipos activos."}</p>
+      )}
 
       <ul>
-        {equipos.map((eq) => {
+        {equipos.filter((eq) => (eq.activo === false) === (vistaEquipos === "inactivos")).map((eq) => {
           const idsEnEquipo = new Set(eq.miembros.map((m) => m.jugadorId));
           const disponibles = jugadores.filter((j) => !idsEnEquipo.has(j.id));
           const disponiblesAgrupados = agruparPorSocio(disponibles);
           const torneosInscritosIds = new Set(eq.inscripciones.map((i) => i.torneoId));
-          const torneosDisponibles = torneos.filter((t) => !torneosInscritosIds.has(t.id));
+          // No se ofrece inscribir en competiciones ya terminadas (histórico).
+          const torneosDisponibles = torneos.filter((t) => !t.terminado && !torneosInscritosIds.has(t.id));
           return (
             <li key={eq.id} className="admin-cuadrante" style={{ marginBottom: "1rem" }}>
               <div className="admin-list-item">
@@ -290,11 +345,17 @@ export default function AdminEquiposClub({ token, salir }) {
                     />
                   )}
                   {eq.nombre}
+                  <span className="admin-hint" style={{ fontWeight: "normal", fontSize: ".8em" }}>
+                    · {eq.tipo === "pareja" ? "Pareja" : "Equipo"}
+                  </span>
                 </strong>
-                <div style={{ display: "flex", gap: ".5rem" }}>
+                <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                   <button className="admin-link-btn" onClick={() => empezarEdicion(eq)}>Editar nombre</button>
                   <button className="admin-link-btn" onClick={() => setAbiertoId(abiertoId === eq.id ? null : eq.id)}>
                     {abiertoId === eq.id ? "Cerrar" : "Gestionar"}
+                  </button>
+                  <button className="admin-link-btn" onClick={() => cambiarActivo(eq, eq.activo === false)}>
+                    {eq.activo === false ? "Reactivar" : "Marcar inactivo"}
                   </button>
                   <button className="admin-link-btn" onClick={() => borrarEquipo(eq.id)}>Borrar</button>
                 </div>
@@ -305,6 +366,13 @@ export default function AdminEquiposClub({ token, salir }) {
                   <label>
                     Nombre
                     <input value={nombreEdicion} onChange={(e) => setNombreEdicion(e.target.value)} />
+                  </label>
+                  <label>
+                    Tipo
+                    <select value={tipoEdicion} onChange={(e) => setTipoEdicion(e.target.value)}>
+                      <option value="equipo">Equipo</option>
+                      <option value="pareja">Pareja</option>
+                    </select>
                   </label>
                   <label>
                     Descripción
@@ -331,10 +399,18 @@ export default function AdminEquiposClub({ token, salir }) {
                   <ul>
                     {eq.miembros.map((m) => (
                       <li key={m.id} className="admin-list-item">
-                        <span>{m.jugador.nombre}{eq.capitanId === m.jugadorId ? " — Capitán" : ""}</span>
-                        <div style={{ display: "flex", gap: ".5rem" }}>
+                        <span>
+                          {m.jugador.nombre}
+                          {eq.capitanId === m.jugadorId ? " — Capitán" : m.cocapitan ? " — Co-capitán" : ""}
+                        </span>
+                        <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
                           {eq.capitanId !== m.jugadorId && (
                             <button className="admin-link-btn" onClick={() => marcarCapitan(eq.id, m.jugadorId)}>Hacer capitán</button>
+                          )}
+                          {eq.capitanId !== m.jugadorId && (
+                            <button className="admin-link-btn" onClick={() => marcarCocapitan(eq.id, m.jugadorId, !m.cocapitan)}>
+                              {m.cocapitan ? "Quitar co-capitán" : "Hacer co-capitán"}
+                            </button>
                           )}
                           <button className="admin-link-btn" onClick={() => quitarMiembro(eq.id, m.jugadorId)}>Quitar</button>
                         </div>
@@ -342,9 +418,17 @@ export default function AdminEquiposClub({ token, salir }) {
                     ))}
                   </ul>
 
-                  {disponibles.length > 0 && (
+                  {disponibles.length > 0 && anadiendoEn !== eq.id && (
+                    <button type="button" className="admin-link-btn" style={{ marginTop: ".6rem" }} onClick={() => setAnadiendoEn(eq.id)}>
+                      ＋ Añadir jugador
+                    </button>
+                  )}
+                  {disponibles.length > 0 && anadiendoEn === eq.id && (
                     <div style={{ marginTop: ".6rem" }}>
-                      <p className="admin-hint">Añadir del plantel del club:</p>
+                      <p className="admin-hint">
+                        Añadir del plantel del club:{" "}
+                        <button type="button" className="admin-link-btn" onClick={() => setAnadiendoEn(null)}>Cerrar</button>
+                      </p>
                       {disponiblesAgrupados.socios.length > 0 && (
                         <>
                           <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
@@ -380,6 +464,7 @@ export default function AdminEquiposClub({ token, salir }) {
                     <InscripcionBloque
                       key={inscripcion.id}
                       inscripcion={inscripcion}
+                      nombreEquipo={eq.nombre}
                       miembrosClub={eq.miembros}
                       maquinas={maquinas}
                       onQuitarInscripcion={() => quitarInscripcion(eq.id, inscripcion.id)}
@@ -433,9 +518,10 @@ function InscribirEnCompeticion({ opciones, onInscribir }) {
   );
 }
 
-function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscripcion, onAsignarCapitan, onGuardarIdExterno, onAnadirJugador, onQuitarJugador, onCrearPartido, onActualizarPartido, onBorrarPartido }) {
+function InscripcionBloque({ inscripcion, nombreEquipo, miembrosClub, maquinas, onQuitarInscripcion, onAsignarCapitan, onGuardarIdExterno, onAnadirJugador, onQuitarJugador, onCrearPartido, onActualizarPartido, onBorrarPartido }) {
   const [fechaPartido, setFechaPartido] = useState("");
   const [rivalPartido, setRivalPartido] = useState("");
+  const [anadiendoJugador, setAnadiendoJugador] = useState(false);
   const idsEnInscripcion = new Set(inscripcion.jugadores.map((j) => j.jugadorId));
   const disponiblesParaEsta = miembrosClub.filter((m) => !idsEnInscripcion.has(m.jugadorId));
   const esPhoenix = (inscripcion.torneo.plataforma?.nombre || "").toLowerCase().includes("phoenix");
@@ -447,7 +533,10 @@ function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscri
   return (
     <div className="admin-cuadrante-participantes" style={{ marginTop: "1rem" }}>
       <div className="admin-list-item">
-        <strong>{inscripcion.torneo.plataforma?.nombre} — {inscripcion.torneo.nombre}</strong>
+        <strong>
+          {inscripcion.torneo.plataforma?.nombre} — {inscripcion.torneo.nombre}
+          {inscripcion.torneo.terminado ? <span className="admin-hint" style={{ fontWeight: "normal" }}> · terminada</span> : null}
+        </strong>
         <button className="admin-link-btn" onClick={onQuitarInscripcion}>Quitar de esta competición</button>
       </div>
 
@@ -485,13 +574,19 @@ function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscri
           </li>
         ))}
       </ul>
-      {disponiblesParaEsta.length > 0 && (
+      {disponiblesParaEsta.length > 0 && !anadiendoJugador && (
+        <button type="button" className="admin-link-btn" style={{ marginBottom: ".8rem" }} onClick={() => setAnadiendoJugador(true)}>
+          ＋ Añadir jugador
+        </button>
+      )}
+      {disponiblesParaEsta.length > 0 && anadiendoJugador && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem", marginBottom: ".8rem" }}>
           {disponiblesParaEsta.map((m) => (
             <button key={m.jugadorId} type="button" className="admin-link-btn" onClick={() => onAnadirJugador(m.jugadorId)}>
               ＋ {m.jugador.nombre}
             </button>
           ))}
+          <button type="button" className="admin-link-btn" onClick={() => setAnadiendoJugador(false)}>Cerrar</button>
         </div>
       )}
 
@@ -516,11 +611,13 @@ function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscri
         </button>
       </div>
 
-      <ul>
-        {inscripcion.partidos.map((p) => (
+      <CalendarioJornadas
+        partidos={inscripcion.partidos}
+        vacio="Sin partidos todavía."
+        renderPartido={(p) => (
           <li key={p.id} className="admin-list-item" style={{ flexWrap: "wrap" }}>
             <div>
-              <strong>{new Date(p.fecha).toLocaleString("es-ES")}</strong> — vs {p.rival || "?"}
+              <strong>{new Date(p.fecha).toLocaleString("es-ES")}</strong> — {nombreEquipo} vs {p.rival || "?"}
               {p.fijado ? " · confirmado" : " · sin confirmar"}
               {p.maquina ? ` · ${p.maquina.nombre}` : ""}
               {p.resultado ? ` · ${p.resultado}` : ""}
@@ -542,9 +639,8 @@ function InscripcionBloque({ inscripcion, miembrosClub, maquinas, onQuitarInscri
               <button className="admin-link-btn" onClick={() => onBorrarPartido(p.id)}>Borrar</button>
             </div>
           </li>
-        ))}
-        {inscripcion.partidos.length === 0 && <li className="chronicle-status">Sin partidos todavía.</li>}
-      </ul>
+        )}
+      />
     </div>
   );
 }

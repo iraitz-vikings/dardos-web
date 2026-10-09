@@ -1,14 +1,3 @@
-:root {
-    --iron: #0e0f13;
-    --iron-2: #191b22;
-    --bone: #e7e0cd;
-    --bone-dim: #e7e0cd8c;
-    --blood: #9a2b28;
-    --ember: #c96a2e;
-    --steel: #8891a0;
-    --line: #e7e0cd1f;
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
@@ -93,7 +82,7 @@ a { color: inherit; text-decoration: none; }
     line-height: 1.05;
     text-transform: uppercase;
 }
-.hero h1 span { color: var(--blood); }
+.hero h1 span { color: var(--blood-texto); }
 
 .hero-sub {
     max-width: 480px;
@@ -156,7 +145,7 @@ a { color: inherit; text-decoration: none; }
 .live-tournament-machine h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--bone-dim); margin-bottom: .6rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
 .live-tournament-toggle { display: flex; gap: .5rem; margin: .8rem 0 .5rem; }
 .live-tournament-toggle button { background: transparent; border: 1px solid var(--line); color: var(--bone-dim); padding: .4rem .9rem; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
-.live-tournament-toggle button.active { border-color: var(--ember); color: var(--ember); }
+.live-tournament-toggle button.active { border-color: var(--ember); color: var(--ember-texto); }
 .bracket-sin-actual { font-size: .78rem; color: var(--steel); font-style: italic; padding: .5rem 0; }
 .bracket-maquina { font-size: .64rem; text-transform: uppercase; color: var(--steel); background: #ffffff0d; padding: .1rem .4rem; }
 .bracket-cuadrante { font-size: .64rem; text-transform: uppercase; color: var(--ember); background: #9a2b2822; padding: .1rem .4rem; }
@@ -263,13 +252,30 @@ a { color: inherit; text-decoration: none; }
     letter-spacing: normal;
 }
 .footer-map {
+    position: relative;
     flex: 1 1 320px;
     max-width: 420px;
     aspect-ratio: 4/3;
     border: 1px solid var(--line);
     overflow: hidden;
 }
-.footer-map iframe { width: 100%; height: 100%; border: 0; filter: grayscale(.3) invert(.92) contrast(.9); }
+.footer-map-enlace { position: absolute; inset: 0; display: block; }
+.footer-map-enlace img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter .2s; }
+.footer-map-enlace:hover img { filter: brightness(1.08); }
+.footer-map-abrir {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: .45rem .6rem;
+  background: #0d0e11cc;
+  color: var(--bone);
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.footer-map-enlace:hover .footer-map-abrir { color: var(--ember); }
 .footer-contact-info {
     flex: 1 1 220px;
     display: flex;
@@ -287,6 +293,16 @@ a { color: inherit; text-decoration: none; }
 .footer-email { color: var(--ember); text-transform: none; }
 .footer-email:hover { text-decoration: underline; }
 .footer-copy { margin: 0; }
+.footer-legal { margin: .8rem 0 0; }
+.footer-legal a { color: inherit; }
+.aviso-privacidad { font-size: .8em; margin: .4rem 0 .8rem; }
+
+/* Aviso legal y política de privacidad (PaginaLegal.jsx): texto corrido,
+   legible, sin las mayúsculas de los títulos de sección. */
+.pagina-legal { max-width: 46rem; margin-inline: auto; line-height: 1.6; }
+.pagina-legal h3 { margin: 1.8rem 0 .5rem; }
+.pagina-legal ul { padding-left: 1.2rem; }
+.pagina-legal li { margin: .3rem 0; }
 
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -426,7 +442,7 @@ button {
 }
 .admin-tab-active {
       border-color: var(--ember);
-      color: var(--ember);
+      color: var(--ember-texto);
       background: #9a2b2814;
 }
 .admin-link-btn {
@@ -450,13 +466,17 @@ button {
 
 .admin-msg { font-size: .82rem; }
 .admin-msg-ok { color: #8fbf8f; }
-.admin-msg-error { color: var(--blood); }
+.admin-msg-error { color: var(--blood-texto); }
 
 .admin-list ul { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
 .admin-list-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      /* En móvil, si nombre + botones no caben en una línea, que los botones
+         bajen debajo en vez de salirse de la pantalla. */
+      flex-wrap: wrap;
+      gap: .5rem;
       border: 1px solid var(--line);
       padding: .7rem .9rem;
 }
@@ -530,7 +550,7 @@ button {
 .admin-temporizador-texto-urgente { border-color: #ffb066; color: #ffb066; animation: admin-temporizador-texto-parpadeo 1s ease-in-out infinite; }
 .admin-temporizador-texto-agotado { border-color: var(--blood); color: #ff8a80; background: #9a2b2833; animation: admin-temporizador-texto-parpadeo .7s ease-in-out infinite; }
 @keyframes admin-temporizador-texto-parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-.admin-ganador-activo { border-color: var(--ember) !important; color: var(--ember) !important; }
+.admin-ganador-activo { border-color: var(--ember) !important; color: var(--ember-texto) !important; }
 .admin-cuadrante { border: 1px solid var(--line); padding: .8rem 1rem; margin-top: 1rem; }
 
 /* Se sale del ancho estrecho del panel de admin (640px, ver .admin) para
@@ -645,9 +665,11 @@ button {
    navegación rota justo en el rango típico de una tablet). */
 @media (max-width: 1024px) {
       .nav-toggle { display: flex; }
-      .nav-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; gap: 0; background: #0e0f13f2; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+      .nav-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; gap: 0; background: #0e0f13f2; backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); max-height: 0; overflow: hidden; visibility: hidden; transition: max-height .25s ease, visibility 0s linear .25s; }
       .nav-links a { padding: 1rem clamp(1.2rem, 5vw, 3rem); border-top: 1px solid var(--line); }
-      .nav-links-open { max-height: 460px; overflow-y: auto; }
+      /* visibility: con el menú cerrado (max-height 0) los enlaces seguían
+         recibiendo el foco al tabular, aunque no se vieran. */
+      .nav-links-open { max-height: 460px; overflow-y: auto; visibility: visible; transition: max-height .25s ease, visibility 0s; }
 }
 
 
@@ -658,18 +680,18 @@ button {
 .hero-emblem-wrap { width: clamp(160px, 32vw, 240px); aspect-ratio: auto; overflow: visible; }
 .hero-emblem { width: 100%; height: auto; object-fit: contain; }
 
-.hero { background-image: linear-gradient(180deg, #0e0f13ee 0%, #0e0f13cc 35%, #0e0f13 100%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); background-size: cover; background-position: top center; background-repeat: no-repeat; }
+.hero { background-image: linear-gradient(180deg, #0e0f13ee 0%, #0e0f13cc 35%, #0e0f13 100%), var(--club-fondo); background-size: cover; background-position: top center; background-repeat: no-repeat; }
 .tournament-badge { width: 170px; height: 170px; }
 
-body { background-image: linear-gradient(180deg, #0e0f13aa 0%, #0e0f13cc 45%, #0e0f13 85%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); background-size: cover; background-position: top center; background-repeat: no-repeat; background-attachment: fixed; }
+body { background-image: linear-gradient(180deg, #0e0f13aa 0%, #0e0f13cc 45%, #0e0f13 85%), var(--club-fondo); background-size: cover; background-position: top center; background-repeat: no-repeat; background-attachment: fixed; }
 .hero { background-image: none; }
 
-body { background-image: linear-gradient(180deg, #0e0f1370 0%, #0e0f13a0 50%, #0e0f13e6 90%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); }
+body { background-image: linear-gradient(180deg, #0e0f1370 0%, #0e0f13a0 50%, #0e0f13e6 90%), var(--club-fondo); }
 
-body { background-image: linear-gradient(180deg, #0e0f1340 0%, #0e0f1370 50%, #0e0f13cc 88%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); }
+body { background-image: linear-gradient(180deg, #0e0f1340 0%, #0e0f1370 50%, #0e0f13cc 88%), var(--club-fondo); }
 .tournament-badge { width: 220px; height: 220px; }
 
-body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0e0f13a8 90%), url("https://res.cloudinary.com/lodi1y1k/image/upload/v1785704917/dardos-club/nxc3n1tbkiduga4kxvot.jpg"); }
+body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0e0f13a8 90%), var(--club-fondo); }
 
 .admin-badge-preview { width: 90px; height: 90px; object-fit: contain; margin-top: .5rem; border: 1px solid var(--line); }
 
@@ -792,24 +814,31 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   height: 100%;
   object-fit: cover;
 }
-.video-home-play {
+/* Contenido de terceros que se carga con un clic (CargaExterna.jsx) */
+.carga-externa {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .5rem;
-  background: #0d0e11cc;
-  border: none;
+  gap: .6rem;
+  padding: 1rem;
+  background: #0d0e11;
+  text-align: center;
+}
+.carga-externa-boton {
+  background: none;
+  border: 1px solid var(--line);
+  padding: .6rem 1.2rem;
   color: var(--bone);
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: .06em;
   cursor: pointer;
 }
-.video-home-play:hover { color: var(--ember); }
+.carga-externa-boton:hover { color: var(--ember); border-color: var(--ember); }
+.carga-externa-aviso { margin: 0; max-width: 32rem; color: var(--bone-dim); font-size: .72rem; line-height: 1.4; text-transform: none; letter-spacing: normal; }
 
 .mensaje-anclado { max-width: 700px; margin: 1.5rem auto 0; padding: .8rem 1.2rem; text-align: center; border: 1px solid var(--ember); background: #1a0d0dcc; }
 .mensaje-anclado p { margin: 0; color: var(--ember); font-size: .95rem; letter-spacing: .02em; }
@@ -1024,7 +1053,7 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 /* Selector de idioma ES/EU en el menú */
 .nav-lang { display: flex; align-items: center; gap: .3rem; font-size: .74rem; color: var(--bone-dim); }
 .nav-lang button { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: inherit; text-transform: uppercase; }
-.nav-lang-activo { color: var(--ember) !important; font-weight: 600; }
+.nav-lang-activo { color: var(--ember-texto) !important; font-weight: 600; }
 
 /* Buscador global (barra de navegación) */
 .nav-buscador { position: relative; }
@@ -1096,6 +1125,9 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 }
 .jugador-tarjeta:hover { background: rgba(255,255,255,.04); }
 .jugador-tarjeta:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.admin-ronda-header:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+img[role="button"] { cursor: zoom-in; }
+img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
 
 .perfil-jugador-modal {
   position: fixed;
@@ -1546,3 +1578,94 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
   flex: 1 1 0;
   aspect-ratio: 4 / 3;
 }
+
+/* Marcador en directo en las páginas públicas de torneo/liga (partidos que
+   se están jugando con la herramienta) — ver DirectoPartida.jsx. */
+@keyframes directo-latido { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.directo-punto {
+  display: inline-block;
+  width: .55em;
+  height: .55em;
+  border-radius: 50%;
+  background: #e5322d;
+  vertical-align: middle;
+  animation: directo-latido 1.4s ease-in-out infinite;
+}
+.directo-etiqueta { color: #e5322d; font-weight: 700; }
+.directo-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+  margin-left: .5rem;
+  padding: .15rem .55rem;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #e5322d;
+  background: transparent;
+  border: 1px solid #e5322d;
+  cursor: pointer;
+}
+.directo-boton:hover { background: #e5322d1a; }
+.directo-partida-panel { max-width: 720px; }
+@media (prefers-reduced-motion: reduce) { .directo-punto { animation: none; } }
+.directo-camara { margin-bottom: .4rem; }
+.directo-camara-videos .camaras-partida-video-caja { width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.directo-camara-videos .camaras-partida-video { object-fit: contain; }
+
+/* Aviso en la zona de socios si en este dispositivo los avisos de partidos
+   están bloqueados o sin activar — ver AvisoEstadoPush.jsx. */
+.aviso-estado-push {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ember);
+  background: rgba(255, 255, 255, .03);
+  padding: .8rem 1rem;
+  margin-bottom: 1.2rem;
+  font-size: .9rem;
+}
+.aviso-estado-push-bloqueado { border-left-color: #e5322d; }
+.aviso-estado-push summary { cursor: pointer; color: var(--ember); font-size: .85rem; }
+
+/* Botón "VikingsCounter" (abre el marcador en la página pública de un
+   torneo/liga). Pastilla con el color ember del club, un pelín más vistosa
+   que un botón normal: icono de diana, nombre en mayúsculas y un subtítulo. */
+.vikingscounter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .65rem 1.1rem;
+    background: linear-gradient(135deg, rgba(201,106,46,.22), rgba(25,27,34,.6));
+    border: 1px solid var(--ember);
+    border-radius: 12px;
+    color: var(--bone);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.vikingscounter-btn:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, rgba(201,106,46,.35), rgba(25,27,34,.6));
+    box-shadow: 0 6px 20px rgba(201,106,46,.3);
+}
+.vikingscounter-btn-icon { font-size: 1.5rem; line-height: 1; }
+.vikingscounter-btn-label { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.vikingscounter-btn-text { font-weight: 800; text-transform: uppercase; letter-spacing: .05em; font-size: 1rem; }
+.vikingscounter-btn-sub { font-size: .68rem; opacity: .72; text-transform: uppercase; letter-spacing: .06em; }
+
+/* Nombre clicable dentro del cuadrante: abre el perfil del jugador. Se ve
+   como el texto del nombre (hereda fuente/color), sin chrome de botón. */
+.bracket-nombre-perfil {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+}
+.bracket-nombre-perfil:hover { text-decoration: underline; }

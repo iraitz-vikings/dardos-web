@@ -5,6 +5,7 @@ import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
 import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
 import CamarasPartida, { CamarasRival } from "./CamarasPartida.jsx";
 import { apiFetch } from "./apiHerramienta.js";
+import { CLUB } from "./club.js";
 import {
   buscarCierre,
   calcularPuntosCricket,
@@ -19,6 +20,7 @@ import {
   sumarEstadisticas501,
   sumarEstadisticasCricket,
   tiradorActual,
+  simboloMarcas,
 } from "./dardosLogica.js";
 
 // Flujo público de juego con la herramienta de marcador, para partidos de
@@ -340,6 +342,38 @@ function useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, tu
     sincronizarTurnoRemoto(partida, token, { unidades, turnoIdx, estadisticas, ultimaVisitaLado });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnoIdx, esRemota, esMiTurno]);
+}
+
+// Marcador en directo para la página pública del torneo/liga (ventanita "En
+// directo", ver DirectoPartida.jsx y GET /api/partidas-herramienta/:id/directo
+// en el backend): en partidos de torneo/liga (dispositivo compartido, no
+// amistosos) se manda el estado del leg al backend dardo a dardo, para que
+// quien mire la página vea los restos/marcas y los dardos de la visita en
+// curso casi al momento. Best-effort: si falla no afecta al juego. Lleva
+// `secuencia` (creciente) y `leg` para que el backend descarte envíos que
+// lleguen desordenados o de un leg ya terminado.
+function useEnvioDirecto({ partida, token, activo, unidades, turnoIdx, tiradasVisita, estadisticas, ultimaVisitaLado, inicioTurnoIdx }) {
+  const secuencia = useRef(0);
+  useEffect(() => {
+    if (partida.amistosa || !activo) return;
+    secuencia.current = Math.max(secuencia.current + 1, Date.now());
+    apiFetch(`/api/partidas-herramienta/${partida.id}/visita`, {
+      token,
+      method: "PUT",
+      body: JSON.stringify({
+        turnoJugadorId: idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]),
+        unidades,
+        turnoIdx,
+        estadisticas,
+        ultimaVisitaLado,
+        tiradas: tiradasVisita.map((t) => t.resultado.etiqueta),
+        inicioTurnoIdx,
+        leg: partida.legs.length + 1,
+        secuencia: secuencia.current,
+      }),
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unidades, turnoIdx, tiradasVisita, estadisticas, ultimaVisitaLado, activo]);
 }
 
 // Sondea el estado de la partida cada 2.5s mientras se espera el turno del
@@ -719,6 +753,17 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
   const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
 
   useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, turnoIdx, estadisticas, ultimaVisitaLado });
+  useEnvioDirecto({
+    partida,
+    token,
+    activo: ganadorIdx === null && fase === "jugando",
+    unidades,
+    turnoIdx,
+    tiradasVisita,
+    estadisticas,
+    ultimaVisitaLado,
+    inicioTurnoIdx: inicio.turnoIdx,
+  });
 
   useSondeoTurnoRemoto({
     partida,
@@ -898,13 +943,6 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
 
 // --- Marcador Cricket --------------------------------------------------
 
-function simboloMarcas(n) {
-  if (n <= 0) return "—";
-  if (n === 1) return "／";
-  if (n === 2) return "✕";
-  return "⊗";
-}
-
 function nuevaLegCricket(partida, numeroLeg) {
   const base = construirUnidadesPartida(partida).map((u) => ({ ...u, marcas: marcasVacias() }));
   return { unidades: base, turnoIdx: (numeroLeg - 1) % base.length };
@@ -1034,6 +1072,17 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
   const esMiTurno = !esRemota || turnoJugadorIdActual === miJugadorId;
 
   useEnvioTurnoRemoto({ partida, token, esRemota, esMiTurno, unidades, turnoIdx, estadisticas, ultimaVisitaLado });
+  useEnvioDirecto({
+    partida,
+    token,
+    activo: ganadorIdx === null && fase === "jugando",
+    unidades,
+    turnoIdx,
+    tiradasVisita,
+    estadisticas,
+    ultimaVisitaLado,
+    inicioTurnoIdx: inicio.turnoIdx,
+  });
 
   useSondeoTurnoRemoto({
     partida,
@@ -1460,8 +1509,12 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
   if (!mostrar) {
     return (
       <div style={{ marginTop: "1.5rem" }}>
-        <button type="button" onClick={() => setMostrar(true)}>
-          🎯 Jugar con la herramienta de marcador
+        <button type="button" className="vikingscounter-btn" onClick={() => setMostrar(true)}>
+          <span className="vikingscounter-btn-icon" aria-hidden="true">🎯</span>
+          <span className="vikingscounter-btn-label">
+            <span className="vikingscounter-btn-text">{CLUB.nombreMarcador}</span>
+            <span className="vikingscounter-btn-sub">Jugar con el marcador</span>
+          </span>
         </button>
       </div>
     );
@@ -1469,7 +1522,7 @@ export default function AccesoHerramienta({ activa, entidadTipo, entidadId, enti
 
   return (
     <div className="marcador-herramienta-publica" style={{ marginTop: "1.5rem", border: "1px solid var(--line)", padding: "1rem" }}>
-      <h3 style={{ marginTop: 0 }}>Herramienta de marcador — {entidadNombre}</h3>
+      <h3 style={{ marginTop: 0 }}>{CLUB.nombreMarcador} — {entidadNombre}</h3>
 
       {!token && <LoginPin onEntrar={alEntrar} />}
 

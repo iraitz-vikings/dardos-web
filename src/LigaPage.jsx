@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
+import QrPagina from "./QrPagina.jsx";
 import BracketView from "./BracketView.jsx";
+import DirectoPartida, { BotonDirecto } from "./DirectoPartida.jsx";
+import PerfilJugadorPorId from "./PerfilJugadorPorId.jsx";
 import AccesoHerramienta from "./JuegoHerramienta.jsx";
 import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso) {
   const d = new Date(iso);
@@ -52,7 +56,7 @@ function etiquetaEstadoJornada(t, estado) {
   return t("ligaPage.estadoPendiente");
 }
 
-function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t }) {
+function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t, onVerDirecto }) {
   const [jornadasManual, setJornadasManual] = useState({});
   const jornadas = Object.keys(porJornada).map(Number).sort((a, b) => a - b);
 
@@ -69,7 +73,7 @@ function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t }) {
         const desplegada = jornadasManual[j] !== undefined ? jornadasManual[j] : estado === "en_curso";
         return (
           <div key={j} className="admin-cuadro-maquina">
-            <h4 className="admin-ronda-header" onClick={() => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada }))}>
+            <h4 className="admin-ronda-header" {...propsCabeceraDesplegable(desplegada, () => setJornadasManual((prev) => ({ ...prev, [j]: !desplegada })))}>
               <span>
                 {t("ligaPage.jornada").replace("{n}", j)} <span className={`admin-ronda-estado admin-ronda-estado-${estado}`}>{etiquetaEstadoJornada(t, estado)}</span>
               </span>
@@ -85,6 +89,7 @@ function CalendarioGrupo({ grupo, porJornada, mostrarGrupo, t }) {
                       : p.ganador
                       ? ` — ${t("ligaPage.partidoGano").replace("{nombre}", p.ganador)}`
                       : ` — ${t("ligaPage.partidoPendiente")}`}
+                    <BotonDirecto partido={p} onVer={onVerDirecto} />
                   </li>
                 ))}
               </ul>
@@ -102,6 +107,17 @@ export default function LigaPage({ id }) {
   const [estado, setEstado] = useState("cargando");
   const [vista, setVista] = useState("clasificacion");
   const [busqueda, setBusqueda] = useState("");
+  // Partido cuyo marcador en directo está abierto (ventanita, ver DirectoPartida.jsx).
+  const [directo, setDirecto] = useState(null);
+  const verDirecto = (p) =>
+    setDirecto({
+      partidaId: p.partidaHerramienta.id,
+      titulo: `${p.participante1 || p.jugador1 || "?"} vs ${p.participante2 || p.jugador2 || "?"}`,
+    });
+  // Perfil al pulsar un nombre del cuadrante final: solo para socios
+  // identificados (el modal enseña las medias).
+  const [perfilId, setPerfilId] = useState(null);
+  const verPerfil = typeof window !== "undefined" && localStorage.getItem("socioToken") ? setPerfilId : undefined;
 
   const [clasificacion, setClasificacion] = useState(null);
 
@@ -163,18 +179,14 @@ export default function LigaPage({ id }) {
               <p className="torneo-pagina-fechas">
                 {formatFecha(liga.fechaInicio)} – {formatFecha(liga.fechaFin)}
                 {liga.finalizado ? ` · ${t("ligaPage.finalizada")}` : ""}
+                {liga.acero ? ` · ${t("competiciones.acero")}` : ""}
               </p>
               {liga.insigniaUrl && <img src={liga.insigniaUrl} alt={`Insignia ${liga.nombre}`} className="torneo-pagina-insignia" />}
               {liga.descripcion && <p className="event-description">{liga.descripcion}</p>}
 
               <details className="torneo-pagina-qr">
                 <summary>{t("torneoPage.share")}</summary>
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}`}
-                  alt="Código QR de esta página"
-                  width={160}
-                  height={160}
-                />
+                <QrPagina />
                 <p className="torneo-pagina-qr-url">{window.location.href}</p>
               </details>
 
@@ -226,7 +238,7 @@ export default function LigaPage({ id }) {
                   <h2 className="chronicle-title" style={{ fontSize: "1.3rem", marginTop: "2rem" }}>{t("ligaPage.tabCalendario")}</h2>
                   {gruposConCalendario.length > 0 ? (
                     gruposConCalendario.map((g) => (
-                      <CalendarioGrupo key={g} grupo={g} porJornada={porGrupoJornada[g]} mostrarGrupo={!!liga.numeroGrupos} t={t} />
+                      <CalendarioGrupo key={g} grupo={g} porJornada={porGrupoJornada[g]} mostrarGrupo={!!liga.numeroGrupos} t={t} onVerDirecto={verDirecto} />
                     ))
                   ) : (
                     <p className="chronicle-status">{t("ligaPage.sinCalendario")}</p>
@@ -245,11 +257,13 @@ export default function LigaPage({ id }) {
                     onChange={(e) => setBusqueda(e.target.value)}
                     style={{ marginBottom: "1rem" }}
                   />
-                  <BracketView cuadrante={cuadrante} busqueda={busqueda} />
+                  <BracketView cuadrante={cuadrante} busqueda={busqueda} onVerDirecto={verDirecto} onVerPerfil={verPerfil} />
                 </>
               )}
             </>
           )}
+          {directo && <DirectoPartida partidaId={directo.partidaId} titulo={directo.titulo} onCerrar={() => setDirecto(null)} />}
+          {perfilId && <PerfilJugadorPorId jugadorId={perfilId} onClose={() => setPerfilId(null)} />}
         </section>
       </main>
       <Footer simple />

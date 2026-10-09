@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLang } from "./i18n.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 function formatFecha(iso, lang) {
   const d = new Date(iso);
@@ -44,7 +44,7 @@ export default function HistoricoPrivado() {
           <li key={`${item.tipo}-${item.id}`} className="admin-list-item">
             <div>
               <a href={`/${item.tipo === "liga" ? "liga" : "torneo"}/${item.id}`} target="_blank" rel="noopener noreferrer">
-                <strong>{item.nombre}</strong>
+                <strong>{item.nombre}</strong>{item.acero ? ` · ${t("competiciones.acero")}` : ""}
               </a>
               <time style={{ display: "block", fontSize: ".8em" }}>
                 {formatFecha(item.fechaInicio, lang)} – {formatFecha(item.fechaFin, lang)}{item.tipo === "liga" ? ` · ${t("historicoPriv.liga")}` : ""}

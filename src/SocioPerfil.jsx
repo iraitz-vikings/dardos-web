@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import AvisoPrivacidad from "./AvisoPrivacidad.jsx";
 import { useLang } from "./i18n.jsx";
 import MediasFabricante from "./MediasFabricante.jsx";
 import AceroJugador from "./AceroJugador.jsx";
+import { API_URL } from "./config.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://dardos-club-backend-production.up.railway.app";
 
 // Convierte la clave pública VAPID (base64 URL-safe, tal como la da el
 // servidor) al formato Uint8Array que pide pushManager.subscribe().
@@ -20,6 +21,7 @@ export default function SocioPerfil() {
   const [fabricantes, setFabricantes] = useState([]);
   const [editando, setEditando] = useState(false);
 
+  const [nombre, setNombre] = useState("");
   const [apodo, setApodo] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -40,6 +42,7 @@ export default function SocioPerfil() {
 
   function restaurarDesdePerfil(p) {
     if (!p) return;
+    setNombre(p.nombre || "");
     setApodo(p.apodo || "");
     setBio(p.bio || "");
     setAvatarUrl(p.avatarUrl || "");
@@ -127,6 +130,7 @@ export default function SocioPerfil() {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
         body: JSON.stringify({
+          nombre,
           apodo,
           bio,
           avatarUrl,
@@ -150,12 +154,14 @@ export default function SocioPerfil() {
         }),
       });
       if (!res.ok) {
-        setMensaje({ tipo: "error", texto: t("perfil.noGuardoPerfil") });
+        const data = await res.json().catch(() => ({}));
+        setMensaje({ tipo: "error", texto: data.error || t("perfil.noGuardoPerfil") });
         return;
       }
       setMensaje({ tipo: "ok", texto: t("perfil.actualizado") });
       setPerfil((p) => ({
         ...p,
+        nombre,
         apodo,
         bio,
         avatarUrl,
@@ -243,7 +249,7 @@ export default function SocioPerfil() {
       )}
       <label>
         {t("perfil.nombre")}
-        <input value={perfil.nombre} disabled />
+        <input value={nombre} onChange={(e) => setNombre(e.target.value)} required />
       </label>
       <label>
         {t("perfil.email")}
@@ -305,14 +311,18 @@ export default function SocioPerfil() {
                     además el nombre de un torneo/liga/campeonato en el que hayas
                     participado, para poder localizarte en su clasificación (ver
                     notaBusqueda) y entrar en tu ficha de jugador a leer tu media real. */}
-                {esRadikal && (
+                {/* Connection Darts permite el mismo alias a varios jugadores: la
+                    localidad (la que sale bajo el nombre en su perfil) sirve para
+                    saber cuál es el socio. Se guarda también en notaBusqueda. */}
+                {(esRadikal || esConnection) && (
                   <input
                     value={notasFabricantes[f.id] || ""}
                     onChange={(e) => cambiarNotaFabricante(f.id, e.target.value)}
-                    placeholder={t("perfil.notaRadikalPlaceholder")}
+                    placeholder={t(esRadikal ? "perfil.notaRadikalPlaceholder" : "perfil.notaConnectionPlaceholder")}
                     style={{ marginTop: ".3rem" }}
                   />
                 )}
+                {esConnection && <span className="admin-hint">{t("perfil.connectionLocalidadHint")}</span>}
                 {/* La web de Radikal Darts bloquea en silencio los intentos de login
                     automático (ver el error en el panel de admin), así que de
                     momento su media no se puede consultar sola: se escribe a mano
@@ -372,6 +382,7 @@ export default function SocioPerfil() {
       )}
 
       <div style={{ display: "flex", gap: ".6rem" }}>
+        <AvisoPrivacidad tipo="perfil" />
         <button type="submit" disabled={guardando}>{guardando ? t("perfil.guardando") : t("perfil.guardarPerfil")}</button>
         <button
           type="button"
@@ -510,14 +521,25 @@ export async function sincronizarSuscripcionPush() {
   const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const enStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
   if (esIOS && !enStandalone) {
-    return { soportado: true, iosSinInstalar: true, activo: false };
+    return { soportado: true, iosSinInstalar: true, activo: false, enStandalone };
   }
 
   const registro = await navigator.serviceWorker.register("/service-worker.js");
   const sub = await registro.pushManager.getSubscription();
+  const permiso = typeof Notification !== "undefined" ? Notification.permission : "default";
   if (sub) {
+    // Se vuelve a registrar en el servidor aunque ya exista (es un upsert):
+    // si el servidor la había dado por caída (404/410 en algún envío, ver
+    // enviarPushAJugador en el backend), así se reactiva sola sin que el
+    // socio tenga que tocar nada. Best-effort, no bloquea.
+    const datos = sub.toJSON();
+    fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+      body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
+    }).catch(() => {});
     asegurarRespaldoResuscripcion(registro);
-    return { soportado: true, iosSinInstalar: false, activo: true };
+    return { soportado: true, iosSinInstalar: false, activo: true, permiso, enStandalone };
   }
 
   // La suscripción se puede perder sola con el tiempo (el navegador la
@@ -528,8 +550,8 @@ export async function sincronizarSuscripcionPush() {
   // servidor sin que el socio tenga que tocar nada. Si el propio permiso
   // también se perdió, esto no puede hacer nada y se queda como desactivado
   // (hace falta el botón de activar).
-  if (Notification.permission !== "granted") {
-    return { soportado: true, iosSinInstalar: false, activo: false };
+  if (permiso !== "granted") {
+    return { soportado: true, iosSinInstalar: false, activo: false, permiso, enStandalone };
   }
   try {
     const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
@@ -546,9 +568,39 @@ export async function sincronizarSuscripcionPush() {
       body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
     });
     if (res.ok) asegurarRespaldoResuscripcion(registro);
-    return { soportado: true, iosSinInstalar: false, activo: res.ok };
+    return { soportado: true, iosSinInstalar: false, activo: res.ok, permiso, enStandalone };
   } catch {
-    return { soportado: true, iosSinInstalar: false, activo: false };
+    return { soportado: true, iosSinInstalar: false, activo: false, permiso, enStandalone };
+  }
+}
+
+// Pide permiso (tiene que llamarse desde un toque del usuario) y suscribe
+// este dispositivo a los avisos push. Compartido por el botón de "Mi perfil"
+// (AvisosPush) y el aviso de la zona de socios (AvisoEstadoPush.jsx).
+// Devuelve { ok: true } o { ok: false, clave } con la clave de i18n del error.
+export async function activarSuscripcionPush() {
+  const permiso = await Notification.requestPermission();
+  if (permiso !== "granted") return { ok: false, clave: "avisosPush.sinPermiso" };
+  try {
+    const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
+    if (!resClave.ok) return { ok: false, clave: "avisosPush.sinConfigurar" };
+    const { publicKey } = await resClave.json();
+    const registro = await navigator.serviceWorker.ready;
+    const suscripcion = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: claveVapidABytes(publicKey),
+    });
+    const datos = suscripcion.toJSON();
+    const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+      body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
+    });
+    if (!res.ok) return { ok: false, clave: "avisosPush.noActivoServidor" };
+    asegurarRespaldoResuscripcion(registro);
+    return { ok: true };
+  } catch {
+    return { ok: false, clave: "avisosPush.noPudoActivar" };
   }
 }
 
@@ -560,6 +612,12 @@ function AvisosPush() {
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  // Estado real de ESTE dispositivo para diagnosticar los avisos que "se
+  // desactivan solos": permiso del navegador, si está instalada como app y si
+  // hay suscripción viva. Sirve para saber, cuando se caiga, si fue el permiso
+  // (lo revocó el navegador), la suscripción (la mató el sistema — típico en
+  // OnePlus/Samsung por el ahorro de batería) o que nunca se activó aquí.
+  const [diag, setDiag] = useState(null);
 
   useEffect(() => {
     sincronizarSuscripcionPush()
@@ -567,6 +625,7 @@ function AvisosPush() {
         setSoportado(resultado.soportado);
         setEsIOSSinInstalar(resultado.iosSinInstalar);
         setActivadoAqui(resultado.activo);
+        setDiag({ permiso: resultado.permiso, enStandalone: resultado.enStandalone, activo: resultado.activo });
       })
       .catch(() => {})
       .finally(() => setCargando(false));
@@ -576,37 +635,13 @@ function AvisosPush() {
     setProcesando(true);
     setMensaje(null);
     try {
-      const permiso = await Notification.requestPermission();
-      if (permiso !== "granted") {
-        setMensaje({ tipo: "error", texto: t("avisosPush.sinPermiso") });
-        return;
-      }
-      const resClave = await fetch(`${API_URL}/api/notificaciones/vapid-public-key`);
-      if (!resClave.ok) {
-        setMensaje({ tipo: "error", texto: t("avisosPush.sinConfigurar") });
-        return;
-      }
-      const { publicKey } = await resClave.json();
-      const registro = await navigator.serviceWorker.ready;
-      const suscripcion = await registro.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: claveVapidABytes(publicKey),
-      });
-      const datos = suscripcion.toJSON();
-      const res = await fetch(`${API_URL}/api/notificaciones/push/suscribir`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
-        body: JSON.stringify({ endpoint: datos.endpoint, keys: datos.keys }),
-      });
-      if (!res.ok) {
-        setMensaje({ tipo: "error", texto: t("avisosPush.noActivoServidor") });
+      const r = await activarSuscripcionPush();
+      if (!r.ok) {
+        setMensaje({ tipo: "error", texto: t(r.clave) });
         return;
       }
       setActivadoAqui(true);
       setMensaje({ tipo: "ok", texto: t("avisosPush.activados") });
-      asegurarRespaldoResuscripcion(registro);
-    } catch {
-      setMensaje({ tipo: "error", texto: t("avisosPush.noPudoActivar") });
     } finally {
       setProcesando(false);
     }
@@ -660,6 +695,31 @@ function AvisosPush() {
           <button type="button" className="admin-link-btn" disabled={procesando} onClick={activadoAqui ? desactivar : activar}>
             {procesando ? t("avisosPush.unMomento") : activadoAqui ? t("avisosPush.desactivarAqui") : t("avisosPush.activarAqui")}
           </button>
+          {diag && (
+            <details style={{ marginTop: ".6rem" }}>
+              <summary className="admin-hint">{t("avisosPush.diagTitulo")}</summary>
+              <ul className="admin-hint" style={{ margin: ".4rem 0 0", fontSize: ".85em", lineHeight: 1.6 }}>
+                <li>
+                  {t("avisosPush.diagSuscripcion")}: <strong>{diag.activo ? t("avisosPush.diagSi") : t("avisosPush.diagNo")}</strong>
+                </li>
+                <li>
+                  {t("avisosPush.diagPermiso")}:{" "}
+                  <strong>
+                    {diag.permiso === "granted"
+                      ? t("avisosPush.diagConcedido")
+                      : diag.permiso === "denied"
+                      ? t("avisosPush.diagBloqueado")
+                      : t("avisosPush.diagPorDefecto")}
+                  </strong>
+                </li>
+                <li>
+                  {t("avisosPush.diagInstalada")}:{" "}
+                  <strong>{diag.enStandalone ? t("avisosPush.diagSi") : t("avisosPush.diagPestana")}</strong>
+                </li>
+              </ul>
+              <p className="admin-hint" style={{ margin: ".4rem 0 0", fontSize: ".8em" }}>{t("avisosPush.diagAyuda")}</p>
+            </details>
+          )}
         </>
       )}
       {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
@@ -680,20 +740,27 @@ const IDIOMAS_AVISOS = [
   { id: "fr", etiqueta: "Français" },
 ];
 
-function SelectorIdiomaAvisos({ perfil, token, onGuardado }) {
+// `guardar` permite reutilizarlo en el perfil de invitados (PerfilInvitado.jsx),
+// que guarda con su token de PIN en otro endpoint; tiene que devolver true si
+// se guardó. Por defecto guarda en el perfil del socio.
+export function SelectorIdiomaAvisos({ perfil, token, onGuardado, guardar }) {
   const { t } = useLang();
   const [guardando, setGuardando] = useState(false);
+
+  async function guardarSocio(idioma) {
+    const res = await fetch(`${API_URL}/api/perfil`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ idiomaAvisos: idioma }),
+    });
+    return res.ok;
+  }
 
   async function cambiar(idioma) {
     if (idioma === perfil.idiomaAvisos || guardando) return;
     setGuardando(true);
     try {
-      const res = await fetch(`${API_URL}/api/perfil`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ idiomaAvisos: idioma }),
-      });
-      if (res.ok) onGuardado((prev) => ({ ...prev, idiomaAvisos: idioma }));
+      if (await (guardar || guardarSocio)(idioma)) onGuardado((prev) => ({ ...prev, idiomaAvisos: idioma }));
     } catch {
       // No crítico: si falla, se queda con el idioma anterior y puede
       // volver a intentarlo.
@@ -730,18 +797,27 @@ function SelectorIdiomaAvisos({ perfil, token, onGuardado }) {
 // AdminJugadores.jsx). Sobre todo útil en iPhone, donde Safari no siempre
 // puede mostrar la imagen grande de los avisos — Telegram sí la muestra
 // siempre, al ser una app nativa.
-function AvisosTelegram() {
+//
+// También lo usa el perfil de invitados (PerfilInvitado.jsx), pasándole su
+// propia forma de consultar el estado (con el token de PIN en vez del de
+// socio) y un texto de ayuda propio: allí no hay avisos del navegador, así
+// que Telegram no es una "alternativa" sino la única vía.
+function cargarEstadoTelegramSocio() {
+  return fetch(`${API_URL}/api/notificaciones/telegram/estado`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
+  }).then((r) => (r.ok ? r.json() : Promise.reject()));
+}
+
+export function AvisosTelegram({ cargarEstado = cargarEstadoTelegramSocio, hintKey = "avisosTelegram.alternativaHint" }) {
   const { t } = useLang();
   const [estado, setEstado] = useState(null); // null mientras carga
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/notificaciones/telegram/estado`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("socioToken")}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+    cargarEstado()
       .then(setEstado)
       .catch(() => setError(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -762,7 +838,7 @@ function AvisosTelegram() {
       {estado && !estado.telegramVinculado && estado.urlTelegram && (
         <>
           <p className="admin-hint" style={{ marginTop: 0 }}>
-            {t("avisosTelegram.alternativaHint")}
+            {t(hintKey)}
           </p>
           <a href={estado.urlTelegram} target="_blank" rel="noreferrer">
             <button type="button" className="admin-link-btn">{t("avisosTelegram.activar")}</button>
