@@ -1579,7 +1579,26 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   }
   const clubEnPool = new Set(poolManual.filter((p) => p.jugadorId).map((p) => p.jugadorId));
   const disponiblesClub = jugadores.filter((j) => !idsYaApuntados.has(j.id) && !clubEnPool.has(j.id));
-  const disponiblesAgrupados = agruparPorSocio(disponiblesClub);
+  // Buscador sobre las listas de "Añadir del plantel" / "Miembros" / "Amigos".
+  const [busquedaJugador, setBusquedaJugador] = useState("");
+  const disponiblesFiltrados = disponiblesClub.filter((j) =>
+    normalizarBusqueda(j.nombre).includes(normalizarBusqueda(busquedaJugador))
+  );
+  const disponiblesAgrupados = agruparPorSocio(disponiblesFiltrados);
+  const buscadorJugadores = disponiblesClub.length > 0 && (
+    <div style={{ margin: ".5rem 0" }}>
+      <input
+        type="search"
+        value={busquedaJugador}
+        onChange={(e) => setBusquedaJugador(e.target.value)}
+        placeholder="🔍 Buscar jugador del club…"
+        style={{ width: "100%", maxWidth: "22rem" }}
+      />
+      {busquedaJugador && disponiblesFiltrados.length === 0 && (
+        <p className="admin-hint" style={{ margin: ".3rem 0 0" }}>Ningún jugador coincide con «{busquedaJugador}».</p>
+      )}
+    </div>
+  );
 
   function anadirAlPool(jugadorId, nombre) {
     setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre, grupo: grupos[0] || null }]);
@@ -1748,6 +1767,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
           {disponiblesClub.length > 0 && (
             <div style={{ margin: ".6rem 0" }}>
               <p className="admin-hint">Añadir del plantel del club:</p>
+              {buscadorJugadores}
               {disponiblesAgrupados.socios.length > 0 && (
                 <>
                   <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
@@ -1800,21 +1820,21 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
           <div className="admin-inline-form">
             <label>
               Jugador 1
-              <select value={parejaSel1} onChange={(e) => setParejaSel1(e.target.value)}>
-                <option value="">Elige…</option>
-                {poolManual.filter((p) => p.key !== parejaSel2).map((p) => (
-                  <option key={p.key} value={p.key}>{p.nombre}</option>
-                ))}
-              </select>
+              <SelectBuscable
+                value={parejaSel1}
+                onChange={setParejaSel1}
+                textoVacio="Elige…"
+                opciones={poolManual.filter((p) => p.key !== parejaSel2).map((p) => ({ value: p.key, label: p.nombre }))}
+              />
             </label>
             <label>
               Jugador 2
-              <select value={parejaSel2} onChange={(e) => setParejaSel2(e.target.value)}>
-                <option value="">Elige…</option>
-                {poolManual.filter((p) => p.key !== parejaSel1).map((p) => (
-                  <option key={p.key} value={p.key}>{p.nombre}</option>
-                ))}
-              </select>
+              <SelectBuscable
+                value={parejaSel2}
+                onChange={setParejaSel2}
+                textoVacio="Elige…"
+                opciones={poolManual.filter((p) => p.key !== parejaSel1).map((p) => ({ value: p.key, label: p.nombre }))}
+              />
             </label>
             <button type="button" disabled={enviando || !parejaSel1 || !parejaSel2} onClick={formarPareja}>
               Formar pareja
@@ -1852,6 +1872,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
             </label>
             <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
           </form>
+          {buscadorJugadores}
           {disponiblesAgrupados.socios.length > 0 && (
             <>
               <p className="admin-hint" style={{ fontSize: ".8em" }}>Miembros</p>
@@ -2102,12 +2123,12 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
           {ladosSustitucion.map((i) => (
             <label key={i}>
               {esParejas ? `Jugador ${i + 1}` : "Nuevo jugador"}
-              <select value={sustitucion[i].jugadorId} onChange={(e) => cambiarLado(i, { jugadorId: e.target.value })}>
-                <option value="">Escribir nombre a mano…</option>
-                {jugadores.map((j) => (
-                  <option key={j.id} value={j.id}>{j.nombre}</option>
-                ))}
-              </select>
+              <SelectBuscable
+                value={sustitucion[i].jugadorId}
+                onChange={(id) => cambiarLado(i, { jugadorId: id })}
+                textoVacio="Escribir nombre a mano…"
+                opciones={jugadores.map((j) => ({ value: j.id, label: j.nombre }))}
+              />
               {!sustitucion[i].jugadorId && (
                 <input
                   value={sustitucion[i].nombre}
@@ -2125,12 +2146,12 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
       )}
       {vinculando && (
         <div className="admin-inline-form" style={{ marginTop: 0 }}>
-          <select value={seleccion} onChange={(e) => setSeleccion(e.target.value)}>
-            <option value="">Elige un jugador del club…</option>
-            {jugadores.map((j) => (
-              <option key={j.id} value={j.id}>{j.nombre}</option>
-            ))}
-          </select>
+          <SelectBuscable
+            value={seleccion}
+            onChange={setSeleccion}
+            textoVacio="Elige un jugador del club…"
+            opciones={jugadores.map((j) => ({ value: j.id, label: j.nombre }))}
+          />
           <button type="button" disabled={!seleccion || enviando} onClick={confirmar}>
             {enviando ? "Vinculando…" : "Confirmar"}
           </button>
@@ -2170,6 +2191,42 @@ function SelectorTamanoCuadrante({ cuadrante, onCambiar }) {
         <option key={n} value={n}>{n} participantes</option>
       ))}
     </select>
+  );
+}
+
+// Texto en minúsculas y sin tildes, para que el buscador de jugadores
+// encuentre "Martín" escribiendo "martin".
+function normalizarBusqueda(texto) {
+  return (texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+// Desplegable con buscador: una caja de texto encima que filtra las opciones
+// del <select> (sin tildes ni mayúsculas). La opción elegida se mantiene
+// visible aunque no coincida, y si el filtro deja una sola opción se elige
+// sola. opciones = [{ value, label }].
+function SelectBuscable({ value, onChange, opciones, textoVacio }) {
+  const [filtro, setFiltro] = useState("");
+  const f = normalizarBusqueda(filtro);
+  const coincide = (o) => !f || normalizarBusqueda(o.label).includes(f);
+  const visibles = opciones.filter((o) => o.value === value || coincide(o));
+
+  function cambiarFiltro(texto) {
+    setFiltro(texto);
+    const ft = normalizarBusqueda(texto);
+    const encontrados = ft ? opciones.filter((o) => normalizarBusqueda(o.label).includes(ft)) : [];
+    if (encontrados.length === 1) onChange(encontrados[0].value);
+  }
+
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: ".25rem" }}>
+      <input type="search" value={filtro} onChange={(e) => cambiarFiltro(e.target.value)} placeholder="🔍 Buscar…" />
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{f && visibles.length === 0 ? "Ninguno coincide" : textoVacio}</option>
+        {visibles.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </span>
   );
 }
 
