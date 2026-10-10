@@ -2379,7 +2379,7 @@ function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloquea
           >
             Ganó
           </button>
-          <span>vs</span>
+          <span className="admin-cuadro-vs">vs</span>
           <input
             defaultValue={p.jugador2 || ""}
             placeholder="Jugador 2"
