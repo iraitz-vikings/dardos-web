@@ -449,6 +449,23 @@ async function programarCalendario(partidoId, datos) {
     return null;
   }
 
+  // Cambia un participante (jugador o pareja) por otro aunque el cuadrante
+  // ya esté sorteado y el torneo empezado: renombra también sus
+  // enfrentamientos — ver POST /participantes/:id/sustituir en torneosClub.js.
+  async function sustituirParticipante(participanteId, datos) {
+    const res = await fetch(`${API_URL}/api/torneos-club/participantes/${participanteId}/sustituir`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify(datos),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo sustituir el participante.";
+    }
+    return null;
+  }
+
   // Da de alta avisos de Telegram para un invitado puntual (sin ficha del
   // club) en un solo paso: crea una ficha oculta, vincula el hueco y
   // devuelve el enlace de check-in — ver POST
@@ -529,6 +546,7 @@ async function programarCalendario(partidoId, datos) {
         onCrearParticipante={crearParticipante}
         onBorrarParticipante={borrarParticipante}
         onActualizarParticipante={actualizarParticipante}
+        onSustituirParticipante={sustituirParticipante}
         onGenerarInvitadoTelegram={generarInvitadoTelegram}
         onSortearParejas={sortearParejas}
         onSortearParejasGrupos={sortearParejasGrupos}
@@ -819,7 +837,7 @@ async function programarCalendario(partidoId, datos) {
 
 function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
-  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador,
 }) {
@@ -916,6 +934,7 @@ function TorneoGestion({
                 onCrearParticipante={(datos) => onCrearParticipante(c.id, datos)}
                 onBorrarParticipante={onBorrarParticipante}
                 onActualizarParticipante={onActualizarParticipante}
+                onSustituirParticipante={onSustituirParticipante}
                 onGenerarInvitadoTelegram={onGenerarInvitadoTelegram}
                 onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
                 onSortearParejasGrupos={(entradas) => onSortearParejasGrupos(c.id, entradas)}
@@ -1460,7 +1479,7 @@ function TorneoCuadrantes({
   );
 }
 
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -1608,6 +1627,13 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     setMensaje(null);
     const error = await onActualizarParticipante(participanteId, datos);
     setMensaje(error ? { tipo: "error", texto: error } : { tipo: "ok", texto: "Participante vinculado." });
+  }
+
+  async function sustituirParticipante(participanteId, datos) {
+    setMensaje(null);
+    const error = await onSustituirParticipante(participanteId, datos);
+    setMensaje(error ? { tipo: "error", texto: error } : { tipo: "ok", texto: "Participante sustituido, también en el cuadro." });
+    return error;
   }
 
   // Alta de avisos de Telegram para un invitado puntual (sin ficha del
@@ -1787,6 +1813,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
             esParejas={esParejas}
             onQuitar={() => onBorrarParticipante(p.id)}
             onVincular={vincularParticipante}
+            onSustituir={sustituirParticipante}
             onGenerarTelegram={generarTelegramParticipante}
           />
         ))}
@@ -1826,7 +1853,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
 // jugador1Id/jugador2Id tal cual; en el resto de casos la etiqueta puede
 // llevar el nombre de una pareja separado por " / " para mostrar a quién
 // corresponde cada botón.
-function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onGenerarTelegram }) {
+function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSustituir, onGenerarTelegram }) {
   const [vinculando, setVinculando] = useState(null); // "jugador1" | "jugador2" | null
   const [seleccion, setSeleccion] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -1835,8 +1862,37 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onGen
   // genera; { url, error } con el resultado, para mostrar el enlace o el
   // fallo directamente bajo esta fila.
   const [telegram, setTelegram] = useState(null);
+  // Sustitución (pareja/jugador que se cae y entra otro en su hueco): null
+  // si el formulario está cerrado; si no, un lado por jugador con el id del
+  // jugador del club elegido o el nombre escrito a mano.
+  const [sustitucion, setSustitucion] = useState(null);
 
   const nombres = p.etiqueta.split(" / ");
+  const ladosSustitucion = esParejas ? [0, 1] : [0];
+
+  function cambiarLado(i, cambios) {
+    setSustitucion((prev) => prev.map((l, k) => (k === i ? { ...l, ...cambios } : l)));
+  }
+
+  async function confirmarSustitucion() {
+    const [l1, l2] = sustitucion;
+    const nuevo = ladosSustitucion
+      .map((i) => sustitucion[i])
+      .map((l) => (l.jugadorId ? jugadores.find((j) => j.id === l.jugadorId)?.nombre : l.nombre.trim()))
+      .join(" / ");
+    if (!confirm(`¿Cambiar "${p.etiqueta}" por "${nuevo}"? Se cambia también en todos sus enfrentamientos del cuadro.`)) return;
+    setEnviando(true);
+    const error = await onSustituir(p.id, {
+      jugador1Id: l1.jugadorId || undefined,
+      nombre1: l1.jugadorId ? undefined : l1.nombre,
+      jugador2Id: esParejas ? l2.jugadorId || undefined : undefined,
+      nombre2: esParejas && !l2.jugadorId ? l2.nombre : undefined,
+    });
+    setEnviando(false);
+    if (!error) setSustitucion(null);
+  }
+  const sustitucionCompleta =
+    sustitucion && ladosSustitucion.every((i) => sustitucion[i].jugadorId || sustitucion[i].nombre.trim());
   const faltaJugador1 = !p.jugador1Id;
   const faltaJugador2 = esParejas && nombres.length > 1 && !p.jugador2Id;
 
@@ -1914,9 +1970,43 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onGen
               {telegram === "cargando" ? "Generando…" : `Avisos por Telegram para "${nombres[1]}"`}
             </button>
           )}
+          <button
+            type="button"
+            className="admin-link-btn"
+            onClick={() => setSustitucion([{ jugadorId: "", nombre: "" }, { jugadorId: "", nombre: "" }])}
+            title="Cambiarlo por otro aunque el torneo ya haya empezado: se cambia también en el cuadro"
+          >
+            Sustituir
+          </button>
           <button type="button" className="admin-link-btn" onClick={onQuitar}>Quitar</button>
         </div>
       </div>
+      {sustitucion && (
+        <div className="admin-inline-form" style={{ marginTop: 0, flexWrap: "wrap" }}>
+          {ladosSustitucion.map((i) => (
+            <label key={i}>
+              {esParejas ? `Jugador ${i + 1}` : "Nuevo jugador"}
+              <select value={sustitucion[i].jugadorId} onChange={(e) => cambiarLado(i, { jugadorId: e.target.value })}>
+                <option value="">Escribir nombre a mano…</option>
+                {jugadores.map((j) => (
+                  <option key={j.id} value={j.id}>{j.nombre}</option>
+                ))}
+              </select>
+              {!sustitucion[i].jugadorId && (
+                <input
+                  value={sustitucion[i].nombre}
+                  onChange={(e) => cambiarLado(i, { nombre: e.target.value })}
+                  placeholder="Nombre y apellido"
+                />
+              )}
+            </label>
+          ))}
+          <button type="button" disabled={!sustitucionCompleta || enviando} onClick={confirmarSustitucion}>
+            {enviando ? "Sustituyendo…" : "Sustituir"}
+          </button>
+          <button type="button" className="admin-link-btn" onClick={() => setSustitucion(null)}>Cancelar</button>
+        </div>
+      )}
       {vinculando && (
         <div className="admin-inline-form" style={{ marginTop: 0 }}>
           <select value={seleccion} onChange={(e) => setSeleccion(e.target.value)}>
