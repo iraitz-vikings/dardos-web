@@ -466,6 +466,20 @@ async function programarCalendario(partidoId, datos) {
     return null;
   }
 
+  // (Re)envía el aviso de bienvenida al cuadro solo a este participante —
+  // ver POST /participantes/:id/bienvenida en torneosClub.js.
+  async function enviarBienvenidaParticipante(participanteId) {
+    const res = await fetch(`${API_URL}/api/torneos-club/participantes/${participanteId}/bienvenida`, {
+      method: "POST",
+      headers: { "x-admin-token": token },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return data.error || "No se pudo enviar la bienvenida.";
+    }
+    return null;
+  }
+
   // Da de alta avisos de Telegram para un invitado puntual (sin ficha del
   // club) en un solo paso: crea una ficha oculta, vincula el hueco y
   // devuelve el enlace de check-in — ver POST
@@ -547,6 +561,7 @@ async function programarCalendario(partidoId, datos) {
         onBorrarParticipante={borrarParticipante}
         onActualizarParticipante={actualizarParticipante}
         onSustituirParticipante={sustituirParticipante}
+        onEnviarBienvenidaParticipante={enviarBienvenidaParticipante}
         onGenerarInvitadoTelegram={generarInvitadoTelegram}
         onSortearParejas={sortearParejas}
         onSortearParejasGrupos={sortearParejasGrupos}
@@ -837,7 +852,7 @@ async function programarCalendario(partidoId, datos) {
 
 function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
-  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador,
 }) {
@@ -935,6 +950,7 @@ function TorneoGestion({
                 onBorrarParticipante={onBorrarParticipante}
                 onActualizarParticipante={onActualizarParticipante}
                 onSustituirParticipante={onSustituirParticipante}
+                onEnviarBienvenidaParticipante={onEnviarBienvenidaParticipante}
                 onGenerarInvitadoTelegram={onGenerarInvitadoTelegram}
                 onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
                 onSortearParejasGrupos={(entradas) => onSortearParejasGrupos(c.id, entradas)}
@@ -1479,7 +1495,7 @@ function TorneoCuadrantes({
   );
 }
 
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -1634,6 +1650,13 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     const error = await onSustituirParticipante(participanteId, datos);
     setMensaje(error ? { tipo: "error", texto: error } : { tipo: "ok", texto: "Participante sustituido, también en el cuadro." });
     return error;
+  }
+
+  async function enviarBienvenida(participante) {
+    if (!confirm(`¿Enviar el aviso de bienvenida al cuadro a "${participante.etiqueta}"?`)) return;
+    setMensaje(null);
+    const error = await onEnviarBienvenidaParticipante(participante.id);
+    setMensaje(error ? { tipo: "error", texto: error } : { tipo: "ok", texto: `Bienvenida enviada a "${participante.etiqueta}".` });
   }
 
   // Alta de avisos de Telegram para un invitado puntual (sin ficha del
@@ -1814,6 +1837,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
             onQuitar={() => onBorrarParticipante(p.id)}
             onVincular={vincularParticipante}
             onSustituir={sustituirParticipante}
+            onEnviarBienvenida={() => enviarBienvenida(p)}
             onGenerarTelegram={generarTelegramParticipante}
           />
         ))}
@@ -1853,7 +1877,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
 // jugador1Id/jugador2Id tal cual; en el resto de casos la etiqueta puede
 // llevar el nombre de una pareja separado por " / " para mostrar a quién
 // corresponde cada botón.
-function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSustituir, onGenerarTelegram }) {
+function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSustituir, onEnviarBienvenida, onGenerarTelegram }) {
   const [vinculando, setVinculando] = useState(null); // "jugador1" | "jugador2" | null
   const [seleccion, setSeleccion] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -1968,6 +1992,16 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
               title="Para un invitado puntual que solo quiere avisos por Telegram de este torneo, sin darlo de alta como jugador del club"
             >
               {telegram === "cargando" ? "Generando…" : `Avisos por Telegram para "${nombres[1]}"`}
+            </button>
+          )}
+          {(p.jugador1Id || p.jugador2Id) && (
+            <button
+              type="button"
+              className="admin-link-btn"
+              onClick={onEnviarBienvenida}
+              title="Manda solo a este participante el aviso de bienvenida al cuadro que se envía al hacer el sorteo"
+            >
+              Enviar bienvenida
             </button>
           )}
           <button
