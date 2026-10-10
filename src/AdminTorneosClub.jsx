@@ -1564,8 +1564,9 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   const [mensaje, setMensaje] = useState(null);
 
   const participantes = cuadrante.participantes || [];
-  // Solo los que tienen el check de presencia entran en el sorteo.
-  const confirmados = participantes.filter((p) => p.confirmado);
+  // Solo los que tienen el check de presencia entran en el sorteo. null =
+  // participante anterior al check: cuenta como confirmado (ver schema.prisma).
+  const confirmados = participantes.filter((p) => p.confirmado !== false);
   const esParejasCiegas = modalidad === "parejas_ciegas";
   const esParejasHechas = modalidad === "parejas_hechas";
   const esParejas = esParejasCiegas || esParejasHechas;
@@ -2025,10 +2026,10 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
   return (
     <li className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".35rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: ".45rem", cursor: "pointer", opacity: p.confirmado ? 1 : 0.6 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: ".45rem", cursor: "pointer", opacity: p.confirmado !== false ? 1 : 0.6 }}>
           <input
             type="checkbox"
-            checked={!!p.confirmado}
+            checked={p.confirmado !== false}
             onChange={(e) => onConfirmar(e.target.checked)}
             title="Check de presencia: solo entran en el sorteo los marcados"
           />
