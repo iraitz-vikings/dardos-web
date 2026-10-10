@@ -275,6 +275,21 @@ useEffect(() => {
     cargarTorneos();
   }
 
+  // Cambia el número de participantes de un cuadrante todavía sin sortear —
+  // ver PUT /cuadrantes/:id/tamano en torneosClub.js.
+  async function cambiarTamanoCuadrante(cuadranteId, tamano) {
+    const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/tamano`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ tamano }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "No se pudo cambiar el tamaño del cuadrante.");
+    }
+  }
+
   async function obtenerClasificacionCuadrante(cuadranteId) {
     const res = await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/clasificacion`, {
       headers: { "x-admin-token": token },
@@ -577,6 +592,7 @@ async function programarCalendario(partidoId, datos) {
         onSortearParejas={sortearParejas}
         onSortearParejasGrupos={sortearParejasGrupos}
         onCambiarEstadoCuadrante={cambiarEstadoCuadrante}
+        onCambiarTamanoCuadrante={cambiarTamanoCuadrante}
         onObtenerClasificacionCuadrante={obtenerClasificacionCuadrante}
         onAsignarPuntosCuadrante={asignarPuntosCuadrante}
         onObtenerClasificacionGeneral={obtenerClasificacionGeneral}
@@ -864,7 +880,7 @@ async function programarCalendario(partidoId, datos) {
 function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
-  onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
+  onCambiarEstadoCuadrante, onCambiarTamanoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
@@ -952,7 +968,10 @@ function TorneoGestion({
           )}
           {(torneo.cuadrantes || []).map((c) => (
             <div key={c.id} className="admin-cuadrante">
-              <h4>{c.nombre} — {c.tamano} participantes</h4>
+              <h4>
+                {c.nombre} —{" "}
+                <SelectorTamanoCuadrante cuadrante={c} onCambiar={(n) => onCambiarTamanoCuadrante(c.id, n)} />
+              </h4>
               <ParticipantesPanel
                 cuadrante={c}
                 modalidad={torneo.modalidad}
@@ -983,6 +1002,7 @@ function TorneoGestion({
           onSortear={onSortear}
           onReiniciar={onReiniciar}
           onCambiarEstadoCuadrante={onCambiarEstadoCuadrante}
+          onCambiarTamanoCuadrante={onCambiarTamanoCuadrante}
           onObtenerClasificacionCuadrante={onObtenerClasificacionCuadrante}
           onAsignarPuntosCuadrante={onAsignarPuntosCuadrante}
         />
@@ -1426,7 +1446,7 @@ const ORDEN_ESTADO_CUADRANTE = { activo: 0, pendiente: 1, finalizado: 2 };
 
 function TorneoCuadrantes({
   torneo, maquinas, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
-  onCambiarEstadoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante,
+  onCambiarEstadoCuadrante, onCambiarTamanoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante,
 }) {
   const [nombreCuadrante, setNombreCuadrante] = useState("");
   const [tamano, setTamano] = useState(8);
@@ -1498,6 +1518,7 @@ function TorneoCuadrantes({
           onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
           onReiniciar={() => onReiniciar(c.id)}
           onCambiarEstado={(estado) => onCambiarEstadoCuadrante(c.id, estado)}
+          onCambiarTamano={(n) => onCambiarTamanoCuadrante(c.id, n)}
           onObtenerClasificacion={() => onObtenerClasificacionCuadrante(c.id)}
           onAsignarPuntos={() => onAsignarPuntosCuadrante(c.id)}
         />
@@ -2080,11 +2101,33 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
   );
 }
 
+// "N participantes" de la cabecera de un cuadrante: mientras no se ha hecho
+// el sorteo (nadie colocado en el cuadro) es un desplegable para cambiar el
+// tamaño; después, texto fijo como siempre.
+function SelectorTamanoCuadrante({ cuadrante, onCambiar }) {
+  const sorteado = (cuadrante.partidos || []).some((p) => p.jugador1 || p.jugador2 || p.ganador || p.resultado);
+  if (sorteado) return <>{cuadrante.tamano} participantes</>;
+  return (
+    <select
+      value={cuadrante.tamano}
+      title="Número de participantes — se puede cambiar hasta hacer el sorteo"
+      onChange={(e) => {
+        const n = Number(e.target.value);
+        if (confirm(`¿Cambiar "${cuadrante.nombre}" a ${n} participantes? Se rehace el cuadro vacío; los apuntados se mantienen.`)) onCambiar(n);
+      }}
+    >
+      {TAMANOS.map((n) => (
+        <option key={n} value={n}>{n} participantes</option>
+      ))}
+    </select>
+  );
+}
+
 const ETIQUETA_ESTADO_CUADRANTE = { pendiente: "Pendiente", activo: "Activo — jornada en juego", finalizado: "Finalizado" };
 
 function CuadranteDetalle({
   cuadrante, numeroMaquinas, maquinas, afectaCalendario, modoJornadas, temporizadorActivo, temporizadorMinutos, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
-  onCambiarEstado, onObtenerClasificacion, onAsignarPuntos,
+  onCambiarEstado, onCambiarTamano, onObtenerClasificacion, onAsignarPuntos,
 }) {
   // El cuadrante se muestra visible por defecto (como en el cuadrante final
   // de ligas) en vez de exigir un clic en "Ver enfrentamientos" primero.
@@ -2158,7 +2201,7 @@ function CuadranteDetalle({
     <div className="admin-cuadrante">
       <div className="admin-cuadrante-header">
         <h4>
-          {cuadrante.nombre} — {cuadrante.tamano} participantes ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})
+          {cuadrante.nombre} — <SelectorTamanoCuadrante cuadrante={cuadrante} onCambiar={onCambiarTamano} /> ({cuadrante.tipoEliminacion === "doble" ? "doble elim." : "elim. directa"})
           {modoJornadas ? ` · ${ETIQUETA_ESTADO_CUADRANTE[cuadrante.estado] || cuadrante.estado}` : ""}
           {cuadrante.puntosAsignados ? " · Puntos asignados" : ""}
         </h4>
