@@ -25,15 +25,26 @@ function formatFecha(iso) {
 
 const RAMA_ETIQUETA = { ganadores: "Cuadro de ganadores", perdedores: "Cuadro de perdedores", final: "Gran final" };
 
-// Una ronda está abierta si es la primera, o si todos los partidos de la
-// ronda anterior de su misma rama ya tienen ganador (o fueron un bye doble).
-// Se usa para bloquear la edición de partidos que todavía no deberían
-// jugarse, salvo que el admin los haya marcado "en curso" a mano.
+// Un partido está abierto si es de la primera ronda, o si ya están decididos
+// (con ganador, o bye doble) los partidos que le mandan sus dos
+// participantes — no hace falta esperar a que termine la ronda anterior
+// entera. Se usa para bloquear la edición de partidos que todavía no
+// deberían jugarse, salvo que el admin los haya marcado "en curso" a mano.
 function rondaAbierta(cuadrante, partido) {
   if (partido.ronda <= 1) return true;
+  const decidido = (p) => !!p.ganador || p.resultado === "__BYE_DOBLE__";
+  // Los partidos que le mandan jugadores (ganador o perdedor). Si ya están
+  // todos decididos, sus dos participantes ya se conocen y se puede jugar
+  // aunque otros partidos de la ronda anterior sigan pendientes.
+  const fuentes = cuadrante.partidos.filter(
+    (p) => p.siguientePartidoGanadorId === partido.id || p.siguientePartidoPerdedorId === partido.id
+  );
+  if (fuentes.length > 0) return fuentes.every(decidido);
+  // Sin enlaces (p.ej. el desempate de la gran final): se mira la ronda
+  // anterior entera de su misma rama, como antes.
   const anteriores = cuadrante.partidos.filter((p) => p.rama === partido.rama && p.ronda === partido.ronda - 1);
   if (anteriores.length === 0) return true;
-  return anteriores.every((p) => !!p.ganador || p.resultado === "__BYE_DOBLE__");
+  return anteriores.every(decidido);
 }
 
 // Estado visual de una ronda del cuadro, para poder plegar automáticamente
