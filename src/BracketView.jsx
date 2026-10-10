@@ -37,10 +37,13 @@ function NombreCuadrante({ etiqueta, textoPorDefecto }) {
   );
 }
 
-const BOX_W = 176;
-const BOX_H = 50;
+// Ancho/alto pensados para nombres de pareja largos ("Nombre Apellido /
+// Nombre Apellido"): cada lado puede ocupar hasta dos líneas (ver
+// .bracket-box-jugador en styles.css) en vez de cortarse con "…".
+const BOX_W = 240;
+const BOX_H = 74;
 const ROUND_GAP = 56;
-const UNIT = 66;
+const UNIT = 90;
 const PAD = 16;
 const TITLE_H = 30;
 const COL_W = BOX_W + ROUND_GAP;

@@ -512,6 +512,12 @@ button {
 .admin-ronda-estado-pendiente { color: var(--steel); opacity: .6; }
 .admin-cuadro-partido { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; flex-wrap: wrap; }
 .admin-cuadro-partido.admin-cuadro-bloqueado { opacity: .5; }
+/* Ventanita de edición del enfrentamiento: cada participante ocupa su
+   propia fila (con su botón "Ganó") para que se lea el nombre completo de
+   una pareja también en el móvil; el resultado va debajo, a todo el ancho. */
+.admin-partido-panel .admin-cuadro-partido > input:not(.admin-cuadro-resultado):not(.admin-cuadro-maquina-input) { flex: 1 1 calc(100% - 7rem); min-width: 0; }
+.admin-partido-panel .admin-cuadro-vs { flex-basis: 100%; text-align: center; font-size: .7rem; color: var(--steel); }
+.admin-partido-panel .admin-cuadro-resultado { flex: 1 1 100% !important; max-width: none; }
 .admin-cuadro-partido input { background: var(--iron-2); border: 1px solid var(--line); color: var(--bone); padding: .4rem; font-size: .76rem; flex: 1; min-width: 90px; }
 .admin-cuadro-maquina-input { max-width: 110px; flex: none !important; }
 .admin-cuadro-resultado { max-width: 90px; flex: none !important; }
@@ -952,7 +958,17 @@ body { background-image: linear-gradient(180deg, #0e0f1315 0%, #0e0f1340 55%, #0
 .bracket-box-en-curso { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember) inset; }
 .bracket-box-decidido { opacity: .92; }
 .bracket-box-ronda { font-size: .58rem; text-transform: uppercase; color: var(--steel); margin-bottom: .15rem; }
-.bracket-box-jugador { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Hasta dos líneas por lado (parejas con nombres largos); solo si aún no
+   cabe se corta con "…". La caja tiene alto fijo (BOX_H en BracketView.jsx). */
+.bracket-box-jugador {
+  line-height: 1.15;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
 .bracket-box-ganador { color: var(--ember); font-weight: 600; }
 /* Cuadrante del panel de admin: cajas clicables que abren la ventanita de
    edición del enfrentamiento, y aviso de bloqueo cuando la ronda anterior
