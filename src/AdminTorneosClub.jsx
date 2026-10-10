@@ -506,6 +506,27 @@ async function programarCalendario(partidoId, datos) {
     return null;
   }
 
+  // Check de presencia de un participante (o de todos los del cuadrante):
+  // solo los confirmados entran en el sorteo — ver PUT
+  // /participantes/:id/confirmado en torneosClub.js.
+  async function confirmarParticipante(participanteId, confirmado) {
+    await fetch(`${API_URL}/api/torneos-club/participantes/${participanteId}/confirmado`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ confirmado }),
+    });
+    cargarTorneos();
+  }
+
+  async function confirmarTodosParticipantes(cuadranteId, confirmado) {
+    await fetch(`${API_URL}/api/torneos-club/cuadrantes/${cuadranteId}/participantes/confirmado`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ confirmado }),
+    });
+    cargarTorneos();
+  }
+
   // Da de alta avisos de Telegram para un invitado puntual (sin ficha del
   // club) en un solo paso: crea una ficha oculta, vincula el hueco y
   // devuelve el enlace de check-in — ver POST
@@ -588,6 +609,8 @@ async function programarCalendario(partidoId, datos) {
         onActualizarParticipante={actualizarParticipante}
         onSustituirParticipante={sustituirParticipante}
         onEnviarBienvenidaParticipante={enviarBienvenidaParticipante}
+        onConfirmarParticipante={confirmarParticipante}
+        onConfirmarTodosParticipantes={confirmarTodosParticipantes}
         onGenerarInvitadoTelegram={generarInvitadoTelegram}
         onSortearParejas={sortearParejas}
         onSortearParejasGrupos={sortearParejasGrupos}
@@ -879,7 +902,7 @@ async function programarCalendario(partidoId, datos) {
 
 function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
-  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
+  onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onConfirmarParticipante, onConfirmarTodosParticipantes, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onCambiarTamanoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador,
 }) {
@@ -981,6 +1004,8 @@ function TorneoGestion({
                 onActualizarParticipante={onActualizarParticipante}
                 onSustituirParticipante={onSustituirParticipante}
                 onEnviarBienvenidaParticipante={onEnviarBienvenidaParticipante}
+                onConfirmarParticipante={onConfirmarParticipante}
+                onConfirmarTodos={(confirmado) => onConfirmarTodosParticipantes(c.id, confirmado)}
                 onGenerarInvitadoTelegram={onGenerarInvitadoTelegram}
                 onSortearParejas={(jugadorIds) => onSortearParejas(c.id, jugadorIds)}
                 onSortearParejasGrupos={(entradas) => onSortearParejasGrupos(c.id, entradas)}
@@ -1527,7 +1552,7 @@ function TorneoCuadrantes({
   );
 }
 
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
+function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onConfirmarParticipante, onConfirmarTodos, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -1539,6 +1564,8 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   const [mensaje, setMensaje] = useState(null);
 
   const participantes = cuadrante.participantes || [];
+  // Solo los que tienen el check de presencia entran en el sorteo.
+  const confirmados = participantes.filter((p) => p.confirmado);
   const esParejasCiegas = modalidad === "parejas_ciegas";
   const esParejasHechas = modalidad === "parejas_hechas";
   const esParejas = esParejasCiegas || esParejasHechas;
@@ -1656,7 +1683,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   }
 
   const semillas = semillasTexto.split("\n").map((n) => n.trim()).filter(Boolean);
-  const etiquetas = participantes.map((p) => p.etiqueta);
+  const etiquetas = confirmados.map((p) => p.etiqueta);
   const semillasNoValidas = semillas.filter((s) => !etiquetas.includes(s));
 
   async function hacerSorteo() {
@@ -1857,8 +1884,21 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
         </>
       )}
 
-      <h5 style={{ marginTop: "1.2rem" }}>Participantes ({participantes.length})</h5>
+      <h5 style={{ marginTop: "1.2rem" }}>
+        Participantes — {participantes.length} añadido{participantes.length === 1 ? "" : "s"} · {confirmados.length} con check
+      </h5>
       {participantes.length === 0 && <p className="chronicle-status">Nadie apuntado todavía.</p>}
+      {participantes.length > 0 && (
+        <p className="admin-hint" style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", alignItems: "center" }}>
+          Marca el check de cada uno cuando confirme que está: el sorteo solo usa los que tienen check.
+          {confirmados.length < participantes.length && (
+            <button type="button" className="admin-link-btn" onClick={() => onConfirmarTodos(true)}>✓ Marcar todos</button>
+          )}
+          {confirmados.length > 0 && (
+            <button type="button" className="admin-link-btn" onClick={() => onConfirmarTodos(false)}>Quitar todos los checks</button>
+          )}
+        </p>
+      )}
       <ul>
         {participantes.map((p) => (
           <FilaParticipante
@@ -1870,6 +1910,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
             onVincular={vincularParticipante}
             onSustituir={sustituirParticipante}
             onEnviarBienvenida={() => enviarBienvenida(p)}
+            onConfirmar={(confirmado) => onConfirmarParticipante(p.id, confirmado)}
             onGenerarTelegram={generarTelegramParticipante}
           />
         ))}
@@ -1892,8 +1933,8 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
             </span>
           )}
         </label>
-        <button type="button" disabled={sorteando || participantes.length === 0} onClick={hacerSorteo}>
-          {sorteando ? "Sorteando…" : `Sortear cuadro (${participantes.length} participante${participantes.length === 1 ? "" : "s"})`}
+        <button type="button" disabled={sorteando || confirmados.length < 2} onClick={hacerSorteo}>
+          {sorteando ? "Sorteando…" : `Sortear cuadro (${confirmados.length} con check)`}
         </button>
         {errorSorteo && <p className="admin-msg admin-msg-error">{errorSorteo}</p>}
       </div>
@@ -1909,7 +1950,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
 // jugador1Id/jugador2Id tal cual; en el resto de casos la etiqueta puede
 // llevar el nombre de una pareja separado por " / " para mostrar a quién
 // corresponde cada botón.
-function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSustituir, onEnviarBienvenida, onGenerarTelegram }) {
+function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSustituir, onEnviarBienvenida, onConfirmar, onGenerarTelegram }) {
   const [vinculando, setVinculando] = useState(null); // "jugador1" | "jugador2" | null
   const [seleccion, setSeleccion] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -1984,7 +2025,15 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
   return (
     <li className="admin-list-item" style={{ flexDirection: "column", alignItems: "stretch", gap: ".35rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
-        <span>{p.etiqueta}</span>
+        <label style={{ display: "flex", alignItems: "center", gap: ".45rem", cursor: "pointer", opacity: p.confirmado ? 1 : 0.6 }}>
+          <input
+            type="checkbox"
+            checked={!!p.confirmado}
+            onChange={(e) => onConfirmar(e.target.checked)}
+            title="Check de presencia: solo entran en el sorteo los marcados"
+          />
+          <span>{p.etiqueta}</span>
+        </label>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
           {faltaJugador1 && (
             <button
