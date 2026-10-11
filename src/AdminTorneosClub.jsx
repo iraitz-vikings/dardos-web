@@ -1494,6 +1494,13 @@ function TorneoCuadrantes({
     setCreando(false);
   }
 
+  // Máquinas ocupadas ahora mismo en cualquier cuadrante de este torneo (con
+  // un partido "en curso"): no se ofrecen en el desplegable de máquina de los
+  // demás partidos, para no asignar dos partidos a la misma máquina.
+  const maquinasEnCurso = new Set(
+    (torneo.cuadrantes || []).flatMap((c) => c.partidos || []).filter((p) => p.enCurso && p.maquina).map((p) => p.maquina)
+  );
+
   return (
     <div className="admin-cuadro">
       <form onSubmit={submit} className="admin-cuadro-form">
@@ -1532,6 +1539,7 @@ function TorneoCuadrantes({
           key={c.id}
           cuadrante={c}
           numeroMaquinas={torneo.numeroMaquinas}
+          maquinasEnCurso={maquinasEnCurso}
           maquinas={maquinas}
           afectaCalendario={torneo.afectaCalendario !== false}
           modoJornadas={torneo.modoJornadas}
@@ -2233,7 +2241,7 @@ function SelectBuscable({ value, onChange, opciones, textoVacio }) {
 const ETIQUETA_ESTADO_CUADRANTE = { pendiente: "Pendiente", activo: "Activo — jornada en juego", finalizado: "Finalizado" };
 
 function CuadranteDetalle({
-  cuadrante, numeroMaquinas, maquinas, afectaCalendario, modoJornadas, temporizadorActivo, temporizadorMinutos, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
+  cuadrante, numeroMaquinas, maquinasEnCurso, maquinas, afectaCalendario, modoJornadas, temporizadorActivo, temporizadorMinutos, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
   onCambiarEstado, onCambiarTamano, onObtenerClasificacion, onAsignarPuntos,
 }) {
   // El cuadrante se muestra visible por defecto (como en el cuadrante final
@@ -2431,6 +2439,7 @@ function CuadranteDetalle({
                             key={`${p.id}-${p.jugador1}-${p.jugador2}-${p.ganador}-${p.resultado}-${p.maquina}-${p.confirmadoCalendario}-${p.fechaCalendario}`}
                             p={p}
                             maquinasOpciones={maquinasOpciones}
+                            maquinasEnCurso={maquinasEnCurso}
                             maquinas={maquinas}
                             afectaCalendario={afectaCalendario}
                             temporizadorActivo={temporizadorActivo}
@@ -2454,6 +2463,7 @@ function CuadranteDetalle({
         <PartidoModal
           p={partidoSeleccionado}
           maquinasOpciones={maquinasOpciones}
+          maquinasEnCurso={maquinasEnCurso}
           maquinas={maquinas}
           afectaCalendario={afectaCalendario}
           bloqueado={partidosBloqueados.has(partidoSeleccionado.id)}
@@ -2510,7 +2520,14 @@ function TemporizadorAviso({ p, temporizadorActivo, temporizador, onActualizar }
 // campos que antes tenía cada fila de la lista de texto (jugadores,
 // ganador, resultado, máquina, en curso y calendario), pero en un popup que
 // se abre al clicar la caja del enfrentamiento en el cuadrante.
-function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloqueado, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, onCerrar }) {
+// Máquinas que se ofrecen en el desplegable de un partido: las que no tienen
+// ningún partido "en curso" en el torneo, más la que ya tiene asignada este
+// partido (para que no desaparezca de su propio desplegable).
+function maquinasLibres(maquinasOpciones, maquinasEnCurso, partido) {
+  return maquinasOpciones.filter((m) => m === partido.maquina || !maquinasEnCurso?.has(m));
+}
+
+function PartidoModal({ p, maquinasOpciones, maquinasEnCurso, maquinas, afectaCalendario, bloqueado, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, onCerrar }) {
   useCerrarConEscape(true, onCerrar);
   const temporizador = useTemporizadorPartido(p, temporizadorActivo, temporizadorMinutos);
   return (
@@ -2565,7 +2582,7 @@ function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloquea
           {maquinasOpciones.length > 0 ? (
             <select defaultValue={p.maquina || ""} disabled={bloqueado} onChange={(e) => onActualizar({ maquina: e.target.value })}>
               <option value="">Máquina…</option>
-              {maquinasOpciones.map((m) => (
+              {maquinasLibres(maquinasOpciones, maquinasEnCurso, p).map((m) => (
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
@@ -2594,7 +2611,7 @@ function PartidoModal({ p, maquinasOpciones, maquinas, afectaCalendario, bloquea
 // Fila de la vista de lista (con desplegables por ronda): mismos campos que
 // la ventanita, pero editables en línea directamente, tal y como estaba
 // antes de añadir el cuadro gráfico clicable.
-function PartidoRow({ p, maquinasOpciones, maquinas, afectaCalendario, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, busqueda, bloqueado }) {
+function PartidoRow({ p, maquinasOpciones, maquinasEnCurso, maquinas, afectaCalendario, temporizadorActivo, temporizadorMinutos, onActualizar, onProgramar, busqueda, bloqueado }) {
   const coincide = (nombre) => !!nombre && !!busqueda && nombre.toLowerCase().includes(busqueda.toLowerCase());
   const encontrado = coincide(p.jugador1) || coincide(p.jugador2);
   const temporizador = useTemporizadorPartido(p, temporizadorActivo, temporizadorMinutos);
@@ -2640,7 +2657,7 @@ function PartidoRow({ p, maquinasOpciones, maquinas, afectaCalendario, temporiza
       {maquinasOpciones.length > 0 ? (
         <select defaultValue={p.maquina || ""} disabled={bloqueado} onChange={(e) => onActualizar({ maquina: e.target.value })}>
           <option value="">Máquina…</option>
-          {maquinasOpciones.map((m) => (
+          {maquinasLibres(maquinasOpciones, maquinasEnCurso, p).map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>
