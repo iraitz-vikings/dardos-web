@@ -924,6 +924,14 @@ function TorneoGestion({
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador, onGuardarMaquinas,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
+  // Pestaña Participantes: cada cuadrante es un bloque plegable. Se guardan
+  // los que el admin ha abierto/cerrado a mano; si no ha tocado ninguno, un
+  // torneo con un solo cuadrante lo muestra abierto y con varios, cerrados.
+  const [cuadrantesAbiertos, setCuadrantesAbiertos] = useState({});
+  const cuadranteAbierto = (c) =>
+    cuadrantesAbiertos[c.id] ?? (torneo.cuadrantes || []).length === 1;
+  const alternarCuadrante = (c) =>
+    setCuadrantesAbiertos((prev) => ({ ...prev, [c.id]: !cuadranteAbierto(c) }));
 
   return (
     <section className="admin-form">
@@ -1013,12 +1021,30 @@ function TorneoGestion({
           {(torneo.cuadrantes || []).length === 0 && (
             <p className="chronicle-status">Todavía no hay cuadrantes creados — crea uno primero en la pestaña "Cuadrantes".</p>
           )}
-          {(torneo.cuadrantes || []).map((c) => (
+          {(torneo.cuadrantes || []).map((c) => {
+            const apuntados = c.participantes || [];
+            const conCheck = apuntados.filter((p) => p.confirmado !== false).length;
+            const abierto = cuadranteAbierto(c);
+            return (
             <div key={c.id} className="admin-cuadrante">
-              <h4>
-                {c.nombre} —{" "}
+              <div style={{ display: "flex", alignItems: "center", gap: ".6rem", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="admin-link-btn"
+                  onClick={() => alternarCuadrante(c)}
+                  aria-expanded={abierto}
+                  style={{ fontSize: "1rem", fontWeight: 600 }}
+                >
+                  {abierto ? "▾" : "▸"} {c.nombre}
+                </button>
                 <SelectorTamanoCuadrante cuadrante={c} onCambiar={(n) => onCambiarTamanoCuadrante(c.id, n)} />
-              </h4>
+                <span className="admin-hint" style={{ margin: 0 }}>
+                  {apuntados.length} añadido{apuntados.length === 1 ? "" : "s"} · {conCheck} con check
+                </span>
+              </div>
+              {/* Se oculta en vez de desmontarse para no perder lo que haya
+                  sin guardar en el panel (p.ej. la lista de disponibles). */}
+              <div hidden={!abierto}>
               <ParticipantesPanel
                 cuadrante={c}
                 modalidad={torneo.modalidad}
@@ -1035,8 +1061,10 @@ function TorneoGestion({
                 onSortearParejasGrupos={(entradas) => onSortearParejasGrupos(c.id, entradas)}
                 onSortear={(participantes, cabezasDeSerie) => onSortear(c.id, participantes, cabezasDeSerie)}
               />
+              </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
