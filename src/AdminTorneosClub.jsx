@@ -365,6 +365,22 @@ useEffect(() => {
     return { ok: true };
   }
 
+  // Número de máquinas y cuáles están habilitadas (p.ej. solo 2, 4, 6 y 8)
+  // — ver MaquinasPanel y TorneoClub.maquinasHabilitadas en el backend.
+  async function guardarMaquinas(torneo, numeroMaquinas, maquinasHabilitadas) {
+    const res = await fetch(`${API_URL}/api/torneos-club/${torneo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ numeroMaquinas, maquinasHabilitadas }),
+    });
+    cargarTorneos();
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data.error };
+    }
+    return { ok: true };
+  }
+
   // Guarda (o quita, si se manda vacío) el enlace de YouTube en directo de
   // un torneo ya creado — ver VideoDirectoPanel.
   async function guardarVideoDirecto(torneo, videoDirectoUrl) {
@@ -625,6 +641,7 @@ async function programarCalendario(partidoId, datos) {
         onGuardarConfiguracionHerramienta={guardarConfiguracionHerramienta}
         onGuardarVideoDirecto={guardarVideoDirecto}
         onGuardarTemporizador={guardarTemporizador}
+        onGuardarMaquinas={guardarMaquinas}
       />
     );
   }
@@ -904,7 +921,7 @@ function TorneoGestion({
   torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onConfirmarParticipante, onConfirmarTodosParticipantes, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onCambiarTamanoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
-  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador,
+  onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador, onGuardarMaquinas,
 }) {
   const [subpestana, setSubpestana] = useState("participantes");
 
@@ -959,6 +976,13 @@ function TorneoGestion({
           onClick={() => setSubpestana("mensajes")}
         >
           Mensajes de avisos
+        </button>
+        <button
+          type="button"
+          className={`admin-tab ${subpestana === "maquinas" ? "admin-tab-active" : ""}`}
+          onClick={() => setSubpestana("maquinas")}
+        >
+          Máquinas
         </button>
         <button
           type="button"
@@ -1047,6 +1071,10 @@ function TorneoGestion({
 
       {subpestana === "mensajes" && (
         <MensajesAvisos torneo={torneo} onGuardar={onGuardarMensajesAvisos} />
+      )}
+
+      {subpestana === "maquinas" && (
+        <MaquinasPanel torneo={torneo} onGuardar={onGuardarMaquinas} />
       )}
 
       {subpestana === "temporizador" && (
@@ -1275,6 +1303,99 @@ function MensajesAvisos({ torneo, onGuardar }) {
 // tocar nada más para que se muestre. Mismo patrón de guardado que
 // VideoDirectoPanel: el padre hace el PUT real y devuelve { ok } o
 // { ok: false, error }.
+// Máquinas del torneo: cuántas hay y cuáles se usan. Solo las marcadas salen
+// en el desplegable de máquina de los partidos (ver maquinasDelTorneo). Si
+// están todas marcadas se guarda null (= todas, como antes de existir esto).
+function MaquinasPanel({ torneo, onGuardar }) {
+  const [numero, setNumero] = useState(torneo.numeroMaquinas ? String(torneo.numeroMaquinas) : "");
+  const [marcadas, setMarcadas] = useState(() => new Set(maquinasDelTorneo(torneo)));
+  const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+  const total = Number(numero) > 0 ? Math.floor(Number(numero)) : 0;
+  const todas = Array.from({ length: total }, (_, i) => i + 1);
+
+  function alternar(n) {
+    setMarcadas((prev) => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(n)) nuevo.delete(n);
+      else nuevo.add(n);
+      return nuevo;
+    });
+  }
+
+  async function guardar() {
+    const elegidas = todas.filter((n) => marcadas.has(n));
+    if (total > 0 && elegidas.length === 0) {
+      setMensaje({ tipo: "error", texto: "Marca al menos una máquina." });
+      return;
+    }
+    setGuardando(true);
+    setMensaje(null);
+    try {
+      const resultado = await onGuardar(torneo, total || null, elegidas.length === total ? null : elegidas);
+      setMensaje(resultado?.ok ? { tipo: "ok", texto: "Máquinas guardadas." } : { tipo: "error", texto: resultado?.error || "No se pudo guardar." });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="admin-form">
+      <p className="admin-hint" style={{ marginTop: 0 }}>
+        Marca las máquinas que se usan en este torneo: solo esas saldrán al asignar máquina a un partido.
+      </p>
+      <label>
+        Número de máquinas del local
+        <input
+          type="number"
+          min="1"
+          value={numero}
+          onChange={(e) => {
+            const anterior = total;
+            setNumero(e.target.value);
+            const nuevoTotal = Number(e.target.value) > 0 ? Math.floor(Number(e.target.value)) : 0;
+            // Las máquinas nuevas que aparecen al subir el número salen marcadas.
+            if (nuevoTotal > anterior) {
+              setMarcadas((prev) => new Set([...prev, ...Array.from({ length: nuevoTotal - anterior }, (_, i) => anterior + i + 1)]));
+            }
+          }}
+          placeholder="ej. 9"
+        />
+      </label>
+      {total > 0 && (
+        <>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: ".4rem 1rem", margin: ".5rem 0" }}>
+            {todas.map((n) => (
+              <label key={n} style={{ display: "flex", alignItems: "center", gap: ".35rem", flexDirection: "row" }}>
+                <input type="checkbox" checked={marcadas.has(n)} onChange={() => alternar(n)} style={{ width: "auto" }} />
+                Máquina {n}
+              </label>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
+            <button type="button" className="admin-link-btn" onClick={() => setMarcadas(new Set(todas))}>Marcar todas</button>
+            <button type="button" className="admin-link-btn" onClick={() => setMarcadas(new Set())}>Desmarcar todas</button>
+          </div>
+        </>
+      )}
+      <button type="button" disabled={guardando} onClick={guardar}>
+        {guardando ? "Guardando…" : "Guardar"}
+      </button>
+      {mensaje && <p className={`admin-msg admin-msg-${mensaje.tipo}`}>{mensaje.texto}</p>}
+    </div>
+  );
+}
+
+// Números de las máquinas habilitadas en un torneo: las de
+// `maquinasHabilitadas` (dentro del rango 1..numeroMaquinas) o, si no hay
+// lista, todas de la 1 a numeroMaquinas.
+function maquinasDelTorneo(torneo) {
+  const total = torneo.numeroMaquinas || 0;
+  const lista = Array.isArray(torneo.maquinasHabilitadas) ? torneo.maquinasHabilitadas : null;
+  const todas = Array.from({ length: total }, (_, i) => i + 1);
+  return lista ? todas.filter((n) => lista.includes(n)) : todas;
+}
+
 function TemporizadorPanel({ torneo, onGuardar }) {
   const [activo, setActivo] = useState(!!torneo.temporizadorActivo);
   const [minutos, setMinutos] = useState(torneo.temporizadorMinutos ? String(torneo.temporizadorMinutos) : "");
@@ -1538,7 +1659,7 @@ function TorneoCuadrantes({
         <CuadranteDetalle
           key={c.id}
           cuadrante={c}
-          numeroMaquinas={torneo.numeroMaquinas}
+          numerosMaquinas={maquinasDelTorneo(torneo)}
           maquinasEnCurso={maquinasEnCurso}
           maquinas={maquinas}
           afectaCalendario={torneo.afectaCalendario !== false}
@@ -2241,7 +2362,7 @@ function SelectBuscable({ value, onChange, opciones, textoVacio }) {
 const ETIQUETA_ESTADO_CUADRANTE = { pendiente: "Pendiente", activo: "Activo — jornada en juego", finalizado: "Finalizado" };
 
 function CuadranteDetalle({
-  cuadrante, numeroMaquinas, maquinasEnCurso, maquinas, afectaCalendario, modoJornadas, temporizadorActivo, temporizadorMinutos, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
+  cuadrante, numerosMaquinas, maquinasEnCurso, maquinas, afectaCalendario, modoJornadas, temporizadorActivo, temporizadorMinutos, onBorrar, onActualizarPartido, onProgramarCalendario, onSortear, onReiniciar,
   onCambiarEstado, onCambiarTamano, onObtenerClasificacion, onAsignarPuntos,
 }) {
   // El cuadrante se muestra visible por defecto (como en el cuadrante final
@@ -2288,9 +2409,7 @@ function CuadranteDetalle({
     }
   }
 
-  const maquinasOpciones = numeroMaquinas
-    ? Array.from({ length: numeroMaquinas }, (_, i) => `Máquina ${i + 1}`)
-    : [];
+  const maquinasOpciones = numerosMaquinas.map((n) => `Máquina ${n}`);
 
   const participantesApuntados = cuadrante.participantes || [];
 
