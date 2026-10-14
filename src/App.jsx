@@ -9,6 +9,7 @@ import VideoDirectoEmbed from "./VideoDirectoEmbed.jsx";
 import { useLang } from "./i18n.jsx";
 import { API_URL } from "./config.js";
 import { CLUB } from "./club.js";
+import { cargarTorneoDestacado, torneoDestacadoVisible } from "./torneoDestacado.js";
 
 
 function formatFecha(iso) {
@@ -75,6 +76,9 @@ export default function App() {
   const [estado, setEstado] = useState("cargando"); // cargando | ok | error
   const [lightbox, setLightbox] = useState(null); // { tipo: "foto"|"video", src }
   const [torneo, setTorneo] = useState(null);
+  // Hasta saber si el admin lo ha desactivado no se pinta la sección, para
+  // que no aparezca un instante y luego desaparezca.
+  const [torneoCargado, setTorneoCargado] = useState(false);
   const [torneosClub, setTorneosClub] = useState([]);
   const [ligasClub, setLigasClub] = useState([]);
   const [patrocinadores, setPatrocinadores] = useState([]);
@@ -155,10 +159,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/torneo-destacado`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setTorneo)
-      .catch(() => {});
+    cargarTorneoDestacado().then((datos) => {
+      setTorneo(datos);
+      setTorneoCargado(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -324,6 +328,7 @@ export default function App() {
           )}
         </section>
         
+        {torneoCargado && torneoDestacadoVisible(torneo) && (
         <section id="torneo" className="tournament">
           <div className="tournament-heading">
             <p className="eyebrow">{t("torneo.eyebrow")}</p>
@@ -365,6 +370,7 @@ export default function App() {
             {CLUB.notaTorneo && <p className="event-note">{CLUB.notaTorneo}</p>}
           </div>
         </section>
+        )}
 
         <section className="gallery-teaser">
           <p className="eyebrow">{t("galeria.eyebrow")}</p>

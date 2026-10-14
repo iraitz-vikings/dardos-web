@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LiveTicker from "./LiveTicker.jsx";
 import Buscador from "./Buscador.jsx";
 import { useLang } from "./i18n.jsx";
 import { CLUB } from "./club.js";
+import { cargarTorneoDestacado, torneoDestacadoVisible } from "./torneoDestacado.js";
 
 export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { lang, setLang, t } = useLang();
+  const [verProximoTorneo, setVerProximoTorneo] = useState(true);
+
+  useEffect(() => {
+    cargarTorneoDestacado().then((torneo) => setVerProximoTorneo(torneoDestacadoVisible(torneo)));
+  }, []);
 
   return (
     <>
@@ -35,7 +41,9 @@ export default function Nav() {
           <a href="/historico" onClick={() => setMenuOpen(false)}>{t("nav.historico")}</a>
           <a href="/socios" onClick={() => setMenuOpen(false)}>{t("nav.socios")}</a>
           <a href="/torneos" onClick={() => setMenuOpen(false)}>{t("nav.torneos")}</a>
-          <a href="/#torneo" onClick={() => setMenuOpen(false)}>{t("nav.proximoTorneo")}</a>
+          {verProximoTorneo && (
+            <a href="/#torneo" onClick={() => setMenuOpen(false)}>{t("nav.proximoTorneo")}</a>
+          )}
           <a href="/#contacto" onClick={() => setMenuOpen(false)}>{t("nav.contacto")}</a>
           <div className="nav-lang">
             <button type="button" className={lang === "es" ? "nav-lang-activo" : ""} onClick={() => setLang("es")}>ES</button>

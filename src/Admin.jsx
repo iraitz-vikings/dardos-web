@@ -60,6 +60,7 @@ export default function Admin() {
   const [torneoInicio, setTorneoInicio] = useState("");
   const [torneoFin, setTorneoFin] = useState("");
   const [torneoInsignia, setTorneoInsignia] = useState("");
+  const [torneoActivo, setTorneoActivo] = useState(true);
   const [torneoCartel, setTorneoCartel] = useState("");
   const [guardandoTorneo, setGuardandoTorneo] = useState(false);
   const [mensajeTorneo, setMensajeTorneo] = useState(null);
@@ -90,6 +91,7 @@ export default function Admin() {
         setTorneoFin(aInputDate(t.fechaFin));
         setTorneoInsignia(t.insigniaUrl || "");
         setTorneoCartel(t.cartelUrl || "");
+        setTorneoActivo(t.activo !== false);
       })
       .catch(() => {});
   };
@@ -420,6 +422,7 @@ export default function Admin() {
           fechaFin: torneoFin,
           insigniaUrl: torneoInsignia,
           cartelUrl: torneoCartel,
+          activo: torneoActivo,
         }),
       });
 
@@ -434,7 +437,10 @@ export default function Admin() {
         return;
       }
 
-      setMensajeTorneo({ tipo: "ok", texto: "Torneo actualizado." });
+      setMensajeTorneo({
+        tipo: "ok",
+        texto: torneoActivo ? "Torneo actualizado." : "Torneo guardado y oculto en la home.",
+      });
     } catch {
       setMensajeTorneo({ tipo: "error", texto: "Error de conexión con el servidor." });
     } finally {
@@ -585,6 +591,16 @@ function cancelarEdicionNoticia() {
       {pestana === "torneo-destacado" && (
         <form onSubmit={guardarTorneo} className="admin-form">
           <h2>Próximo torneo (destacado en la home)</h2>
+          <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+            <input type="checkbox" checked={torneoActivo} onChange={(e) => setTorneoActivo(e.target.checked)} style={{ width: "auto" }} />
+            Mostrar en la home
+          </label>
+          {!torneoActivo && (
+            <p className="admin-hint" style={{ marginTop: 0 }}>
+              Al guardar, la sección «Próximo torneo» y su enlace del menú desaparecen de la web. Los datos se
+              conservan para volver a activarlo cuando quieras.
+            </p>
+          )}
           <label>
             Nombre del torneo
             <input value={torneoNombre} onChange={(e) => setTorneoNombre(e.target.value)} required />
