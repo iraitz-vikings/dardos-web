@@ -86,20 +86,25 @@ export default function Competiciones({ usuario }) {
 
   if (cargando) return <p className="chronicle-status">{t("competiciones.cargando")}</p>;
 
-  const delaPlataforma = torneosExternos.filter((tx) => tx.plataformaId === pestana);
-  const terminadas = delaPlataforma.filter((tx) => tx.terminado);
-  const visibles = verHistorico ? terminadas : delaPlataforma.filter((tx) => !tx.terminado);
-
   // Torneos/ligas creados con la web: los del club van en su pestaña y los
   // "de acero" (no son del club ni tienen plataforma) en la suya.
   const esAcero = pestana === "acero";
   const torneosInternos = torneosVikings.filter((x) => !!x.acero === esAcero);
   const ligasInternas = ligasVikings.filter((x) => !!x.acero === esAcero);
 
+  // Si hay una plataforma externa llamada "Acero", sus competiciones van
+  // también en la pestaña "Acero" (antes salían dos pestañas "Acero").
+  const plataformaAcero = plataformas.find((p) => p.nombre.trim().toLowerCase() === "acero");
+  const plataformaActual = esAcero ? plataformaAcero?.id : pestana;
+  const delaPlataforma = plataformaActual ? torneosExternos.filter((tx) => tx.plataformaId === plataformaActual) : [];
+  const terminadas = delaPlataforma.filter((tx) => tx.terminado);
+  const visibles = verHistorico ? terminadas : delaPlataforma.filter((tx) => !tx.terminado);
+  const muestraExternas = pestana !== "vikings" && !!plataformaActual;
+
   const pestanas = [
     { id: "vikings", nombre: CLUB.nombreCorto },
     { id: "acero", nombre: t("competiciones.acero") },
-    ...plataformas.map((p) => ({ id: p.id, nombre: p.nombre })),
+    ...plataformas.filter((p) => p !== plataformaAcero).map((p) => ({ id: p.id, nombre: p.nombre })),
   ];
 
   return (
@@ -120,7 +125,7 @@ export default function Competiciones({ usuario }) {
 
       {(pestana === "vikings" || esAcero) && (
         <div>
-          {torneosInternos.length === 0 && ligasInternas.length === 0 && (
+          {torneosInternos.length === 0 && ligasInternas.length === 0 && delaPlataforma.length === 0 && (
             <p className="chronicle-status">{t(esAcero ? "competiciones.sinAcero" : "competiciones.sinInternas")}</p>
           )}
           {torneosInternos.map((tv) => (
@@ -142,8 +147,8 @@ export default function Competiciones({ usuario }) {
         </div>
       )}
 
-      {pestana !== "vikings" && !esAcero && (
-        <div>
+      {muestraExternas && (
+        <div style={esAcero ? { marginTop: "1rem" } : undefined}>
           {terminadas.length > 0 && (
             <div className="admin-tabs" style={{ marginBottom: "1rem", fontSize: ".85em" }}>
               <button type="button" className={`admin-tab ${!verHistorico ? "admin-tab-active" : ""}`} onClick={() => setVerHistorico(false)}>
@@ -154,7 +159,7 @@ export default function Competiciones({ usuario }) {
               </button>
             </div>
           )}
-          {visibles.length === 0 && (
+          {visibles.length === 0 && (!esAcero || (torneosInternos.length === 0 && ligasInternas.length === 0 && delaPlataforma.length > 0)) && (
             <p className="chronicle-status">{t("competiciones.sinExternos")}</p>
           )}
           {visibles.map((tx) => {
