@@ -932,7 +932,8 @@ function TorneoGestion({
   // Pestaña Participantes: cada cuadrante es un bloque plegable. Se guardan
   // los que el admin ha abierto/cerrado a mano; si no ha tocado ninguno, un
   // torneo con un solo cuadrante lo muestra abierto y con varios, cerrados.
-  const [cuadrantesAbiertos, setCuadrantesAbiertos] = useState({});
+  // Recordados al recargar la página, por torneo (ver useEstadoRecordado.js).
+  const [cuadrantesAbiertos, setCuadrantesAbiertos] = useEstadoRecordado(`adminTorneos.cuadrantesAbiertos.${torneo.id}`, {});
   const cuadranteAbierto = (c) =>
     cuadrantesAbiertos[c.id] ?? (torneo.cuadrantes || []).length === 1;
   const alternarCuadrante = (c) =>
