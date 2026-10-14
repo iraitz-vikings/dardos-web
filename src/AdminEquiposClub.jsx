@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
 import CalendarioJornadas from "./CalendarioJornadas.jsx";
@@ -27,7 +28,7 @@ export default function AdminEquiposClub({ token, salir }) {
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
   // "activos" o "inactivos": los equipos que ya terminaron sus competiciones
   // se marcan inactivos y pasan a su propia pestaña.
-  const [vistaEquipos, setVistaEquipos] = useState("activos");
+  const [vistaEquipos, setVistaEquipos] = useEstadoRecordado("adminEquiposClub.vista", "activos");
   // Equipo cuya lista de jugadores para añadir está desplegada (solo se
   // enseña al pulsar "Añadir jugador", para no llenar la ficha).
   const [anadiendoEn, setAnadiendoEn] = useState(null);

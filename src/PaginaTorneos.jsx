@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { LoginPin, CLAVE_TOKEN, CLAVE_JUGADOR } from "./JuegoHerramienta.jsx";
@@ -28,7 +29,7 @@ export default function PaginaTorneos() {
   const [jugador, setJugador] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(CLAVE_JUGADOR) || "null"); } catch { return null; }
   });
-  const [vista, setVista] = useState("competiciones");
+  const [vista, setVista] = useEstadoRecordado("paginaTorneos.vista", "competiciones");
   const [competiciones, setCompeticiones] = useState(null);
   const [error, setError] = useState("");
 

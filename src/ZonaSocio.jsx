@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { useLang } from "./i18n.jsx";
 import SocioPerfil, { sincronizarSuscripcionPush } from "./SocioPerfil.jsx";
 import AvisoEstadoPush from "./AvisoEstadoPush.jsx";
@@ -33,7 +34,9 @@ function useSecciones() {
 export default function ZonaSocio({ usuario, salir }) {
   const { t } = useLang();
   const SECCIONES = useSecciones();
-  const [seccion, setSeccion] = useState("tablon");
+  const [seccionGuardada, setSeccion] = useEstadoRecordado("zonaSocio.seccion", "tablon");
+  // Al recargar se vuelve a la sección en la que se estaba (si sigue existiendo).
+  const seccion = SECCIONES.some((s) => s.id === seccionGuardada && s.lista) ? seccionGuardada : "tablon";
   const [menuAbierto, setMenuAbierto] = useState(false);
   const actual = SECCIONES.find((s) => s.id === seccion);
   // Algunas secciones aprovechan más espacio en tablet/PC (galerías, tablas

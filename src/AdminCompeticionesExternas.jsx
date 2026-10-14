@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { API_URL } from "./config.js";
 import { CLUB } from "./club.js";
 
@@ -51,7 +52,7 @@ export default function AdminCompeticionesExternas({ token, salir }) {
   const [actualizandoTodas, setActualizandoTodas] = useState(false);
   const [resumenActualizacionTodas, setResumenActualizacionTodas] = useState(null);
   // "activas" o "historico" (competiciones marcadas como terminadas).
-  const [vistaTorneos, setVistaTorneos] = useState("activas");
+  const [vistaTorneos, setVistaTorneos] = useEstadoRecordado("adminCompeticionesExternas.vista", "activas");
 
   const nombrePlataformaPorId = (id) => plataformas.find((p) => p.id === id)?.nombre || "";
 

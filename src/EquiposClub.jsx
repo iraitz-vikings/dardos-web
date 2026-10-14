@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { useLang } from "./i18n.jsx";
 import { API_URL } from "./config.js";
 
@@ -37,7 +38,7 @@ export default function EquiposClub() {
   const { t } = useLang();
   const [equipos, setEquipos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [vista, setVista] = useState("equipos");
+  const [vista, setVista] = useEstadoRecordado("equiposClub.vista", "equipos");
 
   useEffect(() => {
     const token = localStorage.getItem("socioToken");

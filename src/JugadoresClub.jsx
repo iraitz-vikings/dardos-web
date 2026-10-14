@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { useLang } from "./i18n.jsx";
 import PerfilJugadorModal from "./PerfilJugadorModal.jsx";
 import { agruparPorSocio } from "./agruparJugadores.js";
@@ -14,7 +15,7 @@ export default function JugadoresClub() {
   // "socios" (Miembros) e "invitados" (Amigos) son los nombres internos de
   // siempre (agruparJugadores.js, sin cambios) — la etiqueta que ve el
   // socio/miembro es la única cosa que cambia aquí.
-  const [pestana, setPestana] = useState("socios");
+  const [pestana, setPestana] = useEstadoRecordado("jugadoresClub.pestana", "socios");
 
   useEffect(() => {
     const token = localStorage.getItem("socioToken");

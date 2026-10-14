@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import { TablaClasificacion } from "./AdminCompeticionesExternas.jsx";
 import CalendarioJornadas from "./CalendarioJornadas.jsx";
@@ -27,7 +28,7 @@ export default function Competiciones({ usuario }) {
   const [torneosVikings, setTorneosVikings] = useState([]);
   const [ligasVikings, setLigasVikings] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
-  const [pestana, setPestana] = useState("vikings");
+  const [pestanaGuardada, setPestana] = useEstadoRecordado("competiciones.pestana", "vikings");
   const [cargando, setCargando] = useState(true);
   const [competicionesAbiertas, setCompeticionesAbiertas] = useState({});
   const [equiposAbiertos, setEquiposAbiertos] = useState({});
@@ -85,6 +86,11 @@ export default function Competiciones({ usuario }) {
   }
 
   if (cargando) return <p className="chronicle-status">{t("competiciones.cargando")}</p>;
+
+  // Pestaña recordada al recargar; si ya no existe (p. ej. una plataforma
+  // borrada), se vuelve a la del club.
+  const pestanasValidas = ["vikings", "acero", ...plataformas.filter((p) => p.nombre.trim().toLowerCase() !== "acero").map((p) => p.id)];
+  const pestana = pestanasValidas.includes(pestanaGuardada) ? pestanaGuardada : "vikings";
 
   // Torneos/ligas creados con la web: los del club van en su pestaña y los
   // "de acero" (no son del club ni tienen plataforma) en la suya.
