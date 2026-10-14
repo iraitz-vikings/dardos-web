@@ -1,4 +1,5 @@
   import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { CLUB } from "./club.js";
 const ADMIN_EMBLEM_URL = CLUB.imagenes.logoAdmin;
 import AdminTorneosClub from "./AdminTorneosClub.jsx";
@@ -37,7 +38,8 @@ function idVideoYoutube(url) {
 export default function Admin() {
   const [token, setToken] = useState(() => sessionStorage.getItem("adminToken") || "");
   const [passwordInput, setPasswordInput] = useState("");
-  const [pestana, setPestana] = useState("noticias");
+  // Recordada al recargar la página (ver useEstadoRecordado.js).
+  const [pestanaGuardada, setPestana] = useEstadoRecordado("admin.pestana", "noticias");
   const [noticias, setNoticias] = useState([]);
   const [titulo, setTitulo] = useState("");
   const [contenido, setContenido] = useState("");
@@ -565,6 +567,7 @@ function cancelarEdicionNoticia() {
     { id: "competiciones-externas", etiqueta: "Comp. externas" },
     { id: "dispositivos-push", etiqueta: "Avisos push" },
   ];
+  const pestana = TABS.some((t) => t.id === pestanaGuardada) ? pestanaGuardada : "noticias";
 
   return (
     <div className="admin">

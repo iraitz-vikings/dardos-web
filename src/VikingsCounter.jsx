@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useLang } from "./i18n.jsx";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import Marcadores from "./Marcadores.jsx";
 import RetarAmistoso from "./RetarAmistoso.jsx";
 
@@ -9,7 +9,7 @@ import RetarAmistoso from "./RetarAmistoso.jsx";
 // dos apartados sueltos. Al entrar se elige local o remoto.
 export default function VikingsCounter() {
   const { t } = useLang();
-  const [modo, setModo] = useState("local");
+  const [modo, setModo] = useEstadoRecordado("vikingsCounter.modo", "local");
 
   return (
     <div>
