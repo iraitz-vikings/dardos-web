@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
@@ -66,9 +67,11 @@ export default function AdminTorneosClub({ token, salir }) {
   const [papelera, setPapelera] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
-  const [gestionandoId, setGestionandoId] = useState(null);
+  // Torneo abierto y filtro de la lista, recordados al recargar la página
+  // (ver useEstadoRecordado.js). Si el torneo ya no existe, se ve la lista.
+  const [gestionandoId, setGestionandoId] = useEstadoRecordado("adminTorneos.abierto", null);
   const [mensaje, setMensaje] = useState(null);
-  const [filtro, setFiltro] = useState("activos");
+  const [filtro, setFiltro] = useEstadoRecordado("adminTorneos.filtro", "activos");
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -923,7 +926,9 @@ function TorneoGestion({
   onCambiarEstadoCuadrante, onCambiarTamanoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador, onGuardarMaquinas,
 }) {
-  const [subpestana, setSubpestana] = useState("participantes");
+  const [subpestanaGuardada, setSubpestana] = useEstadoRecordado(`adminTorneos.subpestana.${torneo.id}`, "participantes");
+  // "Clasificación" solo existe en torneos por jornadas.
+  const subpestana = subpestanaGuardada === "clasificacion" && !torneo.modoJornadas ? "participantes" : subpestanaGuardada;
   // Pestaña Participantes: cada cuadrante es un bloque plegable. Se guardan
   // los que el admin ha abierto/cerrado a mano; si no ha tocado ninguno, un
   // torneo con un solo cuadrante lo muestra abierto y con varios, cerrados.
