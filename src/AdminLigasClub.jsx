@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useEstadoRecordado from "./useEstadoRecordado.js";
 import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
 import { GRUPOS_POR_METODO } from "./sorteoParejas.js";
@@ -73,10 +74,12 @@ export default function AdminLigasClub({ token, salir }) {
   const [papelera, setPapelera] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
-  const [gestionandoId, setGestionandoId] = useState(null);
+  // Liga abierta y filtro de la lista, recordados al recargar la página
+  // (ver useEstadoRecordado.js). Si la liga ya no existe, se ve la lista.
+  const [gestionandoId, setGestionandoId] = useEstadoRecordado("adminLigas.abierta", null);
   const [mensaje, setMensaje] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [filtro, setFiltro] = useState("activos");
+  const [filtro, setFiltro] = useEstadoRecordado("adminLigas.filtro", "activos");
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -632,7 +635,7 @@ async function guardarVideoDirectoLiga(liga, videoDirectoUrl, token, onRecargar)
 }
 
 function LigaGestion({ liga, jugadores, maquinas, onVolver, onCrearParticipante, onBorrarParticipante, onSortearParejasGrupos, onRepartirGrupos, onGenerarCalendario, onActualizarPartido, onProgramarCalendario, token, onRecargar }) {
-  const [subpestana, setSubpestana] = useState("participantes");
+  const [subpestana, setSubpestana] = useEstadoRecordado(`adminLigas.subpestana.${liga.id}`, "participantes");
 
   return (
     <section className="admin-form">
