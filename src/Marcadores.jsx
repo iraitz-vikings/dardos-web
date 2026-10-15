@@ -307,21 +307,31 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
   // se había pintado provisionalmente a 0 mientras se esperaba respuesta).
   // Antes había una casilla aparte para confirmar esto ANTES de enviar el
   // total, redundante con esta pregunta y fácil de pasar por alto.
+  //
+  // En modo "puntuación total" (p.origen === "total"), al responder se pasa
+  // directamente al siguiente jugador, sin el clic en "Siguiente jugador",
+  // igual que en la herramienta de partidos (JuegoHerramienta.jsx).
   function responderDardosDoble(dardosAlDoble) {
     const p = preguntaDoble;
     if (!p) return;
     setPreguntaDoble(null);
-    if (p.necesitaConfirmarCierre) {
-      const gana = dardosAlDoble > 0;
-      const puntosVisita = gana ? p.valorTotal : 0;
-      if (!gana) {
-        const unidadesRevertidas = p.unidadesAntes.map((u, i) =>
-          i === p.turnoIdx ? { ...u, restante: p.restanteInicioVisita, abierto: true } : u
-        );
-        setUnidades(unidadesRevertidas);
-        setMensaje(t("marcador.bustCierreCasilla").replace("{modalidad}", etiquetaModalidad(cierre, t).toLowerCase()));
+    if (p.origen === "total") {
+      const gana = p.necesitaConfirmarCierre ? dardosAlDoble > 0 : p.gana;
+      const anulada = p.necesitaConfirmarCierre && !gana;
+      const puntosVisita = anulada ? 0 : p.puntosVisita;
+      // Solo se revierte al resto inicial si el cierre no era válido; una
+      // visita normal (o un bust, ya revertido al tirar) se queda como estaba.
+      const unidadesTras = anulada
+        ? p.unidadesAntes.map((u, i) => (i === p.turnoIdx ? { ...u, restante: p.restanteInicioVisita, abierto: true } : u))
+        : p.nuevasUnidades;
+      registrarVisita(p.unidadId, p.dardosCount, puntosVisita, gana, dardosAlDoble);
+      setUltimaVisitaUnidad((prev) => prev.map((v, i) => (i === p.turnoIdx ? puntosVisita : v)));
+      if (gana) {
+        setUnidades(unidadesTras);
+        setGanadorIdx(p.turnoIdx);
+        return;
       }
-      concluirVisita(p.unidadId, p.turnoIdx, puntosVisita, p.dardosCount, gana, dardosAlDoble);
+      finalizarVisita(unidadesTras, p.turnoIdx);
       return;
     }
     concluirVisita(p.unidadId, p.turnoIdx, p.puntosVisita, p.dardosCount, p.gana, dardosAlDoble);
@@ -465,40 +475,49 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: nuevoRestante, abierto: true } : u));
     }
 
-    setUnidades(nuevasUnidades);
-    setTiradasVisita([{ resultado, pos: undefined }]);
-    setMensaje(nuevoMensaje);
-
     const unidadId = unidad.id;
     const intentoPosible = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, cierre);
     const puntosVisita = bust ? 0 : valorTotal;
 
-    if (gana) {
-      if (intentoPosible) {
-        setPreguntaDoble({ unidadId, turnoIdx, puntosVisita, dardosCount: 3, gana: true });
-      } else {
-        concluirVisita(unidadId, turnoIdx, puntosVisita, 3, true, 0);
-      }
-      return;
-    }
     // Aquí no hay "3 dardos" que contar: al escribir el total ya se ha
-    // introducido la visita entera de una vez, así que pasa a fin de turno
-    // directamente (salvo que ya se haya ganado, tratado arriba).
+    // introducido la visita entera de una vez, así que se pasa directamente
+    // al siguiente jugador, sin esperar el clic en "Siguiente jugador" (igual
+    // que en la herramienta de partidos, JuegoHerramienta.jsx). Si hay que
+    // preguntar por los dardos al doble, se deja ver el resultado mientras
+    // tanto y el avance se hace al responder (ver responderDardosDoble).
     if (necesitaConfirmarCierre || intentoPosible) {
+      setUnidades(nuevasUnidades);
+      setTiradasVisita([{ resultado, pos: undefined }]);
+      setMensaje(nuevoMensaje);
       setPreguntaDoble({
         unidadId,
         turnoIdx,
         puntosVisita,
         dardosCount: 3,
-        gana: false,
+        gana,
+        origen: "total",
         necesitaConfirmarCierre,
         valorTotal,
         unidadesAntes: unidades,
         restanteInicioVisita,
+        nuevasUnidades,
       });
-    } else {
-      concluirVisita(unidadId, turnoIdx, puntosVisita, 3, false, 0);
+      return;
     }
+
+    registrarVisita(unidadId, 3, puntosVisita, gana, 0);
+    setUltimaVisitaUnidad((prev) => prev.map((v, i) => (i === turnoIdx ? puntosVisita : v)));
+    if (gana) {
+      setUnidades(nuevasUnidades);
+      setTiradasVisita([{ resultado, pos: undefined }]);
+      setMensaje(nuevoMensaje);
+      setGanadorIdx(turnoIdx);
+      return;
+    }
+    // El mensaje de bust se descarta al pasar de turno (lo limpia
+    // finalizarVisita): iría pegado al jugador equivocado, y el marcador ya
+    // deja ver que el resto no se ha movido.
+    finalizarVisita(nuevasUnidades, turnoIdx);
   }
 
   function deshacer() {
@@ -608,15 +627,21 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
             {mensaje && <p className="admin-msg admin-msg-error">{mensaje}</p>}
             {!preguntaDoble && (
               <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap", marginTop: ".6rem" }}>
-                <button
-                  type="button"
-                  className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
-                  onClick={() => finalizarVisita(unidades, turnoIdx)}
-                >
-                  {finVisita ? t("marcador.siguienteJugador") : t("marcador.terminarTurno")}
-                </button>
+                {/* En modo "total" cada envío ya avanza solo al siguiente jugador
+                    (ver tirarVisitaTotal), así que este botón se oculta salvo que
+                    finVisita se haya quedado a true de antes de cambiar a este modo
+                    a medio turno, para no dejar el teclado bloqueado. */}
+                {(modoEntrada !== "total" || finVisita) && (
+                  <button
+                    type="button"
+                    className={finVisita ? "admin-link-btn marcador-boton-destacado" : "admin-link-btn"}
+                    onClick={() => finalizarVisita(unidades, turnoIdx)}
+                  >
+                    {finVisita ? t("marcador.siguienteJugador") : t("marcador.terminarTurno")}
+                  </button>
+                )}
                 <button type="button" className="admin-link-btn" onClick={deshacer} disabled={historial.length === 0}>
-                  {t("marcador.deshacerDardo")}
+                  {t(modoEntrada === "total" ? "marcador.deshacerVisita" : "marcador.deshacerDardo")}
                 </button>
               </div>
             )}
