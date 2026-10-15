@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { coincideJugador, etiquetaJugador } from "./buscarJugador.js";
 import useEstadoRecordado from "./useEstadoRecordado.js";
 import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
@@ -973,10 +974,28 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
   }
   const clubEnPool = new Set(poolManual.filter((p) => p.jugadorId).map((p) => p.jugadorId));
   const disponiblesClub = jugadores.filter((j) => !idsYaApuntados.has(j.id) && !clubEnPool.has(j.id));
-  const disponiblesAgrupados = agruparPorSocio(disponiblesClub);
+  // Buscador sobre las listas de "Añadir del plantel" / "Miembros" / "Amigos",
+  // por nombre o por mote (igual que en torneos).
+  const [busquedaJugador, setBusquedaJugador] = useState("");
+  const disponiblesFiltrados = disponiblesClub.filter((j) => coincideJugador(j, busquedaJugador));
+  const disponiblesAgrupados = agruparPorSocio(disponiblesFiltrados);
+  const buscadorJugadores = disponiblesClub.length > 0 && (
+    <div style={{ margin: ".5rem 0" }}>
+      <input
+        type="search"
+        value={busquedaJugador}
+        onChange={(e) => setBusquedaJugador(e.target.value)}
+        placeholder="🔍 Buscar jugador por nombre o mote…"
+        style={{ width: "100%", maxWidth: "22rem" }}
+      />
+      {busquedaJugador && disponiblesFiltrados.length === 0 && (
+        <p className="admin-hint" style={{ margin: ".3rem 0 0" }}>Ningún jugador coincide con «{busquedaJugador}».</p>
+      )}
+    </div>
+  );
 
-  function anadirAlPool(jugadorId, nombre) {
-    setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre, grupo: grupos[0] || null }]);
+  function anadirAlPool(jugadorId, nombre, apodo = null) {
+    setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre, apodo, grupo: grupos[0] || null }]);
   }
   function anadirManualAlPool(e) {
     e.preventDefault();
@@ -1085,12 +1104,13 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
           {disponiblesClub.length > 0 && (
             <div style={{ margin: ".6rem 0" }}>
               <p className="admin-hint">Añadir del plantel del club:</p>
+              {buscadorJugadores}
               {disponiblesAgrupados.socios.length > 0 && (
                 <>
                   <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.socios.map((j) => (
-                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>＋ {j.nombre}</button>
+                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>＋ {etiquetaJugador(j)}</button>
                     ))}
                   </div>
                 </>
@@ -1100,7 +1120,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
                   <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Amigos</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.invitados.map((j) => (
-                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>＋ {j.nombre}</button>
+                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>＋ {etiquetaJugador(j)}</button>
                     ))}
                   </div>
                 </>
@@ -1110,7 +1130,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
           <ul>
             {poolManual.map((p) => (
               <li key={p.key} className="admin-list-item">
-                <span>{p.nombre}{!p.jugadorId && " (amigo)"}</span>
+                <span>{etiquetaJugador(p)}{!p.jugadorId && " (amigo)"}</span>
                 <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
                   {esParejasCiegas && grupos.length > 0 && (
                     <select value={p.grupo || ""} onChange={(e) => cambiarGrupo(p.key, e.target.value)}>
@@ -1134,14 +1154,14 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
               Jugador 1
               <select value={parejaSel1} onChange={(e) => setParejaSel1(e.target.value)}>
                 <option value="">Elige…</option>
-                {poolManual.filter((p) => p.key !== parejaSel2).map((p) => <option key={p.key} value={p.key}>{p.nombre}</option>)}
+                {poolManual.filter((p) => p.key !== parejaSel2).map((p) => <option key={p.key} value={p.key}>{etiquetaJugador(p)}</option>)}
               </select>
             </label>
             <label>
               Jugador 2
               <select value={parejaSel2} onChange={(e) => setParejaSel2(e.target.value)}>
                 <option value="">Elige…</option>
-                {poolManual.filter((p) => p.key !== parejaSel1).map((p) => <option key={p.key} value={p.key}>{p.nombre}</option>)}
+                {poolManual.filter((p) => p.key !== parejaSel1).map((p) => <option key={p.key} value={p.key}>{etiquetaJugador(p)}</option>)}
               </select>
             </label>
             <button type="button" disabled={enviando || !parejaSel1 || !parejaSel2} onClick={formarPareja}>Formar pareja</button>
@@ -1170,13 +1190,14 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
             </label>
             <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
           </form>
+          {buscadorJugadores}
           {disponiblesAgrupados.socios.length > 0 && (
             <>
               <p className="admin-hint" style={{ fontSize: ".8em" }}>Miembros</p>
               <ul>
                 {disponiblesAgrupados.socios.map((j) => (
                   <li key={j.id} className="admin-list-item">
-                    <span>{j.nombre}</span>
+                    <span>{etiquetaJugador(j)}</span>
                     <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>＋ Añadir</button>
                   </li>
                 ))}
@@ -1189,7 +1210,7 @@ function ParticipantesPanelLiga({ liga, jugadores, onCrearParticipante, onBorrar
               <ul>
                 {disponiblesAgrupados.invitados.map((j) => (
                   <li key={j.id} className="admin-list-item">
-                    <span>{j.nombre}</span>
+                    <span>{etiquetaJugador(j)}</span>
                     <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>＋ Añadir</button>
                   </li>
                 ))}
