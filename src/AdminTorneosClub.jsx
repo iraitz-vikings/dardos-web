@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { coincideJugador, etiquetaJugador, normalizarBusqueda } from "./buscarJugador.js";
 import useEstadoRecordado from "./useEstadoRecordado.js";
 import { propsCabeceraDesplegable, useCerrarConEscape } from "./cabeceraDesplegable.js";
 import SelectorImagen from "./SelectorImagen.jsx";
@@ -1744,9 +1745,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
   const disponiblesClub = jugadores.filter((j) => !idsYaApuntados.has(j.id) && !clubEnPool.has(j.id));
   // Buscador sobre las listas de "Añadir del plantel" / "Miembros" / "Amigos".
   const [busquedaJugador, setBusquedaJugador] = useState("");
-  const disponiblesFiltrados = disponiblesClub.filter((j) =>
-    normalizarBusqueda(j.nombre).includes(normalizarBusqueda(busquedaJugador))
-  );
+  const disponiblesFiltrados = disponiblesClub.filter((j) => coincideJugador(j, busquedaJugador));
   const disponiblesAgrupados = agruparPorSocio(disponiblesFiltrados);
   const buscadorJugadores = disponiblesClub.length > 0 && (
     <div style={{ margin: ".5rem 0" }}>
@@ -1754,7 +1753,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
         type="search"
         value={busquedaJugador}
         onChange={(e) => setBusquedaJugador(e.target.value)}
-        placeholder="🔍 Buscar jugador del club…"
+        placeholder="🔍 Buscar jugador por nombre o mote…"
         style={{ width: "100%", maxWidth: "22rem" }}
       />
       {busquedaJugador && disponiblesFiltrados.length === 0 && (
@@ -1763,8 +1762,8 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     </div>
   );
 
-  function anadirAlPool(jugadorId, nombre) {
-    setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre, grupo: grupos[0] || null }]);
+  function anadirAlPool(jugadorId, nombre, apodo = null) {
+    setPoolManual((prev) => [...prev, { key: crypto.randomUUID(), jugadorId, nombre, apodo, grupo: grupos[0] || null }]);
   }
 
   function anadirManualAlPool(e) {
@@ -1936,8 +1935,8 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
                   <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.socios.map((j) => (
-                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>
-                        ＋ {j.nombre}
+                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>
+                        ＋ {etiquetaJugador(j)}
                       </button>
                     ))}
                   </div>
@@ -1948,8 +1947,8 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
                   <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Amigos</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
                     {disponiblesAgrupados.invitados.map((j) => (
-                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre)}>
-                        ＋ {j.nombre}
+                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>
+                        ＋ {etiquetaJugador(j)}
                       </button>
                     ))}
                   </div>
@@ -1961,7 +1960,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
           <ul>
             {poolManual.map((p) => (
               <li key={p.key} className="admin-list-item">
-                <span>{p.nombre}{!p.jugadorId && " (amigo)"}</span>
+                <span>{etiquetaJugador(p)}{!p.jugadorId && " (amigo)"}</span>
                 <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
                   {esParejasCiegas && grupos.length > 0 && (
                     <select value={p.grupo || ""} onChange={(e) => cambiarGrupo(p.key, e.target.value)}>
@@ -1987,7 +1986,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
                 value={parejaSel1}
                 onChange={setParejaSel1}
                 textoVacio="Elige…"
-                opciones={poolManual.filter((p) => p.key !== parejaSel2).map((p) => ({ value: p.key, label: p.nombre }))}
+                opciones={poolManual.filter((p) => p.key !== parejaSel2).map((p) => ({ value: p.key, label: etiquetaJugador(p) }))}
               />
             </label>
             <label>
@@ -1996,7 +1995,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
                 value={parejaSel2}
                 onChange={setParejaSel2}
                 textoVacio="Elige…"
-                opciones={poolManual.filter((p) => p.key !== parejaSel1).map((p) => ({ value: p.key, label: p.nombre }))}
+                opciones={poolManual.filter((p) => p.key !== parejaSel1).map((p) => ({ value: p.key, label: etiquetaJugador(p) }))}
               />
             </label>
             <button type="button" disabled={enviando || !parejaSel1 || !parejaSel2} onClick={formarPareja}>
@@ -2042,7 +2041,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
               <ul>
                 {disponiblesAgrupados.socios.map((j) => (
                   <li key={j.id} className="admin-list-item">
-                    <span>{j.nombre}</span>
+                    <span>{etiquetaJugador(j)}</span>
                     <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>
                       ＋ Añadir
                     </button>
@@ -2057,7 +2056,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
               <ul>
                 {disponiblesAgrupados.invitados.map((j) => (
                   <li key={j.id} className="admin-list-item">
-                    <span>{j.nombre}</span>
+                    <span>{etiquetaJugador(j)}</span>
                     <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>
                       ＋ Añadir
                     </button>
@@ -2290,7 +2289,7 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
                 value={sustitucion[i].jugadorId}
                 onChange={(id) => cambiarLado(i, { jugadorId: id })}
                 textoVacio="Escribir nombre a mano…"
-                opciones={jugadores.map((j) => ({ value: j.id, label: j.nombre }))}
+                opciones={jugadores.map((j) => ({ value: j.id, label: etiquetaJugador(j) }))}
               />
               {!sustitucion[i].jugadorId && (
                 <input
@@ -2313,7 +2312,7 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
             value={seleccion}
             onChange={setSeleccion}
             textoVacio="Elige un jugador del club…"
-            opciones={jugadores.map((j) => ({ value: j.id, label: j.nombre }))}
+            opciones={jugadores.map((j) => ({ value: j.id, label: etiquetaJugador(j) }))}
           />
           <button type="button" disabled={!seleccion || enviando} onClick={confirmar}>
             {enviando ? "Vinculando…" : "Confirmar"}
@@ -2355,12 +2354,6 @@ function SelectorTamanoCuadrante({ cuadrante, onCambiar }) {
       ))}
     </select>
   );
-}
-
-// Texto en minúsculas y sin tildes, para que el buscador de jugadores
-// encuentre "Martín" escribiendo "martin".
-function normalizarBusqueda(texto) {
-  return (texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
 // Desplegable con buscador: una caja de texto encima que filtra las opciones
