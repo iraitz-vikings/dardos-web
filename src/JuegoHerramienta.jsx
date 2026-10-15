@@ -507,10 +507,15 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
     setPreguntaDoble(null);
     if (p.origen === "total") {
       const gana = p.necesitaConfirmarCierre ? dardosAlDoble > 0 : p.gana;
-      const puntosVisita = gana ? p.valorTotal : 0;
-      const unidadesTrasVisita = p.unidadesAntes.map((u, i) =>
-        i === p.turnoIdx ? { ...u, restante: gana ? 0 : p.restanteInicioVisita, abierto: true } : u
-      );
+      // Solo se revierte al resto inicial si el cierre no era válido; una
+      // visita normal (o un bust, ya revertido al tirar) se queda como estaba.
+      // Antes se revertía siempre que no se ganaba, y una visita que no
+      // cerraba (p. ej. 60 desde 100) se perdía entera al responder.
+      const anulada = p.necesitaConfirmarCierre && !gana;
+      const puntosVisita = anulada ? 0 : p.puntosVisita;
+      const unidadesTrasVisita = anulada
+        ? p.unidadesAntes.map((u, i) => (i === p.turnoIdx ? { ...u, restante: p.restanteInicioVisita, abierto: true } : u))
+        : p.nuevasUnidades;
       registrarVisita(p.jugadorId, p.dardosCount, puntosVisita, gana, dardosAlDoble);
       setUltimaVisitaLado((prev) => prev.map((v, i) => (i === p.turnoIdx ? puntosVisita : v)));
       if (gana) {
