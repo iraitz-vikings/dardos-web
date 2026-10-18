@@ -6,6 +6,7 @@ import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador
 import CamarasPartida, { CamarasRival } from "./CamarasPartida.jsx";
 import { apiFetch } from "./apiHerramienta.js";
 import { CLUB } from "./club.js";
+import { useLang } from "./i18n.jsx";
 import {
   buscarCierre,
   calcularPuntosCricket,
@@ -53,6 +54,7 @@ function etiquetaModalidad(modalidad) {
 // --- Paso 1: identificación con PIN ---------------------------------------
 
 export function LoginPin({ onEntrar }) {
+  const { t } = useLang();
   const [jugadores, setJugadores] = useState([]);
   const [filtro, setFiltro] = useState("");
   const [jugadorId, setJugadorId] = useState("");
@@ -64,7 +66,7 @@ export function LoginPin({ onEntrar }) {
   useEffect(() => {
     apiFetch("/api/partidas-herramienta/jugadores")
       .then(setJugadores)
-      .catch(() => setError("No se ha podido cargar la lista de jugadores."));
+      .catch(() => setError(t("pin.errorLista")));
   }, []);
 
   const filtrados = useMemo(() => {
@@ -87,11 +89,11 @@ export function LoginPin({ onEntrar }) {
   // pasar antes por el admin o por su perfil de socio.
   async function crearPinYEntrar() {
     if (!/^\d{4}$/.test(pin)) {
-      setError("Elige un PIN de 4 dígitos.");
+      setError(t("pin.eligePin4"));
       return;
     }
     if (pin !== pinRepetido) {
-      setError("Los dos PIN no coinciden.");
+      setError(t("pin.noCoinciden"));
       return;
     }
     setEnviando(true);
@@ -103,7 +105,7 @@ export function LoginPin({ onEntrar }) {
       });
       onEntrar(data);
     } catch (err) {
-      setError(err.message || "No se ha podido crear el PIN.");
+      setError(err.message || t("pin.errorCrear"));
     } finally {
       setEnviando(false);
     }
@@ -111,7 +113,7 @@ export function LoginPin({ onEntrar }) {
 
   async function entrar() {
     if (!jugadorId || !/^\d{4}$/.test(pin)) {
-      setError("Elige quién eres y escribe tu PIN de 4 dígitos.");
+      setError(t("pin.eligeYEscribe"));
       return;
     }
     setEnviando(true);
@@ -123,7 +125,7 @@ export function LoginPin({ onEntrar }) {
       });
       onEntrar(data);
     } catch (err) {
-      setError(err.message || "PIN incorrecto");
+      setError(err.status === 401 ? t("pin.incorrecto") : err.message || t("pin.incorrecto"));
     } finally {
       setEnviando(false);
     }
@@ -132,8 +134,8 @@ export function LoginPin({ onEntrar }) {
   return (
     <div className="admin-form" style={{ maxWidth: 380 }}>
       <label>
-        ¿Quién eres?
-        <input type="text" placeholder="Buscar tu nombre…" value={filtro} onChange={(e) => setFiltro(e.target.value)} />
+        {t("pin.quienEres")}
+        <input type="text" placeholder={t("pin.buscarNombre")} value={filtro} onChange={(e) => setFiltro(e.target.value)} />
       </label>
       <div className="marcador-lista-jugadores" style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: ".3rem" }}>
         {filtrados.map((j) => (
@@ -144,20 +146,19 @@ export function LoginPin({ onEntrar }) {
             onClick={() => elegirJugador(j)}
           >
             {j.apodo || j.nombre}
-            {!j.tienePinPartidas && <small style={{ opacity: 0.7 }}> · sin PIN todavía</small>}
+            {!j.tienePinPartidas && <small style={{ opacity: 0.7 }}> · {t("pin.sinPin")}</small>}
           </button>
         ))}
-        {filtrados.length === 0 && <p className="chronicle-status">Nadie con ese nombre.</p>}
+        {filtrados.length === 0 && <p className="chronicle-status">{t("pin.nadie")}</p>}
       </div>
 
       {jugador && !jugador.tienePinPartidas ? (
         <>
           <p className="chronicle-status" style={{ margin: 0 }}>
-            Es la primera vez que {jugador.apodo || jugador.nombre} usa la herramienta: elige un PIN de 4 dígitos para
-            identificarte las próximas veces.
+            {t("pin.primeraVez").replace("{nombre}", jugador.apodo || jugador.nombre)}
           </p>
           <label>
-            Elige tu PIN
+            {t("pin.elige")}
             <input
               type="password"
               inputMode="numeric"
@@ -167,7 +168,7 @@ export function LoginPin({ onEntrar }) {
             />
           </label>
           <label>
-            Repite el PIN
+            {t("pin.repite")}
             <input
               type="password"
               inputMode="numeric"
@@ -178,13 +179,13 @@ export function LoginPin({ onEntrar }) {
           </label>
           {error && <p className="admin-msg admin-msg-error">{error}</p>}
           <button type="button" disabled={enviando} onClick={crearPinYEntrar}>
-            {enviando ? "Creando…" : "Crear PIN y entrar"}
+            {enviando ? t("pin.creando") : t("pin.crearYEntrar")}
           </button>
         </>
       ) : (
         <>
           <label>
-            Tu PIN
+            {t("pin.tuPin")}
             <input
               type="password"
               inputMode="numeric"
@@ -195,7 +196,7 @@ export function LoginPin({ onEntrar }) {
           </label>
           {error && <p className="admin-msg admin-msg-error">{error}</p>}
           <button type="button" disabled={enviando} onClick={entrar}>
-            {enviando ? "Comprobando…" : "Entrar"}
+            {enviando ? t("pin.comprobando") : t("pin.entrar")}
           </button>
         </>
       )}

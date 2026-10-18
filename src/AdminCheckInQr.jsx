@@ -94,6 +94,12 @@ export default function AdminCheckInQr({ token, torneoNombre, cuadrante, onRecar
   );
 }
 
+const INSTRUCCIONES = [
+  "Escanéalo con el móvil, identifícate y listo: ¡no hace falta pasar por la mesa!",
+  "Eskaneatu mugikorrarekin, identifikatu eta kito: ez duzu mahaitik pasa beharrik!",
+  "Scanne-le avec ton téléphone, identifie-toi et c'est fait : pas besoin de passer à la table !",
+];
+
 // QR a pantalla completa, pensado para ponerlo en la tele/tablet del local
 // o enseñarlo desde el móvil del admin. Se puede descargar como imagen
 // para imprimirlo.
@@ -121,9 +127,14 @@ function PantallaQr({ url, titulo, subtitulo, conCheck, total, onCerrar }) {
         ) : (
           <p>Generando QR…</p>
         )}
-        <p style={{ margin: ".4rem 0", fontSize: "1.05rem" }}>
-          Escanéalo con el móvil, identifícate y listo: ¡no hace falta pasar por la mesa!
-        </p>
+        {/* La pantalla la ven todos a la vez: la instrucción va en los tres
+            idiomas de la web. La página del QR (CheckInQr.jsx) ya sale en el
+            idioma de cada uno. */}
+        {INSTRUCCIONES.map((texto, i) => (
+          <p key={i} style={{ margin: ".25rem 0", fontSize: i === 0 ? "1.05rem" : ".95rem", opacity: i === 0 ? 1 : 0.8 }}>
+            {texto}
+          </p>
+        ))}
         <p style={{ margin: ".2rem 0", fontWeight: 600 }}>{conCheck}/{total} con check</p>
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: ".6rem", flexWrap: "wrap" }}>
           {src && (

@@ -3,6 +3,7 @@ import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { LoginPin, CLAVE_TOKEN, CLAVE_JUGADOR } from "./JuegoHerramienta.jsx";
 import { apiFetch } from "./apiHerramienta.js";
+import { useLang } from "./i18n.jsx";
 
 // Página que abre el QR de check-in de un cuadrante (/checkin/:token, ver
 // AdminCheckInQr.jsx y src/routes/checkIn.js en el backend): el jugador se
@@ -22,6 +23,7 @@ function leerSesion() {
 }
 
 export default function CheckInQr({ token: tokenQr }) {
+  const { t } = useLang();
   const [sesion, setSesion] = useState(leerSesion);
   const [info, setInfo] = useState(null); // { competicion, participantes? }
   const [error, setError] = useState(null);
@@ -37,7 +39,7 @@ export default function CheckInQr({ token: tokenQr }) {
       .then(setInfo)
       .catch((err) => {
         if (err.status === 404) setCerrado(true);
-        setError(err.message);
+        else setError(t("checkin.error"));
       });
   }, [ruta, sesion?.token]);
 
@@ -79,7 +81,7 @@ export default function CheckInQr({ token: tokenQr }) {
     } catch (err) {
       if (err.status === 401) return cambiarJugador();
       if (err.status === 404) setCerrado(true);
-      setError(err.message);
+      else setError(err.status === 403 ? t("checkin.noApuntado") : t("checkin.error"));
     } finally {
       setEnviando(false);
     }
@@ -95,21 +97,19 @@ export default function CheckInQr({ token: tokenQr }) {
       <Nav />
       <main>
         <section className="gallery gallery-page" style={{ maxWidth: 520, margin: "0 auto" }}>
-          <p className="eyebrow">Check-in</p>
-          <h2 className="chronicle-title">{competicion?.nombre || "Check-in"}</h2>
+          <p className="eyebrow">{t("checkin.titulo")}</p>
+          <h2 className="chronicle-title">{competicion?.nombre || t("checkin.titulo")}</h2>
           {competicion?.cuadrante && <p style={{ marginTop: 0 }}>{competicion.cuadrante}</p>}
 
           {cerrado && (
-            <p className="chronicle-status">
-              Este check-in ya está cerrado o el QR no es válido. Si todavía no te han marcado, pasa por la mesa.
-            </p>
+            <p className="chronicle-status">{t("checkin.cerrado")}</p>
           )}
 
-          {!cerrado && !info && !error && <p className="chronicle-status">Cargando…</p>}
+          {!cerrado && !info && !error && <p className="chronicle-status">{t("checkin.cargando")}</p>}
 
           {!cerrado && info && !sesion && (
             <>
-              <p className="chronicle-status">Identifícate para hacer tu check-in:</p>
+              <p className="chronicle-status">{t("checkin.identificate")}</p>
               <LoginPin onEntrar={alEntrar} />
             </>
           )}
@@ -117,28 +117,26 @@ export default function CheckInQr({ token: tokenQr }) {
           {!cerrado && info && sesion && (
             <>
               <p>
-                {nombre ? <>Eres <strong>{nombre}</strong>. </> : null}
-                <button type="button" className="admin-link-btn" onClick={cambiarJugador}>No soy yo</button>
+                {nombre ? <><strong>{t("checkin.eres").replace("{nombre}", nombre)}</strong>{" "}</> : null}
+                <button type="button" className="admin-link-btn" onClick={cambiarJugador}>{t("checkin.noSoyYo")}</button>
               </p>
 
               {!yaHecho && (
                 <button type="button" disabled={enviando} onClick={hacerCheckIn} style={{ fontSize: "1.15rem", padding: ".8rem 1.6rem" }}>
-                  {enviando ? "Haciendo check-in…" : "✅ Hacer check-in"}
+                  {enviando ? t("checkin.haciendo") : t("checkin.hacer")}
                 </button>
               )}
 
               {yaHecho && mios.map((p) => (
                 <div key={p.etiqueta} className="admin-msg admin-msg-ok" style={{ marginTop: ".8rem" }}>
-                  <strong>✅ Check-in hecho</strong> — {p.etiqueta}
+                  <strong>{t("checkin.hecho")}</strong> — {p.etiqueta}
                   {p.esPareja && !p.companeroHecho && (
                     <p style={{ margin: ".4rem 0 0" }}>
-                      {p.companeroSinCuenta
-                        ? `${p.companero || "Tu pareja"} no tiene cuenta en la web: que pase por la mesa para completar vuestro check-in.`
-                        : `Falta ${p.companero || "tu pareja"}: tiene que hacer su check-in también para que entréis en el sorteo.`}
+                      {t(p.companeroSinCuenta ? "checkin.parejaSinCuenta" : "checkin.faltaPareja").replace("{nombre}", p.companero || t("checkin.tuPareja"))}
                     </p>
                   )}
-                  {p.esPareja && p.companeroHecho && <p style={{ margin: ".4rem 0 0" }}>Vuestra pareja ya está completa. ¡Suerte!</p>}
-                  {!p.esPareja && <p style={{ margin: ".4rem 0 0" }}>Ya entras en el sorteo. ¡Suerte!</p>}
+                  {p.esPareja && p.companeroHecho && <p style={{ margin: ".4rem 0 0" }}>{t("checkin.parejaCompleta")}</p>}
+                  {!p.esPareja && <p style={{ margin: ".4rem 0 0" }}>{t("checkin.individualHecho")}</p>}
                 </div>
               ))}
             </>
