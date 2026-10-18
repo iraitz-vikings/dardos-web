@@ -8,6 +8,7 @@ import { agruparPorSocio } from "./agruparJugadores.js";
 import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
+import AdminCheckInQr from "./AdminCheckInQr.jsx";
 import useTemporizadorPartido, { formatoCuentaAtras } from "./useTemporizadorPartido.js";
 import { API_URL } from "./config.js";
 import { DEFECTOS_MENSAJE_AVISO, IDIOMAS_MENSAJE_AVISO } from "./mensajesAvisosDefecto.js";
@@ -617,6 +618,7 @@ async function programarCalendario(partidoId, datos) {
         jugadores={jugadores}
         maquinas={maquinas}
         token={token}
+        onRecargar={cargarTorneos}
         onVolver={() => setGestionandoId(null)}
         onCrearCuadrante={(datos) => crearCuadrante(torneoEnGestion.id, datos)}
         onBorrarCuadrante={borrarCuadrante}
@@ -922,7 +924,7 @@ async function programarCalendario(partidoId, datos) {
 }
 
 function TorneoGestion({
-  torneo, jugadores, maquinas, token, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
+  torneo, jugadores, maquinas, token, onRecargar, onVolver, onCrearCuadrante, onBorrarCuadrante, onActualizarPartido, onProgramarCalendario,
   onSortear, onReiniciar, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onConfirmarParticipante, onConfirmarTodosParticipantes, onGenerarInvitadoTelegram, onSortearParejas, onSortearParejasGrupos,
   onCambiarEstadoCuadrante, onCambiarTamanoCuadrante, onObtenerClasificacionCuadrante, onAsignarPuntosCuadrante, onObtenerClasificacionGeneral,
   onGuardarPuntosPorPosicion, onGuardarImagenesAvisos, onGuardarMensajesAvisos, onGuardarConfiguracionHerramienta, onGuardarVideoDirecto, onGuardarTemporizador, onGuardarMaquinas,
@@ -1052,6 +1054,11 @@ function TorneoGestion({
               {/* Se oculta en vez de desmontarse para no perder lo que haya
                   sin guardar en el panel (p.ej. la lista de disponibles). */}
               <div hidden={!abierto}>
+              {/* Check-in con QR: no aplica a parejas ciegas, donde no
+                  hay parejas apuntadas hasta que se sortean con los presentes. */}
+              {torneo.modalidad !== "parejas_ciegas" && apuntados.length > 0 && (
+                <AdminCheckInQr token={token} torneoNombre={torneo.nombre} cuadrante={c} onRecargar={onRecargar} />
+              )}
               <ParticipantesPanel
                 cuadrante={c}
                 modalidad={torneo.modalidad}
@@ -2217,6 +2224,12 @@ function FilaParticipante({ p, jugadores, esParejas, onQuitar, onVincular, onSus
             title="Check de presencia: solo entran en el sorteo los marcados"
           />
           <span>{p.etiqueta}</span>
+          {/* Pareja con medio check-in por QR: uno ya ha llegado, falta el otro. */}
+          {p.confirmado === false && (p.checkInJugador1 || p.checkInJugador2) && (
+            <span className="admin-hint" style={{ margin: 0 }}>
+              📱 falta {nombres[p.checkInJugador1 ? 1 : 0] || "su pareja"}
+            </span>
+          )}
         </label>
         <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
           {faltaJugador1 && (
