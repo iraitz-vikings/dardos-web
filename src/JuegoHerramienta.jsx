@@ -86,7 +86,10 @@ export function LoginPin({ onEntrar }) {
 
   // Si el jugador todavía no tiene PIN de partidas puesto (primera vez que
   // usa la herramienta), se lo pone él mismo aquí mismo en vez de tener que
-  // pasar antes por el admin o por su perfil de socio.
+  // pasar antes por el admin o por su perfil de socio. El servidor exige
+  // demostrar que es él (auditoría 2026-10-19): si es socio, su sesión de
+  // socio en este dispositivo, que se manda si la hay; si es invitado, se lo
+  // pone desde su enlace personal de avisos (AvisoCheckIn.jsx).
   async function crearPinYEntrar() {
     if (!/^\d{4}$/.test(pin)) {
       setError(t("pin.eligePin4"));
@@ -101,11 +104,16 @@ export function LoginPin({ onEntrar }) {
     try {
       const data = await apiFetch("/api/partidas-herramienta/pin", {
         method: "POST",
+        token: localStorage.getItem("socioToken") || undefined,
         body: JSON.stringify({ jugadorId, pin }),
       });
       onEntrar(data);
     } catch (err) {
-      setError(err.message || t("pin.errorCrear"));
+      if (err.status === 403 && err.datos?.sinPrueba) {
+        setError(t(err.datos.esSocio ? "pin.sinPruebaSocio" : "pin.sinPruebaInvitado"));
+      } else {
+        setError(err.message || t("pin.errorCrear"));
+      }
     } finally {
       setEnviando(false);
     }

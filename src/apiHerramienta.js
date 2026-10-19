@@ -22,6 +22,7 @@ export async function apiFetch(path, { token, ...opciones } = {}) {
   if (!resp.ok) {
     const error = new Error(data.error || "Error de red");
     error.status = resp.status;
+    error.datos = data;
     throw error;
   }
   return data;
