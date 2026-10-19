@@ -3,6 +3,7 @@ import AvisoPrivacidad from "./AvisoPrivacidad.jsx";
 import Nav from "./Nav.jsx";
 import Footer from "./Footer.jsx";
 import { API_URL } from "./config.js";
+import { apiFetch } from "./apiHerramienta.js";
 
 
 // Idiomas en los que se puede recibir avisos por Telegram — pensado sobre
@@ -27,6 +28,15 @@ export default function AvisoCheckIn({ token }) {
   const [error, setError] = useState(null);
   const [idioma, setIdioma] = useState("es");
   const [guardandoIdioma, setGuardandoIdioma] = useState(false);
+  // PIN de partidas: un invitado solo puede ponérselo la primera vez desde
+  // aquí (su enlace personal es la prueba de que es él, ver POST /pin en
+  // partidasHerramienta.js del backend), no desde la lista pública de la
+  // herramienta de marcador.
+  const [pin, setPin] = useState("");
+  const [pinRepetido, setPinRepetido] = useState("");
+  const [errorPin, setErrorPin] = useState("");
+  const [guardandoPin, setGuardandoPin] = useState(false);
+  const [pinGuardado, setPinGuardado] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/notificaciones/checkin/${encodeURIComponent(token)}`)
@@ -42,6 +52,26 @@ export default function AvisoCheckIn({ token }) {
         setEstado("error");
       });
   }, [token]);
+
+  async function ponerPin(e) {
+    e.preventDefault();
+    if (!/^\d{4}$/.test(pin)) return setErrorPin("El PIN tiene que ser de 4 dígitos.");
+    if (pin !== pinRepetido) return setErrorPin("Los dos PIN no coinciden.");
+    setGuardandoPin(true);
+    setErrorPin("");
+    try {
+      await apiFetch("/api/partidas-herramienta/pin", {
+        method: "POST",
+        body: JSON.stringify({ jugadorId: info.jugadorId, pin, tokenAviso: token }),
+      });
+      setInfo((i) => ({ ...i, tienePinPartidas: true }));
+      setPinGuardado(true);
+    } catch (err) {
+      setErrorPin(err.message || "No se ha podido guardar el PIN.");
+    } finally {
+      setGuardandoPin(false);
+    }
+  }
 
   async function cambiarIdioma(nuevo) {
     setIdioma(nuevo);
@@ -120,6 +150,45 @@ export default function AvisoCheckIn({ token }) {
                 <p className="chronicle-status">
                   El club todavía no ha terminado de configurar los avisos por Telegram. Inténtalo más adelante.
                 </p>
+              )}
+
+              {pinGuardado && (
+                <p className="admin-msg admin-msg-ok" style={{ marginTop: "1.5rem" }}>
+                  PIN guardado. Ya puedes identificarte con él al jugar tus partidos con la herramienta de marcador.
+                </p>
+              )}
+              {info.jugadorId && !info.tienePinPartidas && (
+                <form className="admin-form" style={{ marginTop: "1.5rem", maxWidth: 380 }} onSubmit={ponerPin}>
+                  <h3 style={{ margin: 0 }}>PIN de partidas</h3>
+                  <p className="admin-hint" style={{ margin: 0 }}>
+                    Elige un PIN de 4 dígitos para identificarte al jugar tus partidos con la herramienta de marcador
+                    del club. Guárdalo: si lo olvidas, un admin te lo puede cambiar.
+                  </p>
+                  <label>
+                    PIN (4 dígitos)
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    />
+                  </label>
+                  <label>
+                    Repite el PIN
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={pinRepetido}
+                      onChange={(e) => setPinRepetido(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    />
+                  </label>
+                  {errorPin && <p className="admin-msg admin-msg-error">{errorPin}</p>}
+                  <button type="submit" disabled={guardandoPin}>
+                    {guardandoPin ? "Guardando…" : "Guardar mi PIN"}
+                  </button>
+                </form>
               )}
             </div>
           )}
