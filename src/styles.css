@@ -1264,6 +1264,7 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
   margin-bottom: 1.2rem;
 }
 .marcador-jugador {
+  container-type: inline-size;
   border: 1px solid var(--line);
   padding: .8rem;
   display: flex;
@@ -1282,10 +1283,12 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
 .marcador-jugador-ganador { border-color: #8fbf8f; }
 .marcador-punto-inicio { color: var(--ember); font-size: .7em; margin-right: .3em; vertical-align: middle; }
 .marcador-jugador-activo .marcador-punto-inicio { color: var(--bone); }
-.marcador-restante { font-family: 'Cinzel', serif; font-size: 2.6rem; line-height: 1.1; color: var(--bone); }
+/* Tope con vw para que en móvil en vertical "501" siga cabiendo en una
+   tarjeta de media pantalla. */
+.marcador-restante { font-family: 'Cinzel', serif; font-size: clamp(2.6rem, 13vw, 5.2rem); line-height: 1.1; color: var(--bone); }
 .marcador-resultado-partido {
   font-family: 'Cinzel', serif;
-  font-size: 1.3rem;
+  font-size: clamp(1.3rem, 6.5vw, 2.6rem);
   color: var(--ember);
   letter-spacing: .04em;
 }
@@ -1454,9 +1457,10 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
     overflow-y: auto;
   }
 
-  .marcador-jugadores { grid-template-columns: 1fr; gap: .5rem; margin-bottom: .6rem; }
+  .marcador-jugadores { gap: .5rem; margin-bottom: .6rem; }
   .marcador-jugador { padding: .55rem; gap: .2rem; }
-  .marcador-restante { font-size: 2rem; }
+  .marcador-restante { font-size: min(4rem, 32cqi); }
+  .marcador-resultado-partido { font-size: min(2.2rem, 17cqi); }
 
   .diana-svg, .teclado-numeros, .teclado-puntuacion { max-width: 230px; margin-top: .4rem; margin-bottom: .4rem; }
   .diana-numero { font-size: 12px; }
@@ -1475,8 +1479,12 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
   .marcador-tablero-jugadores, .marcador-tablero-entrada { flex: 1 1 0; min-width: 0; }
 
   .marcador-jugador { padding: 1rem; }
-  .marcador-restante { font-size: clamp(3.5rem, 7vw, 6rem); }
-  .marcador-resultado-partido { font-size: 1.6rem; }
+  /* La puntuación se ajusta al ancho de su tarjeta (cqi) para que quepa
+     con 2 jugadores o con más, siempre lado a lado y a la vista. */
+  .marcador-tablero-jugadores { flex-grow: 3; }
+  .marcador-tablero-entrada { flex-grow: 2; }
+  .marcador-restante { font-size: min(11rem, 58cqi); line-height: 1; }
+  .marcador-resultado-partido { font-size: min(3.2rem, 17cqi); }
   .marcador-dardo-info { font-size: .85rem; }
 
   .diana-svg, .teclado-numeros { max-width: 440px; margin-top: .4rem; }
