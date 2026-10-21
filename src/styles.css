@@ -1282,10 +1282,10 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
 .marcador-jugador-ganador { border-color: #8fbf8f; }
 .marcador-punto-inicio { color: var(--ember); font-size: .7em; margin-right: .3em; vertical-align: middle; }
 .marcador-jugador-activo .marcador-punto-inicio { color: var(--bone); }
-.marcador-restante { font-family: 'Cinzel', serif; font-size: 1.8rem; color: var(--bone); }
+.marcador-restante { font-family: 'Cinzel', serif; font-size: 2.6rem; line-height: 1.1; color: var(--bone); }
 .marcador-resultado-partido {
   font-family: 'Cinzel', serif;
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   color: var(--ember);
   letter-spacing: .04em;
 }
@@ -1456,10 +1456,33 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
 
   .marcador-jugadores { grid-template-columns: 1fr; gap: .5rem; margin-bottom: .6rem; }
   .marcador-jugador { padding: .55rem; gap: .2rem; }
-  .marcador-restante { font-size: 1.4rem; }
+  .marcador-restante { font-size: 2rem; }
 
   .diana-svg, .teclado-numeros, .teclado-puntuacion { max-width: 230px; margin-top: .4rem; margin-bottom: .4rem; }
   .diana-numero { font-size: 12px; }
+}
+
+/* Tablet en horizontal (táctil, con altura de sobra): el VikingsCounter de
+   la zona de socios deja el ancho estrecho de 640px (y el de la página) y
+   ocupa toda la pantalla; jugadores a un lado y diana/teclado al otro, con
+   las puntuaciones bien grandes para leerlas desde la línea de tiro. Se
+   limita a pantallas táctiles para no cambiar el aspecto en PC. */
+@media (orientation: landscape) and (pointer: coarse) and (min-height: 501px) {
+  .gallery-page:has(.zona-socio-vikingscounter) { max-width: none; }
+  .zona-socio-vikingscounter { max-width: none !important; }
+
+  .marcador-tablero { display: flex; align-items: flex-start; gap: 1.5rem; }
+  .marcador-tablero-jugadores, .marcador-tablero-entrada { flex: 1 1 0; min-width: 0; }
+
+  .marcador-jugador { padding: 1rem; }
+  .marcador-restante { font-size: clamp(3.5rem, 7vw, 6rem); }
+  .marcador-resultado-partido { font-size: 1.6rem; }
+  .marcador-dardo-info { font-size: .85rem; }
+
+  .diana-svg, .teclado-numeros { max-width: 440px; margin-top: .4rem; }
+  .teclado-puntuacion { max-width: 420px; margin-top: .4rem; }
+  .teclado-puntuacion-visor { font-size: 2.2rem; }
+  .teclado-puntuacion-boton, .teclado-numeros-boton { font-size: 1.4rem; padding: 1rem 0; }
 }
 
 /* Evento del calendario del socio con página propia (torneo/liga): mismo
