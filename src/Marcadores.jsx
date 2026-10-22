@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLang } from "./i18n.jsx";
+import useModoEntrada from "./useModoEntrada.js";
 import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
@@ -30,17 +31,17 @@ function SelectorModoEntrada({ modo, onCambiar, permitirTotal }) {
   const { t } = useLang();
   return (
     <div className="live-tournament-toggle">
-      <button type="button" className={modo === "diana" ? "active" : ""} onClick={() => onCambiar("diana")}>
-        {t("marcador.diana")}
-      </button>
-      <button type="button" className={modo === "numeros" ? "active" : ""} onClick={() => onCambiar("numeros")}>
-        {t("marcador.numeros")}
-      </button>
       {permitirTotal && (
         <button type="button" className={modo === "total" ? "active" : ""} onClick={() => onCambiar("total")}>
           {t("marcador.puntuacionTotal")}
         </button>
       )}
+      <button type="button" className={modo === "numeros" ? "active" : ""} onClick={() => onCambiar("numeros")}>
+        {t("marcador.numeros")}
+      </button>
+      <button type="button" className={modo === "diana" ? "active" : ""} onClick={() => onCambiar("diana")}>
+        {t("marcador.diana")}
+      </button>
     </div>
   );
 }
@@ -267,7 +268,7 @@ function LegLocal501({ unidadesBase, legs, legsGanados, apertura, cierre, alMejo
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
-  const [modoEntrada, setModoEntrada] = useState("diana");
+  const [modoEntrada, setModoEntrada] = useModoEntrada("501");
   const [finVisita, setFinVisita] = useState(false);
   const [estadisticas, setEstadisticas] = useState({});
   const [ultimaVisitaUnidad, setUltimaVisitaUnidad] = useState(() => unidadesBase.map(() => null));
@@ -757,7 +758,7 @@ function LegLocalCricket({ unidadesBase, legs, legsGanados, modoCricket, alMejor
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
   const [finVisita, setFinVisita] = useState(false);
-  const [modoEntrada, setModoEntrada] = useState("diana");
+  const [modoEntrada, setModoEntrada] = useModoEntrada("cricket");
   const [estadisticas, setEstadisticas] = useState({});
   const [ultimaVisitaUnidad, setUltimaVisitaUnidad] = useState(() => unidadesBase.map(() => null));
 
