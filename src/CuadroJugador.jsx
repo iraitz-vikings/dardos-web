@@ -44,11 +44,11 @@ export function CuadroJugador({ unidad, esInicioLeg, activo, ganador, legsGanado
 
   return (
     <div className={`marcador-jugador ${activo ? "marcador-jugador-activo" : ""} ${ganador ? "marcador-jugador-ganador" : ""}`}>
-      <strong>
+      <strong className="marcador-jugador-nombre">
         {esInicioLeg && <span className="marcador-punto-inicio" title="Ha empezado este leg">●</span>}
         {unidad.etiqueta}
       </strong>
-      {unidad.integrantes.length > 1 && <span style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(unidad)}</span>}
+      {unidad.integrantes.length > 1 && <span className="marcador-jugador-tira" style={{ fontSize: ".7em", color: "var(--steel)" }}>Tira: {tiradorActual(unidad)}</span>}
 
       <span className="marcador-resultado-partido">Legs: {legsGanados}</span>
       <span className="marcador-restante">{valorPrincipal}</span>

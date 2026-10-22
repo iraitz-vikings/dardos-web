@@ -1459,8 +1459,9 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
 
   .marcador-jugadores { gap: .5rem; margin-bottom: .6rem; }
   .marcador-jugador { padding: .55rem; gap: .2rem; }
-  .marcador-restante { font-size: min(4rem, 32cqi); }
-  .marcador-resultado-partido { font-size: min(2.2rem, 17cqi); }
+  .marcador-restante { font-size: min(4rem, 30cqi); }
+  .marcador-resultado-partido { font-size: min(2rem, 12cqi); }
+  .marcador-jugador-nombre { font-size: 1.05rem; }
 
   .diana-svg, .teclado-numeros, .teclado-puntuacion { max-width: 230px; margin-top: .4rem; margin-bottom: .4rem; }
   .diana-numero { font-size: 12px; }
@@ -1479,18 +1480,62 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
   .marcador-tablero-jugadores, .marcador-tablero-entrada { flex: 1 1 0; min-width: 0; }
 
   .marcador-jugador { padding: 1rem; }
-  /* La puntuación se ajusta al ancho de su tarjeta (cqi) para que quepa
-     con 2 jugadores o con más, siempre lado a lado y a la vista. */
   .marcador-tablero-jugadores { flex-grow: 3; }
   .marcador-tablero-entrada { flex-grow: 2; }
-  .marcador-restante { font-size: min(11rem, 58cqi); line-height: 1; }
-  .marcador-resultado-partido { font-size: min(3.2rem, 17cqi); }
+  /* Tope también por altura (vh) para que las dos tarjetas, una encima de
+     otra, quepan en pantalla. */
+  .marcador-restante { font-size: min(10rem, 42cqi, 19vh); }
+  .marcador-resultado-partido { font-size: min(3.2rem, 14cqi); }
+  .marcador-jugador-nombre { font-size: 1.5rem; }
   .marcador-dardo-info { font-size: .85rem; }
+  .marcador-stats-titulo { font-size: .8rem; }
+  .marcador-stats-fila { font-size: .95rem; margin: .3rem 0; }
 
   .diana-svg, .teclado-numeros { max-width: 440px; margin-top: .4rem; }
   .teclado-puntuacion { max-width: 420px; margin-top: .4rem; }
   .teclado-puntuacion-visor { font-size: 2.2rem; }
   .teclado-puntuacion-boton, .teclado-numeros-boton { font-size: 1.4rem; padding: 1rem 0; }
+}
+
+/* Tarjetas de jugador en horizontal (móvil y tablet): una encima de otra
+   en la columna izquierda (la diana/teclado queda a la derecha) y, dentro
+   de cada tarjeta, las estadísticas en vertical a la izquierda y el
+   nombre, los legs y la puntuación en grande a la derecha. Solo cambia la
+   colocación; los tamaños van en los bloques de arriba. */
+@media (orientation: landscape) and (max-height: 500px), (orientation: landscape) and (pointer: coarse) {
+  .marcador-jugadores { grid-template-columns: 1fr; }
+  .marcador-jugador {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-areas:
+      "stats nombre"
+      "stats tira"
+      "stats legs"
+      "stats restante"
+      "stats dardo";
+    grid-template-rows: auto auto auto 1fr auto;
+    column-gap: 1rem;
+    row-gap: 0;
+    align-items: center;
+  }
+  .marcador-jugador-nombre { grid-area: nombre; }
+  .marcador-jugador-tira { grid-area: tira; }
+  .marcador-resultado-partido { grid-area: legs; line-height: 1.1; }
+  .marcador-restante { grid-area: restante; line-height: 1; }
+  .marcador-dardo-info { grid-area: dardo; }
+  .marcador-stats-slide {
+    grid-area: stats;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0;
+    padding: 0 1rem 0 0;
+    border-top: 0;
+    border-right: 1px solid var(--line);
+    text-align: left;
+  }
+  .marcador-jugador-activo .marcador-stats-slide { border-right-color: #ffffff3a; }
 }
 
 /* Evento del calendario del socio con página propia (torneo/liga): mismo
