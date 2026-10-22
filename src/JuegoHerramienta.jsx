@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Diana from "./Diana.jsx";
 import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
+import PreguntaDoble from "./PreguntaDoble.jsx";
 import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
 import CamarasPartida, { CamarasRival } from "./CamarasPartida.jsx";
 import { apiFetch } from "./apiHerramienta.js";
@@ -876,23 +877,12 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
         {fase === "jugando" && ganadorIdx === null && esMiTurno && (
           <div className="marcador-tablero-entrada">
             {preguntaDoble && (
-              <div className="admin-msg admin-msg-ok marcador-pregunta-doble">
-                <p style={{ margin: "0 0 .5rem" }}>
-                  ¿Cuántos dardos de esta visita ha tirado <strong>{tiradorActual(unidades[preguntaDoble.turnoIdx])}</strong> al doble/máster?
-                </p>
-                {preguntaDoble.necesitaConfirmarCierre && (
-                  <p style={{ margin: "0 0 .5rem", fontSize: ".85em", opacity: .85 }}>
-                    Si ninguno ha sido un cierre válido, marca 0: la visita no contará y sigue con {preguntaDoble.restanteInicioVisita}.
-                  </p>
-                )}
-                <div style={{ display: "flex", gap: ".4rem", flexWrap: "wrap" }}>
-                  {[0, 1, 2, 3].map((n) => (
-                    <button key={n} type="button" className="admin-tab" onClick={() => responderDardosDoble(n)}>
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <PreguntaDoble
+                tirador={tiradorActual(unidades[preguntaDoble.turnoIdx])}
+                necesitaConfirmarCierre={preguntaDoble.necesitaConfirmarCierre}
+                restanteInicioVisita={preguntaDoble.restanteInicioVisita}
+                onResponder={responderDardosDoble}
+              />
             )}
             <div className="live-tournament-toggle">
               <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
