@@ -4,6 +4,7 @@ import TecladoNumeros from "./TecladoNumeros.jsx";
 import TecladoPuntuacion from "./TecladoPuntuacion.jsx";
 import PreguntaDoble from "./PreguntaDoble.jsx";
 import { CabeceraPartida, CuadroJugador, fmtProm, fmtPct } from "./CuadroJugador.jsx";
+import useModoEntrada from "./useModoEntrada.js";
 import CamarasPartida, { CamarasRival } from "./CamarasPartida.jsx";
 import { apiFetch } from "./apiHerramienta.js";
 import { CLUB } from "./club.js";
@@ -438,7 +439,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
   const [ganadorIdx, setGanadorIdx] = useState(null);
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
-  const [modoEntrada, setModoEntrada] = useState("diana");
+  const [modoEntrada, setModoEntrada] = useModoEntrada("501");
   const [finVisita, setFinVisita] = useState(false);
   // Al retomar un amistoso remoto a media visita, se arranca desde las
   // estadísticas ya sincronizadas (inicio.estadisticas), no desde cero — si
@@ -885,9 +886,9 @@ function MarcadorPartida501({ partida, token, miJugadorId, onActualizada, onSali
               />
             )}
             <div className="live-tournament-toggle">
-              <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
-              <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
               <button type="button" className={modoEntrada === "total" ? "active" : ""} onClick={() => setModoEntrada("total")}>Puntuación total</button>
+              <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
+              <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
             </div>
             {modoEntrada === "diana" && <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita || !!preguntaDoble} />}
             {modoEntrada === "numeros" && <TecladoNumeros onTirada={tirar} deshabilitada={finVisita || !!preguntaDoble} />}
@@ -968,7 +969,7 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
   const [mensaje, setMensaje] = useState("");
   const [historial, setHistorial] = useState([]);
   const [finVisita, setFinVisita] = useState(false);
-  const [modoEntrada, setModoEntrada] = useState("diana");
+  const [modoEntrada, setModoEntrada] = useModoEntrada("cricket");
   // Al retomar un amistoso remoto a media visita, se arranca desde las
   // estadísticas ya sincronizadas, no desde cero (ver el comentario
   // equivalente en MarcadorPartida501).
@@ -1197,8 +1198,8 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, onActualizada, on
         {fase === "jugando" && ganadorIdx === null && esMiTurno && (
           <div className="marcador-tablero-entrada">
             <div className="live-tournament-toggle" style={{ marginTop: "1rem" }}>
-              <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
               <button type="button" className={modoEntrada === "numeros" ? "active" : ""} onClick={() => setModoEntrada("numeros")}>Números</button>
+              <button type="button" className={modoEntrada === "diana" ? "active" : ""} onClick={() => setModoEntrada("diana")}>Diana</button>
             </div>
             {modoEntrada === "diana" ? (
               <Diana onTirada={tirar} marcas={tiradasVisita.map((t) => t.pos).filter(Boolean)} deshabilitada={finVisita} />
