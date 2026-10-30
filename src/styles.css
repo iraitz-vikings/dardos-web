@@ -1893,3 +1893,108 @@ body:has(.marcador-tablero) .nav { display: none; }
 .sala-orden-tiro li { display: flex; align-items: center; gap: .5rem; }
 .sala-orden-tiro-nombre { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .sala-orden-tiro .admin-link-btn { padding: .1rem .5rem; }
+
+/* ---- Gestión del club: hoja de inscripciones (AdminGestionClub.jsx) ----
+   Tabla tipo Excel en escritorio; en móvil cada fila pasa a ser una
+   tarjeta con la etiqueta de cada columna delante (data-label). */
+.admin.admin-ancho { max-width: 1280px; }
+.gestion-club-titulo { font-size: 1.05rem; text-transform: uppercase; margin-bottom: 1rem; }
+.gestion-club select,
+.gestion-club input[type="text"],
+.gestion-club input[type="search"],
+.gestion-club input:not([type]) {
+      background: var(--iron-2);
+      border: 1px solid var(--line);
+      color: var(--bone);
+      padding: .4rem .5rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: .8rem;
+      border-radius: 2px;
+      max-width: 100%;
+}
+.gestion-club select:focus,
+.gestion-club input:focus { outline: 1px solid var(--ember); }
+.gestion-club input[type="checkbox"],
+.gestion-club input[type="radio"] { width: 1.05rem; height: 1.05rem; accent-color: var(--ember); }
+
+.insc-nueva-btn {
+      background: var(--blood);
+      color: var(--bone);
+      border: none;
+      padding: .65rem 1rem;
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 1.2rem;
+}
+.insc-form { border: 1px solid var(--line); padding: 1rem; margin-bottom: 1.5rem; gap: .8rem; }
+.insc-form-fila { display: flex; flex-wrap: wrap; gap: 1rem; }
+.insc-form-fila > * { flex: 1 1 240px; }
+.insc-form-botones { display: flex; gap: .8rem; align-items: center; }
+.insc-campo-jugador { display: flex; flex-direction: column; gap: .4rem; }
+.insc-manual { display: flex; flex-direction: column; gap: .5rem; }
+.insc-manual .admin-link-btn { margin: .2rem .3rem 0 0; text-transform: none; letter-spacing: normal; }
+.insc-ficha-opciones { border: 1px dashed var(--ember); padding: .5rem .7rem; display: flex; flex-wrap: wrap; gap: .4rem 1rem; }
+.insc-ficha-opciones legend { font-size: .75rem; color: var(--ember-texto); padding: 0 .3rem; }
+.gestion-club .insc-ficha-opciones label,
+.gestion-club label.insc-check { flex-direction: row; align-items: center; gap: .4rem; text-transform: none; letter-spacing: normal; font-size: .8rem; color: var(--bone); display: flex; }
+
+.insc-barra { display: flex; flex-wrap: wrap; gap: .6rem; margin: .5rem 0 .8rem; }
+.insc-barra > * { flex: 1 1 200px; }
+
+.insc-tabla-scroll { overflow-x: auto; border: 1px solid var(--line); }
+.insc-tabla { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.insc-tabla th {
+      text-align: left;
+      font-weight: normal;
+      font-size: .68rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--steel);
+      padding: .55rem .5rem;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+      background: var(--iron-2);
+}
+.insc-tabla td { padding: .45rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.insc-tabla tbody tr:hover { background: #e7e0cd08; }
+.insc-fila-lista { box-shadow: inset 3px 0 0 #8fbf8f; }
+.insc-fila-anadida { opacity: .62; }
+.insc-sub { display: flex; align-items: center; gap: .4rem; min-height: 2rem; }
+.insc-sub + .insc-sub { border-top: 1px dashed var(--line); }
+.insc-jugador span { white-space: nowrap; }
+.insc-ficha { font-size: .68rem !important; padding: .1rem .2rem !important; color: var(--ember-texto) !important; border-color: var(--ember) !important; max-width: 7.5rem; }
+.insc-cantidad { width: 5.5rem; text-align: right; }
+.insc-tabla td[data-label="Notas"] input { width: 100%; min-width: 8rem; }
+.insc-modalidad { display: block; font-size: .66rem; color: var(--steel); margin-top: .2rem; }
+.insc-estado { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.insc-estado .insc-vacio { max-width: 11rem; }
+.insc-estado .admin-link-btn { padding: .2rem .45rem; }
+.insc-anadir { background: #2f5a35; color: var(--bone); border: 1px solid #8fbf8f; padding: .35rem .7rem; font-size: .74rem; text-transform: uppercase; }
+.insc-anadir:disabled { opacity: .5; cursor: default; }
+.insc-ok { color: #8fbf8f; font-size: .78rem; }
+.insc-vacio { color: var(--steel); font-size: .75rem; }
+.insc-solo-movil { display: none; }
+
+.insc-totales { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; font-size: .8rem; color: var(--bone-dim); margin: .9rem 0; }
+.insc-totales strong { color: var(--bone); }
+.insc-acciones { display: flex; flex-wrap: wrap; gap: .6rem; margin: .5rem 0 .3rem; }
+.insc-acciones .admin-link-btn:disabled { opacity: .5; cursor: default; }
+.insc-peligro { border-color: var(--blood) !important; color: var(--blood-texto) !important; }
+
+@media (max-width: 860px) {
+      .insc-tabla-scroll { border: none; overflow: visible; }
+      .insc-tabla thead { display: none; }
+      .insc-tabla, .insc-tabla tbody, .insc-tabla tr, .insc-tabla td { display: block; width: 100%; }
+      .insc-tabla tr { border: 1px solid var(--line); margin-bottom: .8rem; padding: .3rem .2rem; }
+      .insc-tabla td { border-bottom: none; display: grid; grid-template-columns: 7.5rem 1fr; gap: .5rem; align-items: center; padding: .3rem .5rem; }
+      /* La etiqueta en la 1.ª columna; todo lo demás (p.ej. los dos
+         jugadores de una pareja) apilado en la 2.ª. */
+      .insc-tabla td > * { grid-column: 2; min-width: 0; }
+      .insc-tabla td::before { content: attr(data-label); font-size: .66rem; text-transform: uppercase; letter-spacing: .04em; color: var(--steel); }
+      .insc-tabla td[data-label="Jugador"] { font-size: .9rem; }
+      .insc-tabla td select, .insc-tabla td input[type="text"] { width: 100%; }
+      .insc-cantidad { width: 100%; text-align: left; }
+      .insc-solo-movil { display: inline; }
+      .insc-jugador span { white-space: normal; }
+}
