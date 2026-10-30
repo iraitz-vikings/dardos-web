@@ -17,6 +17,7 @@ import AdminMaquinas from "./AdminMaquinas.jsx";
 import AdminFabricantes from "./AdminFabricantes.jsx";
 import AdminCompeticionesExternas from "./AdminCompeticionesExternas.jsx";
 import AdminCalendario from "./AdminCalendario.jsx";
+import AdminGestionClub from "./AdminGestionClub.jsx";
 import { API_URL } from "./config.js";
 
 
@@ -558,6 +559,7 @@ function cancelarEdicionNoticia() {
     { id: "socios", etiqueta: "Miembros" },
     { id: "mensaje", etiqueta: "Mensaje" },
     { id: "ligas-club", etiqueta: "Ligas del club" },
+    { id: "gestion-club", etiqueta: "Gestión del club" },
     { id: "trofeos", etiqueta: "Trofeos" },
     { id: "equipos-club", etiqueta: "Equipos" },
     { id: "jugadores-club", etiqueta: "Jugadores" },
@@ -570,7 +572,7 @@ function cancelarEdicionNoticia() {
   const pestana = TABS.some((t) => t.id === pestanaGuardada) ? pestanaGuardada : "noticias";
 
   return (
-    <div className="admin">
+    <div className={`admin${pestana === "gestion-club" ? " admin-ancho" : ""}`}>
       <header className="admin-header">
         <span>Panel del club</span>
         <button className="admin-link-btn" onClick={salir}>Salir</button>
@@ -772,6 +774,7 @@ function cancelarEdicionNoticia() {
 
       {pestana === "torneos-club" && <AdminTorneosClub token={token} salir={salir} />}
       {pestana === "ligas-club" && <AdminLigasClub token={token} salir={salir} />}
+      {pestana === "gestion-club" && <AdminGestionClub token={token} salir={salir} />}
       {pestana === "patrocinadores" && <AdminPatrocinadores token={token} salir={salir} />}
       {pestana === "socios" && <AdminSocios token={token} salir={salir} />}
       {pestana === "mensaje" && <AdminMensajeAnclado token={token} salir={salir} />}   

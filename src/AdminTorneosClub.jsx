@@ -9,6 +9,7 @@ import BracketView from "./BracketView.jsx";
 import ConfiguracionHerramientaPanel from "./ConfiguracionHerramientaPanel.jsx";
 import VideoDirectoPanel from "./VideoDirectoPanel.jsx";
 import AdminCheckInQr from "./AdminCheckInQr.jsx";
+import TraerInscritos, { marcarInscritosAnadidos } from "./TraerInscritos.jsx";
 import useTemporizadorPartido, { formatoCuentaAtras } from "./useTemporizadorPartido.js";
 import { API_URL } from "./config.js";
 import { DEFECTOS_MENSAJE_AVISO, IDIOMAS_MENSAJE_AVISO } from "./mensajesAvisosDefecto.js";
@@ -1060,6 +1061,7 @@ function TorneoGestion({
                 <AdminCheckInQr token={token} torneoNombre={torneo.nombre} cuadrante={c} onRecargar={onRecargar} />
               )}
               <ParticipantesPanel
+                token={token}
                 cuadrante={c}
                 modalidad={torneo.modalidad}
                 jugadores={jugadores}
@@ -1723,7 +1725,7 @@ function TorneoCuadrantes({
   );
 }
 
-function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onConfirmarParticipante, onConfirmarTodos, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
+function ParticipantesPanel({ token, cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onConfirmarParticipante, onConfirmarTodos, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
   const [parejaSel1, setParejaSel1] = useState("");
@@ -1824,6 +1826,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     const error = await onCrearParticipante(datos);
     if (error) setMensaje({ tipo: "error", texto: error });
     else {
+      marcarInscritosAnadidos(token, [e1, e2]);
       setPoolManual((prev) => prev.filter((p) => p.key !== e1.key && p.key !== e2.key));
       setParejaSel1("");
       setParejaSel2("");
@@ -1865,6 +1868,7 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
     const error = await onSortearParejasGrupos(entradas);
     if (error) setMensaje({ tipo: "error", texto: error });
     else {
+      marcarInscritosAnadidos(token, poolManual);
       setPoolManual([]);
       setMensaje({ tipo: "ok", texto: "Parejas sorteadas." });
     }
@@ -1924,6 +1928,15 @@ function ParticipantesPanel({ cuadrante, modalidad, jugadores, onCrearParticipan
         <>
           <h5>Jugadores disponibles</h5>
           <p className="admin-hint-bloque">Añádelos aquí uno a uno, del plantel o a mano; luego fórmalos en parejas más abajo.</p>
+          <TraerInscritos
+            token={token}
+            filtro={{ cuadranteId: cuadrante.id }}
+            excluir={new Set([...idsYaApuntados, ...clubEnPool])}
+            inscripcionesEnLista={new Set(poolManual.map((p) => p.inscripcionId).filter(Boolean))}
+            onTraer={(nuevos) =>
+              setPoolManual((prev) => [...prev, ...nuevos.map((n) => ({ ...n, key: crypto.randomUUID(), apodo: null, grupo: grupos[0] || null }))])
+            }
+          />
 
           <form onSubmit={anadirManualAlPool} className="admin-inline-form">
             <label>
