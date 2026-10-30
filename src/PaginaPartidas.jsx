@@ -16,7 +16,7 @@ export default function PaginaPartidas() {
   const partidaIdDirecta = params.get("partida") || undefined;
 
   return (
-    <div className="admin-form" style={{ maxWidth: 640, margin: "2rem auto" }}>
+    <div className="admin-form pagina-partidas">
       <h2 style={{ marginTop: 0 }}>Tus partidos</h2>
       <p className="chronicle-status">
         Identifícate con tu PIN para jugar cualquiera de tus partidos pendientes (torneo, liga o amistoso)

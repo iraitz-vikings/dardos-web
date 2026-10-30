@@ -1400,6 +1400,7 @@ img[role="button"]:focus-visible { outline: 2px solid var(--ember); outline-offs
 body:has(.marcador-tablero) .nav { display: none; }
 .gallery-page:has(.marcador-tablero), .torneo-pagina:has(.marcador-tablero) { padding-top: 1rem; }
 .marcador-tabla-scroll { overflow-x: auto; }
+.pagina-partidas { max-width: 640px; margin: 2rem auto; }
 .marcador-tabla { border-collapse: collapse; width: 100%; min-width: 420px; }
 .marcador-tabla th, .marcador-tabla td {
   border: 1px solid var(--line);
@@ -1502,8 +1503,8 @@ body:has(.marcador-tablero) .nav { display: none; }
 
   .marcador-jugadores { gap: .5rem; margin-bottom: .6rem; }
   .marcador-jugador { padding: .55rem; gap: .2rem; }
-  .marcador-restante { font-size: min(4rem, 30cqi); }
-  .marcador-resultado-partido { font-size: min(2rem, 12cqi); }
+  .marcador-restante { font-size: min(4rem, 22cqi); }
+  .marcador-resultado-partido { font-size: min(2rem, 8cqi); }
   .marcador-jugador-nombre { font-size: 1.05rem; }
 
   .diana-svg, .teclado-numeros, .teclado-puntuacion { max-width: 230px; margin-top: .4rem; margin-bottom: .4rem; }
@@ -1526,9 +1527,11 @@ body:has(.marcador-tablero) .nav { display: none; }
   .marcador-tablero-jugadores { flex-grow: 3; }
   .marcador-tablero-entrada { flex-grow: 2; }
   /* Tope también por altura (vh) para que las dos tarjetas, una encima de
-     otra, quepan en pantalla. */
-  .marcador-restante { font-size: min(10rem, 42cqi, 19vh); }
-  .marcador-resultado-partido { font-size: min(3.2rem, 14cqi); }
+     otra, quepan en pantalla. Los cqi van referidos a la tarjeta entera,
+     pero la puntuación y los legs solo tienen su columna derecha (3/5 del
+     ancho): con 42cqi/14cqi "501" y "Legs: 2" se salían del cuadro. */
+  .marcador-restante { font-size: min(10rem, 22cqi, 19vh); }
+  .marcador-resultado-partido { font-size: min(3.2rem, 8cqi); }
   .marcador-jugador-nombre { font-size: 1.5rem; }
   .marcador-dardo-info { font-size: .85rem; }
   .marcador-stats-titulo { font-size: .8rem; }
@@ -1546,6 +1549,11 @@ body:has(.marcador-tablero) .nav { display: none; }
    nombre, los legs y la puntuación en grande a la derecha. Solo cambia la
    colocación; los tamaños van en los bloques de arriba. */
 @media (orientation: landscape) and (max-height: 500px), (orientation: landscape) and (pointer: coarse) {
+  /* La página /partidas (partidos de torneo/liga y amistosos remotos) es
+     estrecha (640px) para el login y la lista; con el marcador en pantalla
+     pasa a ocupar todo el ancho, igual que el VikingsCounter de la zona de
+     socios. */
+  .pagina-partidas:has(.marcador-tablero) { max-width: none; margin: 1rem; }
   .marcador-jugadores { grid-template-columns: 1fr; }
   .marcador-jugador {
     display: grid;
@@ -1561,7 +1569,8 @@ body:has(.marcador-tablero) .nav { display: none; }
     row-gap: 0;
     align-items: center;
   }
-  .marcador-jugador-nombre { grid-area: nombre; }
+  .marcador-jugador-nombre { grid-area: nombre; overflow-wrap: anywhere; }
+  .marcador-resultado-partido, .marcador-restante { white-space: nowrap; }
   .marcador-jugador-tira { grid-area: tira; }
   .marcador-resultado-partido { grid-area: legs; line-height: 1.1; }
   .marcador-restante { grid-area: restante; line-height: 1; }

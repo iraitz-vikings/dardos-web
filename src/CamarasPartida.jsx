@@ -418,9 +418,11 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
     streamsRef.current = { diana: null, lanzador: null };
   }
 
+  // Con una sola cámara también vale (pedido de Iraitz, 2026-10-30): la
+  // otra se deja en "sin cámara".
   async function activar() {
-    if (!dianaId || !lanzadorId) {
-      setError("Elige las dos cámaras antes de activarlas.");
+    if (!dianaId && !lanzadorId) {
+      setError("Elige al menos una cámara antes de activarlas.");
       return;
     }
     if (dianaAuxiliar && !aux.stream) {
@@ -432,8 +434,8 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
     try {
       obtenerIceServers(partidaId, token);
       const [streamDiana, streamLanzador] = await Promise.all([
-        dianaAuxiliar ? aux.stream : navigator.mediaDevices.getUserMedia(restriccionesVideo(dianaId)),
-        navigator.mediaDevices.getUserMedia(restriccionesVideo(lanzadorId)),
+        dianaAuxiliar ? aux.stream : dianaId ? navigator.mediaDevices.getUserMedia(restriccionesVideo(dianaId)) : null,
+        lanzadorId ? navigator.mediaDevices.getUserMedia(restriccionesVideo(lanzadorId)) : null,
       ]);
       // Orden diana→lanzador consistente con VisorCamaras, que distingue las
       // pistas que le llegan por orden de llegada (WebRTC no manda nombres).
@@ -447,7 +449,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
       setActiva(true);
     } catch {
       cerrarTodo();
-      setError("No se han podido activar las dos cámaras.");
+      setError(dianaId && lanzadorId ? "No se han podido activar las dos cámaras." : "No se ha podido activar la cámara.");
     } finally {
       setCargando(false);
     }
@@ -531,14 +533,20 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
           pc.onicecandidate = (e) => {
             if (e.candidate) entrada.iceGenerados.push(e.candidate.toJSON());
           };
+          // `pistas`: qué cámara va en cada vídeo, en orden, para que el
+          // espectador las rotule bien aunque solo haya una.
+          const pistas = [];
           if (streamsRef.current.diana) {
+            pistas.push("diana");
             streamsRef.current.diana.getTracks().forEach((t) => {
               const sender = pc.addTrack(t, streamsRef.current.diana);
               if (t.kind === "video") entrada.senderDiana = sender;
             });
           }
-          // Al público solo la diana (ver VIDEO_BITRATE_PUBLICO).
-          if (streamsRef.current.lanzador && !entrada.publico) {
+          // Al público solo una cámara: la diana, o el lanzador si es la
+          // única que hay (ver VIDEO_BITRATE_PUBLICO).
+          if (streamsRef.current.lanzador && (!entrada.publico || pistas.length === 0)) {
+            pistas.push("lanzador");
             streamsRef.current.lanzador.getTracks().forEach((t) => pc.addTrack(t, streamsRef.current.lanzador));
           }
           try {
@@ -548,7 +556,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
             await apiFetch(`/api/partidas-herramienta/${partidaId}/camara/senal`, {
               token,
               method: "PUT",
-              body: JSON.stringify({ viewerId, offer: pc.localDescription }),
+              body: JSON.stringify({ viewerId, offer: pc.localDescription, pistas }),
             });
           } catch {
             pc.close();
@@ -612,7 +620,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
           <label>
             Cámara diana
             <select value={dianaId} onChange={(e) => setDianaId(e.target.value)}>
-              <option value="">— elige una cámara —</option>
+              <option value="">— sin cámara —</option>
               {dispositivos.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>{d.label || "Cámara sin nombre"}</option>
               ))}
@@ -623,7 +631,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
           <label>
             Cámara lanzador
             <select value={lanzadorId} onChange={(e) => setLanzadorId(e.target.value)}>
-              <option value="">— elige una cámara —</option>
+              <option value="">— sin cámara —</option>
               {dispositivos.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>{d.label || "Cámara sin nombre"}</option>
               ))}
@@ -632,7 +640,7 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
           {error && <p className="admin-msg admin-msg-error">{error}</p>}
           <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
             <button type="button" onClick={activar} disabled={cargando || (dianaAuxiliar && !aux.stream)}>
-              {cargando ? "Activando…" : "🎥 Activar mis cámaras"}
+              {cargando ? "Activando…" : dianaId && lanzadorId ? "🎥 Activar mis cámaras" : "🎥 Activar mi cámara"}
             </button>
             <button type="button" className="admin-link-btn" onClick={() => setAbierto(false)}>
               Cerrar
@@ -648,11 +656,11 @@ function SelectorCamaras({ partidaId, token, onMiRevisada }) {
       {activa && !revisada && (
         <>
           <p className="chronicle-status" style={{ margin: "0 0 .4rem" }}>
-            Comprueba que la diana y el lanzador se ven bien y pulsa el visto bueno.
+            Comprueba que se ve bien y pulsa el visto bueno.
           </p>
           <div className="camaras-partida-videos">
-            <VideoCamara videoRef={videoDianaRef} etiqueta="Diana" />
-            <VideoCamara videoRef={videoLanzadorRef} etiqueta="Lanzador" />
+            {streamsRef.current.diana && <VideoCamara videoRef={videoDianaRef} etiqueta="Diana" />}
+            {streamsRef.current.lanzador && <VideoCamara videoRef={videoLanzadorRef} etiqueta="Lanzador" />}
           </div>
           <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", marginTop: ".5rem" }}>
             <button type="button" onClick={() => setRevisada(true)}>✓ Todo correcto</button>
@@ -724,12 +732,16 @@ export function ConexionRival({ partidaId, emisorId, onEstado, onCaducado, publi
 
   useEffect(() => {
     if (!viewerId) return undefined;
-    let primerTrackAsignado = false;
     const idsAsignados = new Set();
     const iceEmisorAplicados = { n: 0 };
     const iceGenerados = [];
     const iceGeneradosEnviados = { n: 0 };
     let plazoConexion = null;
+
+    // Qué cámara es cada vídeo que llega, en orden (lo manda el emisor con la
+    // oferta). Emisores anteriores a esto no lo mandan: entonces siempre
+    // eran las dos, diana primero.
+    let pistas = ["diana", "lanzador"];
 
     const intervalo = setInterval(async () => {
       let data;
@@ -745,17 +757,17 @@ export function ConexionRival({ partidaId, emisorId, onEstado, onCaducado, publi
 
       let pc = pcRef.current;
       if (!pc && data.offer) {
+        if (Array.isArray(data.pistas) && data.pistas.length > 0) pistas = data.pistas;
         pc = new RTCPeerConnection({ iceServers: await obtenerIceServers(partidaId, publico ? undefined : token) });
         pcRef.current = pc;
         pc.ontrack = (e) => {
           // Sin nombres en WebRTC: se asigna por orden de llegada, el mismo
-          // orden (diana, luego lanzador) en que el emisor añade sus pistas.
+          // orden en que el emisor añade sus pistas (ver `pistas`).
           const stream = e.streams[0] || new MediaStream([e.track]);
           if (idsAsignados.has(stream.id)) return;
+          const nombre = pistas[idsAsignados.size];
           idsAsignados.add(stream.id);
-          if (!primerTrackAsignado) publicar({ diana: stream });
-          else publicar({ lanzador: stream });
-          primerTrackAsignado = true;
+          if (nombre) publicar({ [nombre]: stream });
         };
         pc.onicecandidate = (e) => {
           if (e.candidate) iceGenerados.push(e.candidate.toJSON());
@@ -867,8 +879,8 @@ export function CamarasRival({ rivales, nombresPorId = {} }) {
           ) : (
             <>
               <div className="camaras-partida-videos">
-                <VideoStream stream={r.diana} etiqueta="Diana" />
-                <VideoStream stream={r.lanzador} etiqueta="Lanzador" />
+                {r.diana && <VideoStream stream={r.diana} etiqueta="Diana" />}
+                {r.lanzador && <VideoStream stream={r.lanzador} etiqueta="Lanzador" />}
               </div>
               {r.estado !== "conectado" && (
                 <p className="chronicle-status">Conectando con las cámaras…{r.detalle ? ` [${r.detalle}]` : ""}</p>

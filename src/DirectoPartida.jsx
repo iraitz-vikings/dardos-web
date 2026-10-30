@@ -229,7 +229,7 @@ function CamaraPublica({ partidaId }) {
       ) : (
         <>
           <div className="camaras-partida-videos directo-camara-videos">
-            <VideoStream stream={datos.diana} etiqueta="Diana" />
+            <VideoStream stream={datos.diana || datos.lanzador} etiqueta={datos.diana || !datos.lanzador ? "Diana" : "Lanzador"} />
           </div>
           {datos.estado !== "conectado" && <p className="chronicle-status">Conectando con la cámara…</p>}
         </>
