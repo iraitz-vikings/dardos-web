@@ -8,12 +8,12 @@ import useModoEntrada from "./useModoEntrada.js";
 import CamarasPartida, { CamarasRival } from "./CamarasPartida.jsx";
 import { apiFetch } from "./apiHerramienta.js";
 import { CLUB } from "./club.js";
+import { construirUnidadesPartida, ladoDeUnidad, ladoIdxDe, ladosDe, legsGanadosDe, ordenTiroDe } from "./ladosPartida.js";
 import { useLang } from "./i18n.jsx";
 import {
   buscarCierre,
   calcularPuntosCricket,
   calcularPuntosCricketCutThroat,
-  construirUnidades,
   cumpleModalidad,
   jugadorHaCerradoTodo,
   marcasDelDardo,
@@ -39,8 +39,8 @@ import {
 // - El modo "puntuación total" no sabe cuántos dardos ha usado realmente el
 //   jugador en la visita: para la media se cuenta como 3 dardos siempre
 //   (igual que se ha hecho al añadir este modo a Marcadores.jsx).
-// - Quién empieza cada leg se alterna automáticamente (leg 1: etiqueta1,
-//   leg 2: etiqueta2, ...), no hay forma de fijarlo a mano.
+// - Quién empieza cada leg va rotando por el orden de tiro (leg 1: el
+//   primero, leg 2: el segundo…); el orden se elige en la sala de espera.
 
 // apiFetch/API_URL se extrajeron a apiHerramienta.js (plan "camaras-partidas",
 // guardado en el proyecto) para que CamarasPartida.jsx pueda usarlos sin
@@ -278,52 +278,39 @@ function SelectorJuegoAmbos({ onElegido, onSalir }) {
 }
 
 // --- Construcción de unidades a partir de la PartidaHerramienta ------------
+//
+// construirUnidadesPartida y el resto de ayudas de lados (2 o más, orden de
+// tiro) viven en ladosPartida.js, compartido con DirectoPartida.jsx.
 
-function construirUnidadesPartida(partida) {
-  const individual = partida.jugadoresId1.length === 1 && partida.jugadoresId2.length === 1;
-  if (individual) {
-    return construirUnidades({ modo: "individual", jugadores: [partida.nombres1[0], partida.nombres2[0]] });
-  }
-  return construirUnidades({
-    modo: "parejas",
-    equipos: [
-      { nombre: partida.etiqueta1, integrantes: partida.nombres1 },
-      { nombre: partida.etiqueta2, integrantes: partida.nombres2 },
-    ],
-    marcadorCompartido: true,
-  });
-}
-
-function idJugadorTirador(partida, ladoIdx, unidad) {
-  const ids = ladoIdx === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
-  return ids[unidad.siguienteIntegranteIdx];
+// Jugador al que le toca tirar en una unidad (en parejas, el integrante que
+// toque dentro del lado).
+function idJugadorTirador(partida, unidad) {
+  const lado = ladosDe(partida)[unidad.ladoIdx ?? 0];
+  return lado?.jugadoresId[unidad.siguienteIntegranteIdx];
 }
 
 // --- Sincronización remota -------------------------------------------------
 //
 // Partida remota: cada lado juega desde su dispositivo (plan
-// "partido-amistoso-remoto" guardado en el proyecto). Los amistosos siempre;
-// los partidos de torneo/liga cuando en la sala de espera los dos lados
-// pulsan "Inicio" cada uno desde el suyo (modoJuego "remoto", 2026-10-30 —
-// antes en torneo/liga se daba por hecho un único dispositivo compartido, y
-// si cada uno jugaba desde el suyo ninguno veía las tiradas ni las cámaras
-// del otro).
+// "partido-amistoso-remoto" guardado en el proyecto), cuando en la sala de
+// espera todos los lados pulsan "Inicio" cada uno desde el suyo (modoJuego
+// "remoto"). Cualquier partida — torneo, liga o amistoso — se puede jugar
+// también en local, todos en un dispositivo (modoJuego "local"; 2026-10-30).
+// Amistosos de antes de existir modoJuego: remotos, como entonces.
 function esPartidaRemota(partida) {
-  return !!partida.amistosa || partida.modoJuego === "remoto";
-}
-
-// Índice de lado (0/1) de un jugador en la partida, o null si no juega.
-function ladoIdxDe(partida, jugadorId) {
-  if ((partida.jugadoresId1 || []).includes(jugadorId)) return 0;
-  if ((partida.jugadoresId2 || []).includes(jugadorId)) return 1;
-  return null;
+  return partida.modoJuego ? partida.modoJuego === "remoto" : !!partida.amistosa;
 }
 
 // Sala completada: cada lado tiene al menos un jugador que ha pulsado
 // "Inicio" (en parejas basta con uno, ver POST /:id/listo en el backend).
 function ladosListos(partida) {
   const listos = partida.listosInicio || [];
-  return [partida.jugadoresId1 || [], partida.jugadoresId2 || []].every((ids) => ids.some((id) => listos.includes(id)));
+  return ladosDe(partida).every((l) => l.jugadoresId.some((id) => listos.includes(id)));
+}
+
+// Últimas visitas por posición de turno, todas vacías.
+function sinUltimasVisitas(unidades) {
+  return unidades.map(() => null);
 }
 
 // Manda al backend el estado del leg en curso, dardo a dardo (PUT /visita).
@@ -355,7 +342,7 @@ function useEnvioVisita({ partida, token, esRemota, esMiTurno, activo, unidades,
       token,
       method: "PUT",
       body: JSON.stringify({
-        turnoJugadorId: idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]),
+        turnoJugadorId: idJugadorTirador(partida, unidades[turnoIdx]),
         unidades,
         turnoIdx,
         estadisticas,
@@ -392,7 +379,7 @@ function useSondeoTurnoRemoto({ partida, token, miLadoIdx, esRemota, esMiTurno, 
           }
           const v = fresca.visitaEnCurso;
           if (!v || !Array.isArray(v.unidades)) return;
-          if (v.turnoIdx === miLadoIdx) {
+          if (ladoDeUnidad(v.unidades[v.turnoIdx], v.turnoIdx) === miLadoIdx) {
             onEstadoRemoto(v);
             return;
           }
@@ -445,11 +432,11 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
         unidades: v.unidades,
         turnoIdx: v.turnoIdx,
         estadisticas: v.estadisticas || {},
-        ultimaVisitaLado: v.ultimaVisitaLado || [null, null],
+        ultimaVisitaLado: v.ultimaVisitaLado || sinUltimasVisitas(v.unidades),
         restanteInicioVisita: v.restanteInicioVisita,
       };
     }
-    return { ...base, estadisticas: {}, ultimaVisitaLado: [null, null] };
+    return { ...base, estadisticas: {}, ultimaVisitaLado: sinUltimasVisitas(base.unidades) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partida.id, partida.legs.length]);
   const [unidades, setUnidades] = useState(inicio.unidades);
@@ -604,7 +591,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
     setTiradasVisita(nuevasTiradas);
     setMensaje(nuevoMensaje);
 
-    const jugadorId = idJugadorTirador(partida, turnoIdx, unidad);
+    const jugadorId = idJugadorTirador(partida, unidad);
     // Si al empezar esta visita el resto ya se podía cerrar en 3 dardos con
     // la modalidad de cierre del partido (y la unidad ya estaba abierta), al
     // acabar la visita se pregunta cuántos dardos ha tirado al doble/máster
@@ -685,7 +672,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
       nuevasUnidades = unidades.map((u, i) => (i === turnoIdx ? { ...u, restante: nuevoRestante, abierto: true } : u));
     }
 
-    const jugadorId = idJugadorTirador(partida, turnoIdx, unidad);
+    const jugadorId = idJugadorTirador(partida, unidad);
     const intentoPosible = unidad.abierto && !!buscarCierre(restanteInicioVisita, 3, partida.cierre);
     const puntosVisita = bust ? 0 : valorTotal;
 
@@ -777,7 +764,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
   }
 
   const miLadoIdx = ladoIdxDe(partida, miJugadorId);
-  const esMiTurno = !esRemota || turnoIdx === miLadoIdx;
+  const esMiTurno = !esRemota || ladoDeUnidad(unidades[turnoIdx], turnoIdx) === miLadoIdx;
   const [tiradasRival, setTiradasRival] = useState([]);
 
   useEnvioVisita({
@@ -812,12 +799,15 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
       setMensaje("");
       setFinVisita(false);
       setEstadisticas(v.estadisticas || {});
-      setUltimaVisitaLado(v.ultimaVisitaLado || [null, null]);
+      setUltimaVisitaLado(v.ultimaVisitaLado || sinUltimasVisitas(v.unidades));
     },
     onVistaRival: (v) => {
+      // Con 3 o más, el turno también puede pasar entre otros dos jugadores
+      // mientras este dispositivo espera.
+      setTurnoIdx(v.turnoIdx);
       setUnidades(v.unidades);
       setEstadisticas(v.estadisticas || {});
-      setUltimaVisitaLado(v.ultimaVisitaLado || [null, null]);
+      setUltimaVisitaLado(v.ultimaVisitaLado || sinUltimasVisitas(v.unidades));
       setTiradasRival(v.tiradas || []);
     },
   });
@@ -828,7 +818,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
     apiFetch(`/api/partidas-herramienta/${partida.id}/legs`, {
       token,
       method: "POST",
-      body: JSON.stringify({ ladoGanador: ganadorIdx + 1, estadisticas }),
+      body: JSON.stringify({ ladoGanador: ladoDeUnidad(unidades[ganadorIdx], ganadorIdx) + 1, estadisticas }),
     })
       .then((actualizada) => {
         onActualizada(actualizada);
@@ -855,7 +845,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
         <div className="marcador-tablero-jugadores">
           <div className="marcador-jugadores">
             {unidades.map((u, i) => {
-              const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
+              const idsLado = ladosDe(partida)[ladoDeUnidad(u, i)]?.jugadoresId || [];
               const legActual = sumarEstadisticas501(...idsLado.map((id) => estadisticas[id]));
               const partidoTotal = sumarEstadisticas501(
                 ...idsLado.map((id) => estadisticas[id]),
@@ -869,7 +859,7 @@ function MarcadorPartida501({ partida, token, miJugadorId, esRemota, onActualiza
                   esInicioLeg={i === inicio.turnoIdx}
                   activo={activo}
                   ganador={ganadorIdx === i}
-                  legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
+                  legsGanados={legsGanadosDe(partida)[ladoDeUnidad(u, i)] ?? 0}
                   valorPrincipal={u.restante}
                   dardoInfo={activo && modoEntrada !== "total" ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
                   slides={[
@@ -980,10 +970,10 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, esRemota, onActua
         unidades: partida.visitaEnCurso.unidades,
         turnoIdx: partida.visitaEnCurso.turnoIdx,
         estadisticas: partida.visitaEnCurso.estadisticas || {},
-        ultimaVisitaLado: partida.visitaEnCurso.ultimaVisitaLado || [null, null],
+        ultimaVisitaLado: partida.visitaEnCurso.ultimaVisitaLado || sinUltimasVisitas(partida.visitaEnCurso.unidades),
       };
     }
-    return { ...base, estadisticas: {}, ultimaVisitaLado: [null, null] };
+    return { ...base, estadisticas: {}, ultimaVisitaLado: sinUltimasVisitas(base.unidades) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partida.id, partida.legs.length]);
   const [unidades, setUnidades] = useState(inicio.unidades);
@@ -1041,7 +1031,7 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, esRemota, onActua
 
     const puntosNuevos = partida.modoCricket === "cutthroat" ? calcularPuntosCricketCutThroat(nuevasUnidades) : calcularPuntosCricket(nuevasUnidades);
     const unidadQueTiro = nuevasUnidades[turnoIdx];
-    const jugadorId = idJugadorTirador(partida, turnoIdx, unidades[turnoIdx]);
+    const jugadorId = idJugadorTirador(partida, unidades[turnoIdx]);
     const marcasVisita = nuevasTiradas.reduce((s, t) => s + (marcasDelDardo(t.resultado)?.marcas || 0), 0);
 
     if (jugadorHaCerradoTodo(unidadQueTiro)) {
@@ -1089,7 +1079,7 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, esRemota, onActua
   }
 
   const miLadoIdx = ladoIdxDe(partida, miJugadorId);
-  const esMiTurno = !esRemota || turnoIdx === miLadoIdx;
+  const esMiTurno = !esRemota || ladoDeUnidad(unidades[turnoIdx], turnoIdx) === miLadoIdx;
   const [tiradasRival, setTiradasRival] = useState([]);
 
   useEnvioVisita({
@@ -1122,12 +1112,15 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, esRemota, onActua
       setMensaje("");
       setFinVisita(false);
       setEstadisticas(v.estadisticas || {});
-      setUltimaVisitaLado(v.ultimaVisitaLado || [null, null]);
+      setUltimaVisitaLado(v.ultimaVisitaLado || sinUltimasVisitas(v.unidades));
     },
     onVistaRival: (v) => {
+      // Con 3 o más, el turno también puede pasar entre otros dos jugadores
+      // mientras este dispositivo espera.
+      setTurnoIdx(v.turnoIdx);
       setUnidades(v.unidades);
       setEstadisticas(v.estadisticas || {});
-      setUltimaVisitaLado(v.ultimaVisitaLado || [null, null]);
+      setUltimaVisitaLado(v.ultimaVisitaLado || sinUltimasVisitas(v.unidades));
       setTiradasRival(v.tiradas || []);
     },
   });
@@ -1138,7 +1131,7 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, esRemota, onActua
     apiFetch(`/api/partidas-herramienta/${partida.id}/legs`, {
       token,
       method: "POST",
-      body: JSON.stringify({ ladoGanador: ganadorIdx + 1, estadisticas }),
+      body: JSON.stringify({ ladoGanador: ladoDeUnidad(unidades[ganadorIdx], ganadorIdx) + 1, estadisticas }),
     })
       .then((actualizada) => onActualizada(actualizada))
       .catch((err) => {
@@ -1155,7 +1148,7 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, esRemota, onActua
         <div className="marcador-tablero-jugadores">
           <div className="marcador-jugadores">
             {unidades.map((u, i) => {
-              const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
+              const idsLado = ladosDe(partida)[ladoDeUnidad(u, i)]?.jugadoresId || [];
               const legActual = sumarEstadisticasCricket(...idsLado.map((id) => estadisticas[id]));
               const partidoTotal = sumarEstadisticasCricket(
                 ...idsLado.map((id) => estadisticas[id]),
@@ -1169,7 +1162,7 @@ function MarcadorPartidaCricket({ partida, token, miJugadorId, esRemota, onActua
                   esInicioLeg={i === inicio.turnoIdx}
                   activo={activo}
                   ganador={ganadorIdx === i}
-                  legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
+                  legsGanados={legsGanadosDe(partida)[ladoDeUnidad(u, i)] ?? 0}
                   valorPrincipal={puntos[i]}
                   dardoInfo={activo ? `Dardo ${Math.min(tiradasVisita.length + 1, 3)} de 3` : null}
                   slides={[
@@ -1283,16 +1276,16 @@ function SalaEspera({ partida, token, miJugadorId, camarasRival, miRevisada, onA
   const [enviando, setEnviando] = useState(false);
   const listos = partida.listosInicio || [];
   const yoListo = listos.includes(miJugadorId);
+  const lados = ladosDe(partida);
   const miLadoIdx = ladoIdxDe(partida, miJugadorId);
-  const rivalIdx = miLadoIdx === 0 ? 1 : 0;
-  const rivalListo = (partida[`jugadoresId${rivalIdx + 1}`] || []).some((id) => listos.includes(id));
-  const etiquetaRival = partida[`etiqueta${rivalIdx + 1}`] || "Tu rival";
+  const orden = ordenTiroDe(partida);
+  const varios = lados.length > 2;
 
-  async function enviarListo(cuerpo) {
+  async function enviar(ruta, cuerpo, errorPorDefecto) {
     setEnviando(true);
     setError("");
     try {
-      const data = await apiFetch(`/api/partidas-herramienta/${partida.id}/listo`, {
+      const data = await apiFetch(`/api/partidas-herramienta/${partida.id}/${ruta}`, {
         token,
         method: "POST",
         body: JSON.stringify(cuerpo),
@@ -1300,40 +1293,80 @@ function SalaEspera({ partida, token, miJugadorId, camarasRival, miRevisada, onA
       if (cuerpo.local) onJugarAqui();
       onActualizada(data);
     } catch (err) {
-      setError(err.message || "No se ha podido marcar tu Inicio.");
+      setError(err.message || errorPorDefecto);
     } finally {
       setEnviando(false);
     }
+  }
+
+  // Orden de tiro (pedido de Iraitz, 2026-10-30): cualquiera de los
+  // participantes lo puede cambiar mientras el partido no ha empezado.
+  function mover(pos, delta) {
+    const nuevo = [...orden];
+    [nuevo[pos], nuevo[pos + delta]] = [nuevo[pos + delta], nuevo[pos]];
+    enviar("orden", { orden: nuevo }, "No se ha podido cambiar el orden.");
   }
 
   return (
     <div className="admin-form" style={{ maxWidth: 460 }}>
       <h3 style={{ marginTop: 0 }}>Sala de espera</h3>
       <p className="chronicle-status" style={{ margin: 0 }}>
-        {partida.etiqueta1} vs {partida.etiqueta2} · al mejor de {partida.alMejorDe}
+        {lados.map((l) => l.etiqueta).join(" vs ")} · al mejor de {partida.alMejorDe}
       </p>
       {miRevisada ? (
         camarasRival
       ) : (
         <p className="chronicle-status">
-          Activa tus cámaras (con una basta) y pulsa «Todo correcto» para ver las de tu rival y saludaros. (Si no vas a usar cámaras, puedes pulsar Inicio igualmente.)
+          Si jugáis cada uno desde su dispositivo, activa tus cámaras (con una basta) y pulsa «Todo correcto» para ver
+          las de {varios ? "los demás" : "tu rival"} y saludaros. (Si no vas a usar cámaras, puedes pulsar Inicio igualmente.)
         </p>
       )}
-      <p className="chronicle-status" style={{ margin: ".6rem 0" }}>
-        {etiquetaRival}: {rivalListo ? "✅ listo para empezar" : "⏳ todavía no ha pulsado Inicio"}
-      </p>
+
+      <div>
+        <p className="chronicle-status" style={{ margin: ".4rem 0 .3rem" }}>
+          Orden de tiro (el primero empieza el leg 1, el segundo el leg 2…):
+        </p>
+        <ol className="sala-orden-tiro">
+          {orden.map((ladoIdx, pos) => {
+            const lado = lados[ladoIdx];
+            const listo = lado.jugadoresId.some((id) => listos.includes(id));
+            return (
+              <li key={ladoIdx}>
+                <span className="sala-orden-tiro-nombre">
+                  {pos + 1}. {lado.etiqueta}
+                  {ladoIdx === miLadoIdx ? " (tú)" : ""}
+                </span>
+                <span className="sala-orden-tiro-estado" title={listo ? "Ha pulsado Inicio" : "Todavía no ha pulsado Inicio"}>
+                  {listo ? "✅" : "⏳"}
+                </span>
+                <button type="button" className="admin-link-btn" disabled={enviando || pos === 0} onClick={() => mover(pos, -1)} aria-label={`Subir a ${lado.etiqueta}`}>
+                  ↑
+                </button>
+                <button type="button" className="admin-link-btn" disabled={enviando || pos === orden.length - 1} onClick={() => mover(pos, 1)} aria-label={`Bajar a ${lado.etiqueta}`}>
+                  ↓
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+
       {error && <p className="admin-msg admin-msg-error">{error}</p>}
-      <button type="button" disabled={enviando} onClick={() => enviarListo({ listo: !yoListo })}>
-        {yoListo ? "Cancelar (aún no estoy listo)" : "▶ Inicio"}
+      <button type="button" disabled={enviando} onClick={() => enviar("listo", { listo: !yoListo }, "No se ha podido marcar tu Inicio.")}>
+        {yoListo ? "Cancelar (aún no estoy listo)" : "▶ Inicio (cada uno en su dispositivo)"}
       </button>
-      {yoListo && <p className="chronicle-status">Esperando a que tu rival pulse Inicio en su dispositivo…</p>}
-      {!partida.amistosa && !yoListo && (
+      {yoListo && (
+        <p className="chronicle-status">
+          Esperando a que {varios ? "los demás pulsen" : "tu rival pulse"} Inicio en su dispositivo…
+        </p>
+      )}
+      {!yoListo && (
         <>
           <p className="chronicle-status" style={{ margin: ".8rem 0 0" }}>
-            ¿Jugáis los dos en este dispositivo, junto a la diana?
+            ¿Jugáis {varios ? "todos" : "los dos"} en este dispositivo, junto a la diana?
           </p>
-          <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => enviarListo({ local: true })}>
-            Jugamos los dos aquí →
+          <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => enviar("listo", { local: true }, "No se ha podido empezar el partido.")}>
+            {varios ? "Jugamos todos aquí →" : "Jugamos los dos aquí →"}
           </button>
         </>
       )}
@@ -1343,8 +1376,8 @@ function SalaEspera({ partida, token, miJugadorId, camarasRival, miRevisada, onA
 
 // --- Envoltorio: partida completa (varios legs hasta terminar) ------------
 
-// Dispositivo en el que se ha elegido "Jugamos los dos aquí" (modo local):
-// se recuerda por partida para que, si el rival entra desde el suyo, no se
+// Dispositivo en el que se ha elegido "Jugamos aquí" (modo local): se
+// recuerda por partida para que, si otro jugador entra desde el suyo, no se
 // ponga a jugar en paralelo un segundo marcador.
 const CLAVE_LOCAL = "herramientaPartidaLocal:";
 function esDispositivoLocal(partidaId) {
@@ -1359,15 +1392,15 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   const [rivales, setRivales] = useState({});
   const [miRevisada, setMiRevisada] = useState(false);
   const [localAqui, setLocalAqui] = useState(() => esDispositivoLocal(partida.id));
-  // Sala de espera previa: hasta que cada lado pulsa "Inicio" (o, en
-  // torneo/liga, se elige jugar los dos en un dispositivo) no aparece el
-  // marcador. Partidas de torneo/liga ya empezadas antes de existir la sala
-  // (con legs jugados y sin modoJuego) siguen en local, como entonces.
+  // Sala de espera previa: hasta que cada lado pulsa "Inicio" (o se elige
+  // jugar todos en un dispositivo) no aparece el marcador. Partidas de
+  // torneo/liga ya empezadas antes de existir la sala (con legs jugados y sin
+  // modoJuego) siguen en local, como entonces.
   const sinEmpezar = !partidaActual.finalizada && (partidaActual.legs || []).length === 0;
-  const enSala = sinEmpezar && (partidaActual.amistosa ? !ladosListos(partidaActual) : !partidaActual.modoJuego);
+  const enSala = sinEmpezar && !partidaActual.modoJuego && !(partidaActual.amistosa && ladosListos(partidaActual));
   const esRemota = esPartidaRemota(partidaActual);
-  // El rival ha elegido "Jugamos los dos aquí" en SU dispositivo: este no
-  // debe llevar otro marcador a la vez.
+  // Otro jugador ha elegido "Jugamos aquí" en SU dispositivo: este no debe
+  // llevar otro marcador a la vez.
   const localEnOtro = partidaActual.modoJuego === "local" && !localAqui;
   useEffect(() => {
     if (!enSala) return undefined;
@@ -1375,7 +1408,7 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
       try {
         const data = await apiFetch(`/api/partidas-herramienta/${partidaActual.id}`, { token });
         setPartidaActual((p) =>
-          JSON.stringify([p.listosInicio, p.modoJuego]) === JSON.stringify([data.listosInicio, data.modoJuego]) ? p : data
+          JSON.stringify([p.listosInicio, p.modoJuego, p.ordenLados]) === JSON.stringify([data.listosInicio, data.modoJuego, data.ordenLados]) ? p : data
         );
       } catch { /* se reintenta en el siguiente sondeo */ }
     }, 2500);
@@ -1397,7 +1430,10 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
     return (
       <div className="admin-form" style={{ maxWidth: 460 }}>
         <p className="admin-msg admin-msg-ok" style={{ fontSize: "1rem" }}>
-          🏆 Partido terminado: {partidaActual.etiqueta1} {partidaActual.legsGanados1} — {partidaActual.legsGanados2} {partidaActual.etiqueta2}
+          🏆 Partido terminado:{" "}
+          {ladosDe(partidaActual)
+            .map((l, i) => `${l.etiqueta} ${legsGanadosDe(partidaActual)[i]}`)
+            .join(" — ")}
         </p>
         <p className="chronicle-status">El resultado ya se ha aplicado al partido.</p>
         <button type="button" onClick={onSalir}>Volver a mis partidos</button>
@@ -1409,8 +1445,8 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
     return (
       <div className="admin-form" style={{ maxWidth: 460 }}>
         <p className="chronicle-status" style={{ margin: 0 }}>
-          Este partido se está jugando con los dos jugadores en otro dispositivo. Sigue allí el marcador (o en el directo
-          de la página de la liga/torneo).
+          Este partido se está jugando con todos los jugadores en otro dispositivo. Sigue allí el marcador (o en el
+          directo de la página de la liga/torneo).
         </p>
         <button type="button" className="admin-link-btn" onClick={jugarAqui}>
           Continuar en este dispositivo igualmente
@@ -1428,16 +1464,16 @@ function PartidaCompleta({ partida, token, miJugadorId, onSalir }) {
   // (plan "camaras-partidas", guardado en el proyecto).
   // id de jugador -> nombre, para rotular las cámaras del rival.
   const nombresPorId = {};
-  [1, 2].forEach((lado) => {
-    (partidaActual[`jugadoresId${lado}`] || []).forEach((id, i) => {
-      nombresPorId[id] = (partidaActual[`nombres${lado}`] || [])[i] || partidaActual[`etiqueta${lado}`];
+  ladosDe(partidaActual).forEach((lado) => {
+    lado.jugadoresId.forEach((id, i) => {
+      nombresPorId[id] = lado.nombres[i] || lado.etiqueta;
     });
   });
-  // Rivales de los que interesa el estado de sus cámaras: los del otro lado,
-  // en la sala y en partida remota (en local están delante, en este mismo
-  // dispositivo).
+  // Rivales de los que interesa el estado de sus cámaras: los de los otros
+  // lados, en la sala y en partida remota (en local están delante, en este
+  // mismo dispositivo).
   const miLadoIdx = ladoIdxDe(partidaActual, miJugadorId);
-  const idsRivales = (miLadoIdx === 0 ? partidaActual.jugadoresId2 : partidaActual.jugadoresId1) || [];
+  const idsRivales = ladosDe(partidaActual).flatMap((l, i) => (i === miLadoIdx ? [] : l.jugadoresId));
   // Streams de las cámaras del rival (los guarda aquí, fuera del marcador, para
   // que sobrevivan al remontaje de cada leg) y se pintan en el hueco del
   // teclado cuando le toca tirar al rival.

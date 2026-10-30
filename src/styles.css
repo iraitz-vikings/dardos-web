@@ -1850,3 +1850,46 @@ body:has(.marcador-tablero) .nav { display: none; }
     letter-spacing: inherit;
 }
 .bracket-nombre-perfil:hover { text-decoration: underline; }
+
+/* 3 o más jugadores (pedido de Iraitz, 2026-10-30: con 3 no cabían): la
+   tarjeta de quien tira (o la del ganador, al acabar el leg) va arriba y en
+   grande, a todo el ancho; las del resto, debajo y compactas (nombre, legs
+   y puntuación, sin estadísticas), repartidas en columnas. Se detecta por
+   CSS (tercera tarjeta presente), así vale igual para el marcador libre
+   (Marcadores.jsx), la herramienta (JuegoHerramienta.jsx) y el directo. Va
+   al final para ganar a los bloques de horizontal de más arriba. */
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador-activo,
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador-ganador {
+  grid-column: 1 / -1;
+  order: -1;
+}
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador:not(.marcador-jugador-activo):not(.marcador-jugador-ganador) {
+  display: flex;
+  flex-direction: column;
+  padding: .45rem .5rem;
+  gap: .1rem;
+}
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador:not(.marcador-jugador-activo):not(.marcador-jugador-ganador) .marcador-stats-slide {
+  display: none;
+}
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador:not(.marcador-jugador-activo):not(.marcador-jugador-ganador) .marcador-jugador-nombre {
+  font-size: .9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador:not(.marcador-jugador-activo):not(.marcador-jugador-ganador) .marcador-resultado-partido {
+  font-size: .85rem;
+}
+.marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador:not(.marcador-jugador-activo):not(.marcador-jugador-ganador) .marcador-restante {
+  font-size: min(2.4rem, 32cqi);
+}
+
+/* Orden de tiro en la sala de espera (JuegoHerramienta.jsx, SalaEspera). */
+.sala-orden-tiro { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: .2rem; }
+.sala-orden-tiro li { display: flex; align-items: center; gap: .5rem; }
+.sala-orden-tiro-nombre { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sala-orden-tiro .admin-link-btn { padding: .1rem .5rem; }
