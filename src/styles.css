@@ -1887,3 +1887,9 @@ body:has(.marcador-tablero) .nav { display: none; }
 .marcador-jugadores:has(> .marcador-jugador:nth-child(3)) > .marcador-jugador:not(.marcador-jugador-activo):not(.marcador-jugador-ganador) .marcador-restante {
   font-size: min(2.4rem, 32cqi);
 }
+
+/* Orden de tiro en la sala de espera (JuegoHerramienta.jsx, SalaEspera). */
+.sala-orden-tiro { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: .2rem; }
+.sala-orden-tiro li { display: flex; align-items: center; gap: .5rem; }
+.sala-orden-tiro-nombre { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sala-orden-tiro .admin-link-btn { padding: .1rem .5rem; }

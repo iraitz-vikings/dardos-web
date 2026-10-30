@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { CabeceraPartida, CuadroJugador, fmtProm } from "./CuadroJugador.jsx";
 import { apiFetch } from "./apiHerramienta.js";
 import { ConexionRival, VideoStream } from "./CamarasPartida.jsx";
+import { construirUnidadesPartida, ladoDeUnidad, ladosDe, legsGanadosDe } from "./ladosPartida.js";
 import {
   NUMEROS_CRICKET,
   calcularPuntosCricket,
   calcularPuntosCricketCutThroat,
-  construirUnidades,
   marcasVacias,
   promedio3Dardos,
   sumarEstadisticas501,
@@ -50,7 +50,8 @@ export function BotonDirecto({ partido, onVer }) {
 
 // Estado del leg en curso: el que ha mandado la diana o, si todavía no ha
 // llegado nada de este leg, el inicial (mismo reparto que
-// construirUnidadesPartida/nuevaLeg* en JuegoHerramienta.jsx).
+// construirUnidadesPartida en ladosPartida.js y nuevaLeg* en
+// JuegoHerramienta.jsx).
 function estadoLeg(partida) {
   const v = partida.visitaEnCurso;
   if (v && Array.isArray(v.unidades)) {
@@ -63,20 +64,10 @@ function estadoLeg(partida) {
       inicioTurnoIdx: v.inicioTurnoIdx ?? null,
     };
   }
-  const individual = partida.jugadoresId1.length === 1 && partida.jugadoresId2.length === 1;
-  const base = individual
-    ? construirUnidades({ modo: "individual", jugadores: [partida.nombres1[0], partida.nombres2[0]] })
-    : construirUnidades({
-        modo: "parejas",
-        equipos: [
-          { nombre: partida.etiqueta1, integrantes: partida.nombres1 },
-          { nombre: partida.etiqueta2, integrantes: partida.nombres2 },
-        ],
-        marcadorCompartido: true,
-      });
+  const base = construirUnidadesPartida(partida);
   const unidades = base.map((u) => (partida.juego === "cricket" ? { ...u, marcas: marcasVacias() } : { ...u, restante: 501 }));
   const turnoIdx = partida.legs.length % unidades.length;
-  return { unidades, turnoIdx, tiradas: [], estadisticas: {}, ultimaVisitaLado: [null, null], inicioTurnoIdx: turnoIdx };
+  return { unidades, turnoIdx, tiradas: [], estadisticas: {}, ultimaVisitaLado: unidades.map(() => null), inicioTurnoIdx: turnoIdx };
 }
 
 function Tablero({ partida }) {
@@ -93,7 +84,7 @@ function Tablero({ partida }) {
       <CabeceraPartida alMejorDe={partida.alMejorDe} numeroLeg={partida.legs.length + 1} />
       <div className="marcador-jugadores">
         {unidades.map((u, i) => {
-          const idsLado = i === 0 ? partida.jugadoresId1 : partida.jugadoresId2;
+          const idsLado = ladosDe(partida)[ladoDeUnidad(u, i)]?.jugadoresId || [];
           const activo = turnoIdx === i;
           let slides;
           if (esCricket) {
@@ -128,7 +119,7 @@ function Tablero({ partida }) {
               esInicioLeg={i === inicioTurnoIdx}
               activo={activo}
               ganador={false}
-              legsGanados={i === 0 ? partida.legsGanados1 : partida.legsGanados2}
+              legsGanados={legsGanadosDe(partida)[ladoDeUnidad(u, i)] ?? 0}
               valorPrincipal={esCricket ? puntos[i] : u.restante}
               dardoInfo={activo ? `Dardo ${Math.min(tiradas.length + 1, 3)} de 3` : null}
               slides={slides}
@@ -285,7 +276,10 @@ export default function DirectoPartida({ partidaId, titulo, onCerrar }) {
         {!partida && error && <p className="chronicle-status">{error}</p>}
         {partida && partida.finalizada && (
           <p className="chronicle-status">
-            Partido terminado: {partida.etiqueta1} {partida.legsGanados1} – {partida.legsGanados2} {partida.etiqueta2}
+            Partido terminado:{" "}
+            {ladosDe(partida)
+              .map((l, i) => `${l.etiqueta} ${legsGanadosDe(partida)[i]}`)
+              .join(" – ")}
           </p>
         )}
         {partida && !partida.finalizada && partida.camarasActivas && !verCamara && (

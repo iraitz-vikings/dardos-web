@@ -80,6 +80,24 @@ function etiquetaTiradaMostrar(etiqueta, t) {
 
 // --- Selector de jugadores/parejas, compartido por 501 y Cricket ---------
 
+// Botones ↑ ↓ para cambiar el orden de tiro (pedido de Iraitz, 2026-10-30):
+// el primero de la lista empieza el leg 1, el segundo el leg 2…
+function BotonesOrden({ pos, total, onMover }) {
+  const { t } = useLang();
+  return (
+    <span style={{ display: "inline-flex", gap: ".2rem" }}>
+      <button type="button" className="admin-link-btn" disabled={pos === 0} onClick={() => onMover(pos, -1)} aria-label={t("marcador.subir")}>↑</button>
+      <button type="button" className="admin-link-btn" disabled={pos === total - 1} onClick={() => onMover(pos, 1)} aria-label={t("marcador.bajar")}>↓</button>
+    </span>
+  );
+}
+
+function intercambiar(lista, pos, delta) {
+  const copia = [...lista];
+  [copia[pos], copia[pos + delta]] = [copia[pos + delta], copia[pos]];
+  return copia;
+}
+
 function SelectorModoJugadores({ onListo }) {
   const { t } = useLang();
   const [modo, setModo] = useState("individual");
@@ -159,15 +177,19 @@ function SelectorModoJugadores({ onListo }) {
               ))}
             </div>
           </label>
+          <p className="chronicle-status" style={{ margin: 0 }}>{t("marcador.ordenTiro")}</p>
           {nombresIndividual.map((nombre, i) => (
             <label key={i}>
               {t("marcador.nombreN").replace("{n}", i + 1)}
-              <input
-                type="text"
-                value={nombre}
-                maxLength={20}
-                onChange={(e) => setNombresIndividual((a) => a.map((x, idx) => (idx === i ? e.target.value : x)))}
-              />
+              <span style={{ display: "flex", gap: ".4rem", alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={nombre}
+                  maxLength={20}
+                  onChange={(e) => setNombresIndividual((a) => a.map((x, idx) => (idx === i ? e.target.value : x)))}
+                />
+                <BotonesOrden pos={i} total={nombresIndividual.length} onMover={(pos, d) => setNombresIndividual((a) => intercambiar(a, pos, d))} />
+              </span>
             </label>
           ))}
         </>
@@ -188,16 +210,20 @@ function SelectorModoJugadores({ onListo }) {
               ))}
             </div>
           </label>
+          <p className="chronicle-status" style={{ margin: 0 }}>{t("marcador.ordenTiro")}</p>
           {equipos.map((eq, i) => (
             <div key={i} style={{ border: "1px solid var(--line)", padding: ".7rem", display: "flex", flexDirection: "column", gap: ".5rem" }}>
               <label>
                 {t("marcador.nombreEquipo")}
-                <input
-                  type="text"
-                  value={eq.nombre}
-                  maxLength={24}
-                  onChange={(e) => setEquipos((a) => a.map((x, idx) => (idx === i ? { ...x, nombre: e.target.value } : x)))}
-                />
+                <span style={{ display: "flex", gap: ".4rem", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    value={eq.nombre}
+                    maxLength={24}
+                    onChange={(e) => setEquipos((a) => a.map((x, idx) => (idx === i ? { ...x, nombre: e.target.value } : x)))}
+                  />
+                  <BotonesOrden pos={i} total={equipos.length} onMover={(pos, d) => setEquipos((a) => intercambiar(a, pos, d))} />
+                </span>
               </label>
               {eq.integrantes.map((nombre, j) => (
                 <label key={j}>
