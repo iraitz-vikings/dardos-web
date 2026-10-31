@@ -76,6 +76,8 @@ function InscripcionesClub({ token, salir }) {
   // Torneos/ligas desplegados en la hoja ({ [clave]: true|false }); sin
   // entrada = cerrado, salvo que solo haya uno.
   const [gruposAbiertos, setGruposAbiertos] = useEstadoRecordado("inscripciones-grupos-abiertos", {});
+  // Inscripciones desplegadas ({ [id]: true }); cerradas por defecto.
+  const [filasAbiertas, setFilasAbiertas] = useEstadoRecordado("inscripciones-filas-abiertas", {});
 
   async function api(ruta, { method = "GET", body } = {}) {
     const res = await fetch(`${API_URL}/api/inscripciones-club${ruta}`, {
@@ -136,6 +138,9 @@ function InscripcionesClub({ token, salir }) {
     const { data, error } = await api("", { method: "POST", body });
     if (error) return error;
     setDatos((d) => ({ ...d, inscripciones: [...d.inscripciones, data] }));
+    // Se deja desplegada (y su torneo/liga también) para rellenar el pago.
+    setFilasAbiertas((prev) => ({ ...prev, [data.id]: true }));
+    setGruposAbiertos((prev) => ({ ...prev, [claveCompeticion(data)]: true }));
     if (body.ficha1 || body.ficha2) cargarJugadores();
     return null;
   }
@@ -327,8 +332,10 @@ function InscripcionesClub({ token, salir }) {
                   </span>
                 </h4>
                 {abierto && (
-                  <TablaInscripciones
+                  <ListaInscripciones
                     filas={g.filas}
+                    abiertas={filasAbiertas}
+                    onAlternar={(id) => setFilasAbiertas((prev) => ({ ...prev, [id]: !prev[id] }))}
                     datos={datos}
                     opcionesCompeticion={opcionesCompeticion}
                     onGuardar={guardar}
@@ -450,158 +457,156 @@ function CeldaTexto({ valor, onGuardar, placeholder, decimal, etiqueta }) {
   );
 }
 
-function TablaInscripciones({ filas, datos, opcionesCompeticion, onGuardar, onBorrar, onAnadir, onDesmarcar, onCrearFicha }) {
+function ListaInscripciones({ filas, abiertas, onAlternar, ...acciones }) {
   return (
-    <div className="insc-tabla-scroll">
-      <table className="insc-tabla">
-        <thead>
-          <tr>
-            <th>Jugador</th>
-            <th>Torneo / Liga</th>
-            <th>Cuadrante / Grupo</th>
-            <th>Pagado</th>
-            <th>Modo de pago</th>
-            <th>Cantidad (€)</th>
-            <th>Confirmado</th>
-            <th>Notas</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((i) => (
-            <FilaInscripcion
-              key={i.id}
-              i={i}
-              datos={datos}
-              opcionesCompeticion={opcionesCompeticion}
-              onGuardar={(cambios) => onGuardar(i.id, cambios)}
-              onBorrar={() => onBorrar(i)}
-              onAnadir={() => onAnadir(i)}
-              onDesmarcar={() => onDesmarcar(i)}
-              onCrearFicha={(lado, tipo) => onCrearFicha(i, lado, tipo)}
-            />
-          ))}
-        </tbody>
-      </table>
+    <div className="insc-lista">
+      {filas.map((i) => (
+        <FilaInscripcion
+          key={i.id}
+          i={i}
+          abierta={!!abiertas[i.id]}
+          onAlternar={() => onAlternar(i.id)}
+          datos={acciones.datos}
+          opcionesCompeticion={acciones.opcionesCompeticion}
+          onGuardar={(cambios) => acciones.onGuardar(i.id, cambios)}
+          onBorrar={() => acciones.onBorrar(i)}
+          onAnadir={() => acciones.onAnadir(i)}
+          onDesmarcar={() => acciones.onDesmarcar(i)}
+          onCrearFicha={(lado, tipo) => acciones.onCrearFicha(i, lado, tipo)}
+        />
+      ))}
     </div>
   );
 }
 
-function FilaInscripcion({ i, datos, opcionesCompeticion, onGuardar, onBorrar, onAnadir, onDesmarcar, onCrearFicha }) {
+// Una inscripción: cerrada se ve solo el nombre (rojo/verde según el pago)
+// y un resumen; al desplegarla, los datos de pago de cada jugador y los de
+// la inscripción (torneo, cuadrante, confirmado, notas) para editarlos.
+function FilaInscripcion({ i, abierta, onAlternar, datos, opcionesCompeticion, onGuardar, onBorrar, onAnadir, onDesmarcar, onCrearFicha }) {
   const clave = claveCompeticion(i);
   const competicion = competicionActiva(datos, clave);
   const modalidad = competicion?.modalidad || i.torneoClub?.modalidad || i.liga?.modalidad;
   const lados = ladosDe(i);
   const anadida = !!i.anadidoEn;
   const lista = estaLista(i);
-
-  let pendiente = null;
-  if (!anadida && !lista) {
-    if (!lados.every((l) => l.pagado)) pendiente = "Falta pago";
-    else if (!i.confirmado) pendiente = "Falta confirmar";
-  }
+  const pagados = lados.filter((l) => l.pagado).length;
   const faltaDestino = !clave || (i.torneoClubId && !i.cuadranteId);
 
+  let estado;
+  if (anadida) estado = <span className="insc-ok">✓ Añadida</span>;
+  else if (lista && modalidad === "parejas_ciegas") estado = <span className="insc-ok">Lista · se carga desde el sorteo</span>;
+  else if (lista) estado = <span className="insc-ok">Lista para añadir</span>;
+  else if (pagados < lados.length) estado = <span className="insc-vacio">Falta pago</span>;
+  else estado = <span className="insc-vacio">Falta confirmar</span>;
+
   return (
-    <tr className={anadida ? "insc-fila-anadida" : lista ? "insc-fila-lista" : undefined}>
-      <td data-label="Jugador">
-        {lados.map((l) => (
-          <div key={l.n} className="insc-sub insc-jugador">
-            <span className={l.pagado ? "insc-nombre-pagado" : "insc-nombre-pendiente"} title={l.pagado ? "Ha pagado" : "Pendiente de pago"}>
-              {l.nombre}
+    <div className={`insc-item${anadida ? " insc-item-anadida" : lista ? " insc-item-lista" : ""}`}>
+      <div className="insc-item-cabecera" {...propsCabeceraDesplegable(abierta, onAlternar)}>
+        <span className="insc-item-nombres">
+          <span aria-hidden="true">{abierta ? "▾" : "▸"}</span>
+          {lados.map((l, n) => (
+            <span key={l.n}>
+              {n > 0 && <span className="insc-vacio"> / </span>}
+              <span className={l.pagado ? "insc-nombre-pagado" : "insc-nombre-pendiente"} title={l.pagado ? "Ha pagado" : "Pendiente de pago"}>
+                {l.nombre}
+              </span>
             </span>
-            {!l.jugadorId && (
-              <select
-                className="insc-ficha"
-                value=""
-                onChange={(e) => e.target.value && onCrearFicha(l.n, e.target.value)}
-                aria-label={`Crear ficha para ${l.nombre}`}
-                title="Este nombre se escribió a mano y no tiene ficha de jugador"
-              >
-                <option value="">sin ficha ▾</option>
-                <option value="club">Crear ficha de jugador del club</option>
-                <option value="invitado">Crear ficha de invitado (oculta)</option>
+          ))}
+        </span>
+        <span className="insc-item-resumen">
+          {lados.length > 1 && <span>{pagados}/{lados.length} pagados</span>}
+          <span>{i.confirmado ? "Confirmado" : "Sin confirmar"}</span>
+          {estado}
+        </span>
+      </div>
+
+      {abierta && (
+        <div className="insc-detalle">
+          {lados.map((l) => (
+            <fieldset key={l.n} className="insc-bloque">
+              <legend>
+                <span className={l.pagado ? "insc-nombre-pagado" : "insc-nombre-pendiente"}>{l.nombre}</span>
+                {!l.jugadorId && (
+                  <select
+                    className="insc-ficha"
+                    value=""
+                    onChange={(e) => e.target.value && onCrearFicha(l.n, e.target.value)}
+                    aria-label={`Crear ficha para ${l.nombre}`}
+                    title="Este nombre se escribió a mano y no tiene ficha de jugador"
+                  >
+                    <option value="">sin ficha ▾</option>
+                    <option value="club">Crear ficha de jugador del club</option>
+                    <option value="invitado">Crear ficha de invitado (oculta)</option>
+                  </select>
+                )}
+              </legend>
+              <div className="insc-campos">
+                <label className="insc-campo insc-check">
+                  <input type="checkbox" checked={l.pagado} onChange={(e) => onGuardar({ [`pagado${l.n}`]: e.target.checked })} />
+                  Pagado
+                </label>
+                <label className="insc-campo">
+                  <span>Modo de pago</span>
+                  <select value={l.modoPago || ""} onChange={(e) => onGuardar({ [`modoPago${l.n}`]: e.target.value || null })}>
+                    <option value="">—</option>
+                    {datos.modosPago.map((m) => <option key={m} value={m}>{ETIQUETAS_PAGO[m] || m}</option>)}
+                  </select>
+                </label>
+                <label className="insc-campo">
+                  <span>Cantidad (€)</span>
+                  <CeldaTexto
+                    decimal
+                    valor={cantidadTexto(l.cantidad)}
+                    placeholder="0,00"
+                    etiqueta={`Cantidad de ${l.nombre}`}
+                    onGuardar={(v) => onGuardar({ [`cantidad${l.n}`]: v })}
+                  />
+                </label>
+              </div>
+            </fieldset>
+          ))}
+
+          <div className="insc-campos">
+            <label className="insc-campo">
+              <span>Torneo / Liga{modalidad ? ` (${ETIQUETAS_MODALIDAD[modalidad]})` : ""}</span>
+              <select value={clave} onChange={(e) => onGuardar(cambiosCompeticion(e.target.value))} disabled={anadida}>
+                <option value="">— Sin asignar —</option>
+                <SelectOpcionesCompeticion opciones={opcionesCompeticion} />
               </select>
-            )}
+            </label>
+            <label className="insc-campo">
+              <span>{competicion?.tipo === "l" ? "Grupo" : "Cuadrante"}</span>
+              <SelectSubdivision
+                competicion={competicion}
+                valor={competicion?.tipo === "t" ? i.cuadranteId : i.grupo}
+                disabled={anadida}
+                onCambio={(v) => onGuardar(competicion.tipo === "t" ? { cuadranteId: v } : { grupo: v })}
+              />
+            </label>
+            <label className="insc-campo insc-check">
+              <input type="checkbox" checked={i.confirmado} onChange={(e) => onGuardar({ confirmado: e.target.checked })} />
+              Asistencia confirmada
+            </label>
+            <label className="insc-campo insc-campo-ancho">
+              <span>Notas</span>
+              <CeldaTexto valor={i.notas || ""} placeholder="—" etiqueta="Notas" onGuardar={(v) => onGuardar({ notas: v })} />
+            </label>
           </div>
-        ))}
-      </td>
-      <td data-label="Torneo / Liga">
-        <select value={clave} onChange={(e) => onGuardar(cambiosCompeticion(e.target.value))} disabled={anadida} aria-label="Torneo o liga">
-          <option value="">— Sin asignar —</option>
-          <SelectOpcionesCompeticion opciones={opcionesCompeticion} />
-        </select>
-        {modalidad && <span className="insc-modalidad">{ETIQUETAS_MODALIDAD[modalidad]}</span>}
-      </td>
-      <td data-label="Cuadrante / Grupo">
-        <SelectSubdivision
-          competicion={competicion}
-          valor={competicion?.tipo === "t" ? i.cuadranteId : i.grupo}
-          disabled={anadida}
-          onCambio={(v) => onGuardar(competicion.tipo === "t" ? { cuadranteId: v } : { grupo: v })}
-        />
-      </td>
-      <td data-label="Pagado">
-        {lados.map((l) => (
-          <label key={l.n} className="insc-sub insc-check">
-            <input type="checkbox" checked={l.pagado} onChange={(e) => onGuardar({ [`pagado${l.n}`]: e.target.checked })} />
-            {lados.length > 1 && <span>{l.nombre}</span>}
-          </label>
-        ))}
-      </td>
-      <td data-label="Modo de pago">
-        {lados.map((l) => (
-          <div key={l.n} className="insc-sub">
-            <select value={l.modoPago || ""} onChange={(e) => onGuardar({ [`modoPago${l.n}`]: e.target.value || null })} aria-label={`Modo de pago de ${l.nombre}`}>
-              <option value="">—</option>
-              {datos.modosPago.map((m) => <option key={m} value={m}>{ETIQUETAS_PAGO[m] || m}</option>)}
-            </select>
+
+          <div className="insc-estado">
+            {anadida ? (
+              <button type="button" className="admin-link-btn" onClick={onDesmarcar}>↺ Quitar marca de añadida</button>
+            ) : lista && modalidad !== "parejas_ciegas" ? (
+              <button type="button" className="insc-anadir" disabled={faltaDestino} onClick={onAnadir}
+                title={faltaDestino ? "Elige antes el torneo/liga y el cuadrante" : undefined}>
+                ＋ Añadir al torneo/liga
+              </button>
+            ) : null}
+            <button type="button" className="admin-link-btn insc-peligro" onClick={onBorrar}>🗑 Borrar inscripción</button>
           </div>
-        ))}
-      </td>
-      <td data-label="Cantidad (€)">
-        {lados.map((l) => (
-          <div key={l.n} className="insc-sub">
-            <CeldaTexto
-              decimal
-              valor={cantidadTexto(l.cantidad)}
-              placeholder="0,00"
-              etiqueta={`Cantidad de ${l.nombre}`}
-              onGuardar={(v) => onGuardar({ [`cantidad${l.n}`]: v })}
-            />
-          </div>
-        ))}
-      </td>
-      <td data-label="Confirmado">
-        <label className="insc-check">
-          <input type="checkbox" checked={i.confirmado} onChange={(e) => onGuardar({ confirmado: e.target.checked })} />
-          <span className="insc-solo-movil">Asistencia confirmada</span>
-        </label>
-      </td>
-      <td data-label="Notas">
-        <CeldaTexto valor={i.notas || ""} placeholder="—" etiqueta="Notas" onGuardar={(v) => onGuardar({ notas: v })} />
-      </td>
-      <td data-label="Estado">
-        <div className="insc-estado">
-          {anadida ? (
-            <>
-              <span className="insc-ok">✓ Añadida</span>
-              <button type="button" className="admin-link-btn" onClick={onDesmarcar} title="Quitar la marca de añadida">↺</button>
-            </>
-          ) : lista && modalidad === "parejas_ciegas" ? (
-            <span className="insc-vacio">Lista · se carga desde el sorteo</span>
-          ) : lista ? (
-            <button type="button" className="insc-anadir" disabled={faltaDestino} onClick={onAnadir}
-              title={faltaDestino ? "Elige antes el torneo/liga y el cuadrante" : undefined}>
-              ＋ Añadir
-            </button>
-          ) : (
-            <span className="insc-vacio">{pendiente}</span>
-          )}
-          <button type="button" className="admin-link-btn" onClick={onBorrar} aria-label={`Borrar inscripción de ${nombreFila(i)}`}>🗑</button>
         </div>
-      </td>
-    </tr>
+      )}
+    </div>
   );
 }
 

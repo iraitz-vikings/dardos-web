@@ -1942,40 +1942,35 @@ body:has(.marcador-tablero) .nav { display: none; }
 .insc-barra { display: flex; flex-wrap: wrap; gap: .6rem; margin: .5rem 0 .8rem; }
 .insc-barra > * { flex: 1 1 200px; }
 
-.insc-tabla-scroll { overflow-x: auto; border: 1px solid var(--line); }
-.insc-tabla { width: 100%; border-collapse: collapse; font-size: .8rem; }
-.insc-tabla th {
-      text-align: left;
-      font-weight: normal;
-      font-size: .68rem;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      color: var(--steel);
-      padding: .55rem .5rem;
-      border-bottom: 1px solid var(--line);
-      white-space: nowrap;
-      background: var(--iron-2);
-}
-.insc-tabla td { padding: .45rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
-.insc-tabla tbody tr:hover { background: #e7e0cd08; }
-.insc-fila-lista { box-shadow: inset 3px 0 0 #8fbf8f; }
-.insc-fila-anadida { opacity: .62; }
-.insc-sub { display: flex; align-items: center; gap: .4rem; min-height: 2rem; }
-.insc-sub + .insc-sub { border-top: 1px dashed var(--line); }
-.insc-jugador span { white-space: nowrap; }
+/* Cada inscripción es un bloque desplegable: cerrado, nombre(s) y resumen;
+   abierto, los campos para editarla. */
+.insc-lista { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.insc-item { border-bottom: 1px solid var(--line); }
+.insc-item:last-child { border-bottom: none; }
+.insc-item-lista { box-shadow: inset 3px 0 0 #8fbf8f; }
+.insc-item-anadida .insc-item-cabecera { opacity: .62; }
+.insc-item-cabecera { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .3rem 1rem; padding: .6rem .8rem; cursor: pointer; user-select: none; font-size: .86rem; }
+.insc-item-cabecera:hover { background: #e7e0cd08; }
+.insc-item-cabecera:focus-visible { outline: 1px solid var(--ember); }
+.insc-item-nombres { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.insc-item-resumen { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .74rem; color: var(--steel); }
+.insc-detalle { padding: .2rem .8rem .9rem 1.6rem; display: flex; flex-direction: column; gap: .8rem; background: #e7e0cd05; }
+.insc-bloque { border: 1px solid var(--line); padding: .5rem .7rem .7rem; }
+.insc-bloque legend { display: flex; align-items: center; gap: .5rem; padding: 0 .3rem; font-size: .86rem; }
+.insc-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .6rem 1rem; align-items: end; }
+.gestion-club label.insc-campo { display: flex; flex-direction: column; gap: .3rem; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: var(--steel); }
+.gestion-club label.insc-campo.insc-check { flex-direction: row; align-items: center; min-height: 2rem; font-size: .8rem; text-transform: none; letter-spacing: normal; color: var(--bone); }
+.insc-campo select, .insc-campo input[type="text"] { width: 100%; }
+.insc-campo-ancho { grid-column: 1 / -1; }
 /* Nombre en rojo hasta que ese jugador paga, en verde cuando ya ha pagado. */
 .insc-nombre-pendiente { color: var(--blood-texto); }
 .insc-nombre-pagado { color: #8fbf8f; }
 .insc-grupos { display: flex; flex-direction: column; gap: .7rem; }
 .insc-grupo { border: 1px solid var(--line); }
-.insc-grupo .insc-tabla-scroll { border: none; border-top: 1px solid var(--line); }
 .insc-grupo-cabecera { margin: 0; padding: .65rem .8rem; font-size: .9rem; flex-wrap: wrap; }
 .insc-grupo-cabecera:hover { background: #e7e0cd08; }
 .insc-grupo-resumen { font-family: 'IBM Plex Mono', monospace; font-size: .74rem; color: var(--steel); text-transform: none; letter-spacing: normal; font-weight: normal; }
 .insc-ficha { font-size: .68rem !important; padding: .1rem .2rem !important; color: var(--ember-texto) !important; border-color: var(--ember) !important; width: auto !important; max-width: 7.5rem !important; flex: none; }
-.insc-cantidad { width: 5.5rem; text-align: right; }
-.insc-tabla td[data-label="Notas"] input { width: 100%; min-width: 8rem; }
-.insc-modalidad { display: block; font-size: .66rem; color: var(--steel); margin-top: .2rem; }
 .insc-estado { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
 .insc-estado .insc-vacio { max-width: 11rem; }
 .insc-estado .admin-link-btn { padding: .2rem .45rem; }
@@ -1983,7 +1978,6 @@ body:has(.marcador-tablero) .nav { display: none; }
 .insc-anadir:disabled { opacity: .5; cursor: default; }
 .insc-ok { color: #8fbf8f; font-size: .78rem; }
 .insc-vacio { color: var(--steel); font-size: .75rem; }
-.insc-solo-movil { display: none; }
 
 .insc-totales { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; font-size: .8rem; color: var(--bone-dim); margin: .9rem 0; }
 .insc-totales strong { color: var(--bone); }
@@ -1991,20 +1985,3 @@ body:has(.marcador-tablero) .nav { display: none; }
 .insc-acciones .admin-link-btn:disabled { opacity: .5; cursor: default; }
 .insc-peligro { border-color: var(--blood) !important; color: var(--blood-texto) !important; }
 
-@media (max-width: 860px) {
-      .insc-tabla-scroll { border: none; overflow: visible; }
-      .insc-grupo .insc-tabla-scroll { padding: .5rem .4rem 0; }
-      .insc-tabla thead { display: none; }
-      .insc-tabla, .insc-tabla tbody, .insc-tabla tr, .insc-tabla td { display: block; width: 100%; }
-      .insc-tabla tr { border: 1px solid var(--line); margin-bottom: .8rem; padding: .3rem .2rem; }
-      .insc-tabla td { border-bottom: none; display: grid; grid-template-columns: 7.5rem 1fr; gap: .5rem; align-items: center; padding: .3rem .5rem; }
-      /* La etiqueta en la 1.ª columna; todo lo demás (p.ej. los dos
-         jugadores de una pareja) apilado en la 2.ª. */
-      .insc-tabla td > * { grid-column: 2; min-width: 0; }
-      .insc-tabla td::before { content: attr(data-label); font-size: .66rem; text-transform: uppercase; letter-spacing: .04em; color: var(--steel); }
-      .insc-tabla td[data-label="Jugador"] { font-size: .9rem; }
-      .insc-tabla td select, .insc-tabla td input[type="text"] { width: 100%; }
-      .insc-cantidad { width: 100%; text-align: left; }
-      .insc-solo-movil { display: inline; }
-      .insc-jugador span { white-space: normal; }
-}
