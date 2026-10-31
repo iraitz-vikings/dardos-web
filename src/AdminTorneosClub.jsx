@@ -1728,6 +1728,10 @@ function TorneoCuadrantes({
 function ParticipantesPanel({ token, cuadrante, modalidad, jugadores, onCrearParticipante, onBorrarParticipante, onActualizarParticipante, onSustituirParticipante, onEnviarBienvenidaParticipante, onConfirmarParticipante, onConfirmarTodos, onGenerarInvitadoTelegram, onSortearParejasGrupos, onSortear }) {
   const [nombreManual, setNombreManual] = useState("");
   const [poolManual, setPoolManual] = useState([]);
+  // La lista de jugadores para añadir (y el alta a mano) solo se ve al
+  // pulsar "Añadir jugador": con todo el plantel desplegado de entrada,
+  // el panel de participantes era muy largo.
+  const [mostrarAnadir, setMostrarAnadir] = useState(false);
   const [parejaSel1, setParejaSel1] = useState("");
   const [parejaSel2, setParejaSel2] = useState("");
   const [semillasTexto, setSemillasTexto] = useState("");
@@ -1938,45 +1942,56 @@ function ParticipantesPanel({ token, cuadrante, modalidad, jugadores, onCrearPar
             }
           />
 
-          <form onSubmit={anadirManualAlPool} className="admin-inline-form">
-            <label>
-              Añadir amigo por nombre
-              <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
-            </label>
-            <button type="submit" disabled={!nombreManual.trim()}>＋ Añadir a disponibles</button>
-          </form>
-
-          {disponiblesClub.length > 0 && (
-            <div style={{ margin: ".6rem 0" }}>
-              <p className="admin-hint">Añadir del plantel del club:</p>
-              {buscadorJugadores}
-              {disponiblesAgrupados.socios.length > 0 && (
-                <>
-                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
-                    {disponiblesAgrupados.socios.map((j) => (
-                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>
-                        ＋ {etiquetaJugador(j)}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              {disponiblesAgrupados.invitados.length > 0 && (
-                <>
-                  <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Amigos</p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
-                    {disponiblesAgrupados.invitados.map((j) => (
-                      <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>
-                        ＋ {etiquetaJugador(j)}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+          <button
+            type="button"
+            className="admin-link-btn"
+            aria-expanded={mostrarAnadir}
+            onClick={() => setMostrarAnadir((v) => !v)}
+            style={{ margin: ".3rem 0 .6rem" }}
+          >
+            {mostrarAnadir ? "✕ Cerrar" : "＋ Añadir jugador"}
+          </button>
+          {mostrarAnadir && (
+            <>
+            <form onSubmit={anadirManualAlPool} className="admin-inline-form">
+              <label>
+                Añadir amigo por nombre
+                <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
+              </label>
+              <button type="submit" disabled={!nombreManual.trim()}>＋ Añadir a disponibles</button>
+            </form>
+            {disponiblesClub.length > 0 && (
+              <div style={{ margin: ".6rem 0" }}>
+                <p className="admin-hint">Añadir del plantel del club:</p>
+                {buscadorJugadores}
+                {disponiblesAgrupados.socios.length > 0 && (
+                  <>
+                    <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Miembros</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                      {disponiblesAgrupados.socios.map((j) => (
+                        <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>
+                          ＋ {etiquetaJugador(j)}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {disponiblesAgrupados.invitados.length > 0 && (
+                  <>
+                    <p className="admin-hint" style={{ fontSize: ".8em", margin: ".3rem 0 0" }}>Amigos</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                      {disponiblesAgrupados.invitados.map((j) => (
+                        <button key={j.id} type="button" className="admin-link-btn" onClick={() => anadirAlPool(j.id, j.nombre, j.apodo)}>
+                          ＋ {etiquetaJugador(j)}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            </>
           )}
-
           <ul>
             {poolManual.map((p) => (
               <li key={p.key} className="admin-list-item">
@@ -2047,42 +2062,55 @@ function ParticipantesPanel({ token, cuadrante, modalidad, jugadores, onCrearPar
       {!esParejas && (
         <>
           <h5>Añadir participante</h5>
-          <form onSubmit={anadirManualDirecto} className="admin-inline-form">
-            <label>
-              Amigo por nombre
-              <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
-            </label>
-            <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
-          </form>
-          {buscadorJugadores}
-          {disponiblesAgrupados.socios.length > 0 && (
+          <button
+            type="button"
+            className="admin-link-btn"
+            aria-expanded={mostrarAnadir}
+            onClick={() => setMostrarAnadir((v) => !v)}
+            style={{ margin: ".3rem 0 .6rem" }}
+          >
+            {mostrarAnadir ? "✕ Cerrar" : "＋ Añadir jugador"}
+          </button>
+          {mostrarAnadir && (
             <>
-              <p className="admin-hint" style={{ fontSize: ".8em" }}>Miembros</p>
-              <ul>
-                {disponiblesAgrupados.socios.map((j) => (
-                  <li key={j.id} className="admin-list-item">
-                    <span>{etiquetaJugador(j)}</span>
-                    <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>
-                      ＋ Añadir
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {disponiblesAgrupados.invitados.length > 0 && (
-            <>
-              <p className="admin-hint" style={{ fontSize: ".8em" }}>Amigos</p>
-              <ul>
-                {disponiblesAgrupados.invitados.map((j) => (
-                  <li key={j.id} className="admin-list-item">
-                    <span>{etiquetaJugador(j)}</span>
-                    <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>
-                      ＋ Añadir
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <form onSubmit={anadirManualDirecto} className="admin-inline-form">
+              <label>
+                Amigo por nombre
+                <input value={nombreManual} onChange={(e) => setNombreManual(e.target.value)} placeholder="Nombre y apellido" />
+              </label>
+              <button type="submit" disabled={enviando || !nombreManual.trim()}>Añadir</button>
+            </form>
+            {buscadorJugadores}
+            {disponiblesAgrupados.socios.length > 0 && (
+              <>
+                <p className="admin-hint" style={{ fontSize: ".8em" }}>Miembros</p>
+                <ul>
+                  {disponiblesAgrupados.socios.map((j) => (
+                    <li key={j.id} className="admin-list-item">
+                      <span>{etiquetaJugador(j)}</span>
+                      <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>
+                        ＋ Añadir
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {disponiblesAgrupados.invitados.length > 0 && (
+              <>
+                <p className="admin-hint" style={{ fontSize: ".8em" }}>Amigos</p>
+                <ul>
+                  {disponiblesAgrupados.invitados.map((j) => (
+                    <li key={j.id} className="admin-list-item">
+                      <span>{etiquetaJugador(j)}</span>
+                      <button type="button" className="admin-link-btn" disabled={enviando} onClick={() => anadirIndividualDirecto(j.id)}>
+                        ＋ Añadir
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             </>
           )}
         </>
