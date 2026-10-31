@@ -7,6 +7,8 @@
 // se exporta (si se quiere) y se vacía con el reset: no se guarda historial.
 import { useEffect, useRef, useState } from "react";
 import { API_URL } from "./config.js";
+import useEstadoRecordado from "./useEstadoRecordado.js";
+import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import { etiquetaJugador, coincideJugador, normalizarBusqueda } from "./buscarJugador.js";
 
 const ETIQUETAS_PAGO = { efectivo: "Efectivo", bizum: "Bizum", transferencia: "Transferencia", tarjeta: "Tarjeta", otro: "Otro" };
@@ -71,6 +73,9 @@ function InscripcionesClub({ token, salir }) {
   const [busqueda, setBusqueda] = useState("");
   const [mensaje, setMensaje] = useState(null);
   const [ocupado, setOcupado] = useState(false);
+  // Torneos/ligas desplegados en la hoja ({ [clave]: true|false }); sin
+  // entrada = cerrado, salvo que solo haya uno.
+  const [gruposAbiertos, setGruposAbiertos] = useEstadoRecordado("inscripciones-grupos-abiertos", {});
 
   async function api(ruta, { method = "GET", body } = {}) {
     const res = await fetch(`${API_URL}/api/inscripciones-club${ruta}`, {
@@ -267,6 +272,16 @@ function InscripcionesClub({ token, salir }) {
     }
   }
 
+  // La hoja se agrupa por torneo/liga, cada uno en un desplegable (en el
+  // orden de los desplegables; "Sin asignar" al final).
+  const grupos = [...opcionesCompeticion.map((o) => o.clave), ""]
+    .map((clave) => ({
+      clave,
+      nombre: clave ? nombreCompeticion(clave) : "Sin asignar",
+      filas: filtradas.filter((i) => claveCompeticion(i) === clave),
+    }))
+    .filter((g) => g.filas.length > 0);
+
   return (
     <>
       <NuevaInscripcion
@@ -295,37 +310,37 @@ function InscripcionesClub({ token, salir }) {
           {datos.inscripciones.length === 0 ? "Todavía no hay inscripciones." : "Ninguna inscripción coincide con el filtro."}
         </p>
       ) : (
-        <div className="insc-tabla-scroll">
-          <table className="insc-tabla">
-            <thead>
-              <tr>
-                <th>Jugador</th>
-                <th>Torneo / Liga</th>
-                <th>Cuadrante / Grupo</th>
-                <th>Pagado</th>
-                <th>Modo de pago</th>
-                <th>Cantidad (€)</th>
-                <th>Confirmado</th>
-                <th>Notas</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtradas.map((i) => (
-                <FilaInscripcion
-                  key={i.id}
-                  i={i}
-                  datos={datos}
-                  opcionesCompeticion={opcionesCompeticion}
-                  onGuardar={(cambios) => guardar(i.id, cambios)}
-                  onBorrar={() => borrar(i)}
-                  onAnadir={() => anadir(i)}
-                  onDesmarcar={() => desmarcarAnadida(i)}
-                  onCrearFicha={(lado, tipo) => crearFicha(i, lado, tipo)}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="insc-grupos">
+          {grupos.map((g) => {
+            const abierto = gruposAbiertos[g.clave] ?? grupos.length === 1;
+            const pagados = g.filas.flatMap(ladosDe).filter((l) => l.pagado).length;
+            const jugadoresGrupo = g.filas.flatMap(ladosDe).length;
+            return (
+              <section key={g.clave || "sin"} className="insc-grupo">
+                <h4
+                  className="admin-ronda-header insc-grupo-cabecera"
+                  {...propsCabeceraDesplegable(abierto, () => setGruposAbiertos((prev) => ({ ...prev, [g.clave]: !abierto })))}
+                >
+                  <span>{abierto ? "▾" : "▸"} {g.nombre}</span>
+                  <span className="insc-grupo-resumen">
+                    {g.filas.length} inscripcion{g.filas.length === 1 ? "" : "es"} · {pagados}/{jugadoresGrupo} pagados
+                  </span>
+                </h4>
+                {abierto && (
+                  <TablaInscripciones
+                    filas={g.filas}
+                    datos={datos}
+                    opcionesCompeticion={opcionesCompeticion}
+                    onGuardar={guardar}
+                    onBorrar={borrar}
+                    onAnadir={anadir}
+                    onDesmarcar={desmarcarAnadida}
+                    onCrearFicha={crearFicha}
+                  />
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
 
@@ -435,6 +450,43 @@ function CeldaTexto({ valor, onGuardar, placeholder, decimal, etiqueta }) {
   );
 }
 
+function TablaInscripciones({ filas, datos, opcionesCompeticion, onGuardar, onBorrar, onAnadir, onDesmarcar, onCrearFicha }) {
+  return (
+    <div className="insc-tabla-scroll">
+      <table className="insc-tabla">
+        <thead>
+          <tr>
+            <th>Jugador</th>
+            <th>Torneo / Liga</th>
+            <th>Cuadrante / Grupo</th>
+            <th>Pagado</th>
+            <th>Modo de pago</th>
+            <th>Cantidad (€)</th>
+            <th>Confirmado</th>
+            <th>Notas</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((i) => (
+            <FilaInscripcion
+              key={i.id}
+              i={i}
+              datos={datos}
+              opcionesCompeticion={opcionesCompeticion}
+              onGuardar={(cambios) => onGuardar(i.id, cambios)}
+              onBorrar={() => onBorrar(i)}
+              onAnadir={() => onAnadir(i)}
+              onDesmarcar={() => onDesmarcar(i)}
+              onCrearFicha={(lado, tipo) => onCrearFicha(i, lado, tipo)}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function FilaInscripcion({ i, datos, opcionesCompeticion, onGuardar, onBorrar, onAnadir, onDesmarcar, onCrearFicha }) {
   const clave = claveCompeticion(i);
   const competicion = competicionActiva(datos, clave);
@@ -455,7 +507,9 @@ function FilaInscripcion({ i, datos, opcionesCompeticion, onGuardar, onBorrar, o
       <td data-label="Jugador">
         {lados.map((l) => (
           <div key={l.n} className="insc-sub insc-jugador">
-            <span>{l.nombre}</span>
+            <span className={l.pagado ? "insc-nombre-pagado" : "insc-nombre-pendiente"} title={l.pagado ? "Ha pagado" : "Pendiente de pago"}>
+              {l.nombre}
+            </span>
             {!l.jugadorId && (
               <select
                 className="insc-ficha"

@@ -1963,7 +1963,16 @@ body:has(.marcador-tablero) .nav { display: none; }
 .insc-sub { display: flex; align-items: center; gap: .4rem; min-height: 2rem; }
 .insc-sub + .insc-sub { border-top: 1px dashed var(--line); }
 .insc-jugador span { white-space: nowrap; }
-.insc-ficha { font-size: .68rem !important; padding: .1rem .2rem !important; color: var(--ember-texto) !important; border-color: var(--ember) !important; max-width: 7.5rem; }
+/* Nombre en rojo hasta que ese jugador paga, en verde cuando ya ha pagado. */
+.insc-nombre-pendiente { color: var(--blood-texto); }
+.insc-nombre-pagado { color: #8fbf8f; }
+.insc-grupos { display: flex; flex-direction: column; gap: .7rem; }
+.insc-grupo { border: 1px solid var(--line); }
+.insc-grupo .insc-tabla-scroll { border: none; border-top: 1px solid var(--line); }
+.insc-grupo-cabecera { margin: 0; padding: .65rem .8rem; font-size: .9rem; flex-wrap: wrap; }
+.insc-grupo-cabecera:hover { background: #e7e0cd08; }
+.insc-grupo-resumen { font-family: 'IBM Plex Mono', monospace; font-size: .74rem; color: var(--steel); text-transform: none; letter-spacing: normal; font-weight: normal; }
+.insc-ficha { font-size: .68rem !important; padding: .1rem .2rem !important; color: var(--ember-texto) !important; border-color: var(--ember) !important; width: auto !important; max-width: 7.5rem !important; flex: none; }
 .insc-cantidad { width: 5.5rem; text-align: right; }
 .insc-tabla td[data-label="Notas"] input { width: 100%; min-width: 8rem; }
 .insc-modalidad { display: block; font-size: .66rem; color: var(--steel); margin-top: .2rem; }
@@ -1984,6 +1993,7 @@ body:has(.marcador-tablero) .nav { display: none; }
 
 @media (max-width: 860px) {
       .insc-tabla-scroll { border: none; overflow: visible; }
+      .insc-grupo .insc-tabla-scroll { padding: .5rem .4rem 0; }
       .insc-tabla thead { display: none; }
       .insc-tabla, .insc-tabla tbody, .insc-tabla tr, .insc-tabla td { display: block; width: 100%; }
       .insc-tabla tr { border: 1px solid var(--line); margin-bottom: .8rem; padding: .3rem .2rem; }
