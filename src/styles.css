@@ -1962,6 +1962,12 @@ body:has(.marcador-tablero) .nav { display: none; }
 .gestion-club label.insc-campo.insc-check { flex-direction: row; align-items: center; min-height: 2rem; font-size: .8rem; text-transform: none; letter-spacing: normal; color: var(--bone); }
 .insc-campo select, .insc-campo input[type="text"] { width: 100%; }
 .insc-campo-ancho { grid-column: 1 / -1; }
+.gestion-club-secciones { margin-bottom: 1.2rem; }
+.insc-campo-titulo { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: var(--steel); }
+/* Patrocinadores de Gestión del club: logo pequeño en la cabecera y el
+   selector de logo al desplegar. */
+.patro-club-mini { width: 28px; height: 28px; object-fit: contain; background: #fff; border-radius: 2px; }
+.patro-club-logo { display: flex; flex-direction: column; gap: .4rem; }
 /* Nombre en rojo hasta que ese jugador paga, en verde cuando ya ha pagado. */
 .insc-nombre-pendiente { color: var(--blood-texto); }
 .insc-nombre-pagado { color: #8fbf8f; }

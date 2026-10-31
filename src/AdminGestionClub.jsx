@@ -1,15 +1,22 @@
-// Gestión del club (panel de admin). De momento, una sola sección:
-// Inscripciones — la "hoja" de quién se apunta a cada torneo/liga del club,
+// Gestión del club (panel de admin), con dos secciones: Patrocinadores (ver
+// AdminPatrocinadoresClub.jsx) e Inscripciones — la "hoja" de quién se apunta a cada torneo/liga del club,
 // si ha pagado (cada jugador por su lado, también en parejas), cómo y
 // cuánto, y si ha confirmado que viene. Ver src/routes/inscripcionesClub.js
 // en el backend. Nadie entra al torneo/liga hasta pulsar "Añadir", y solo
 // si la fila está confirmada y pagada por completo. Al terminar el torneo,
 // se exporta (si se quiere) y se vacía con el reset: no se guarda historial.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { API_URL } from "./config.js";
 import useEstadoRecordado from "./useEstadoRecordado.js";
 import { propsCabeceraDesplegable } from "./cabeceraDesplegable.js";
 import { etiquetaJugador, coincideJugador, normalizarBusqueda } from "./buscarJugador.js";
+import AdminPatrocinadoresClub from "./AdminPatrocinadoresClub.jsx";
+import CeldaTexto from "./CeldaTexto.jsx";
+
+const SECCIONES = [
+  { id: "inscripciones", etiqueta: "Inscripciones" },
+  { id: "patrocinadores", etiqueta: "Patrocinadores" },
+];
 
 const ETIQUETAS_PAGO = { efectivo: "Efectivo", bizum: "Bizum", transferencia: "Transferencia", tarjeta: "Tarjeta", otro: "Otro" };
 const ETIQUETAS_MODALIDAD = { individual: "individual", parejas_hechas: "parejas", parejas_ciegas: "parejas ciegas" };
@@ -57,10 +64,34 @@ function ladosDe(i) {
 }
 
 export default function AdminGestionClub({ token, salir }) {
+  const [seccionGuardada, setSeccion] = useEstadoRecordado("gestion-club-seccion", "inscripciones");
+  const seccion = SECCIONES.some((s) => s.id === seccionGuardada) ? seccionGuardada : "inscripciones";
   return (
     <div className="gestion-club">
-      <h2 className="gestion-club-titulo">Inscripciones a torneos y ligas</h2>
-      <InscripcionesClub token={token} salir={salir} />
+      <nav className="admin-tabs gestion-club-secciones">
+        {SECCIONES.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className={`admin-tab ${seccion === s.id ? "admin-tab-active" : ""}`}
+            onClick={() => setSeccion(s.id)}
+          >
+            {s.etiqueta}
+          </button>
+        ))}
+      </nav>
+      {seccion === "inscripciones" && (
+        <>
+          <h2 className="gestion-club-titulo">Inscripciones a torneos y ligas</h2>
+          <InscripcionesClub token={token} salir={salir} />
+        </>
+      )}
+      {seccion === "patrocinadores" && (
+        <>
+          <h2 className="gestion-club-titulo">Patrocinadores</h2>
+          <AdminPatrocinadoresClub token={token} salir={salir} />
+        </>
+      )}
     </div>
   );
 }
@@ -427,33 +458,6 @@ function SelectSubdivision({ competicion, valor, onCambio, disabled }) {
       <option value="">{competicion.tipo === "t" ? "— Cuadrante —" : "— Grupo —"}</option>
       {opciones.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
-  );
-}
-
-// Texto que se guarda al salir del campo (o con Intro), no a cada tecla.
-// Mientras se está escribiendo no lo pisa el refresco automático.
-function CeldaTexto({ valor, onGuardar, placeholder, decimal, etiqueta }) {
-  const [texto, setTexto] = useState(valor ?? "");
-  const enfocado = useRef(false);
-  useEffect(() => {
-    if (!enfocado.current) setTexto(valor ?? "");
-  }, [valor]);
-  return (
-    <input
-      type="text"
-      inputMode={decimal ? "decimal" : undefined}
-      className={decimal ? "insc-cantidad" : undefined}
-      value={texto}
-      placeholder={placeholder}
-      aria-label={etiqueta}
-      onFocus={() => (enfocado.current = true)}
-      onChange={(e) => setTexto(e.target.value)}
-      onBlur={() => {
-        enfocado.current = false;
-        if (texto.trim() !== (valor ?? "")) onGuardar(texto.trim());
-      }}
-      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-    />
   );
 }
 
