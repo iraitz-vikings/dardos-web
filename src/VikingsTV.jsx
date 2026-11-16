@@ -21,7 +21,7 @@ function formatFecha(iso, lang) {
   return d.toLocaleDateString(lang === "eu" ? "eu-ES" : "es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-const FORM_VACIO = { titulo: "", url: "", descripcion: "", enDirecto: false };
+const FORM_VACIO = { titulo: "", url: "", descripcion: "", enDirecto: false, notificar: true };
 
 export default function VikingsTV({ usuario }) {
   const { t, lang } = useLang();
@@ -74,11 +74,13 @@ export default function VikingsTV({ usuario }) {
     }
   }
 
+  // Al marcar en directo se pregunta si avisar a los socios (push/Telegram).
   async function cambiarDirecto(v) {
+    const notificar = !v.enDirecto && confirm(t("tv.confirmarAvisar"));
     await fetch(`${API_URL}/api/tv/${v.id}`, {
       method: "PUT",
       headers: cabeceras(),
-      body: JSON.stringify({ enDirecto: !v.enDirecto }),
+      body: JSON.stringify({ enDirecto: !v.enDirecto, notificar }),
     }).catch(() => {});
     cargar();
   }
@@ -130,6 +132,17 @@ export default function VikingsTV({ usuario }) {
             />
             {t("tv.enDirectoLabel")}
           </label>
+          {form.enDirecto && (
+            <label style={{ display: "flex", alignItems: "center", gap: ".5rem", flexDirection: "row" }}>
+              <input
+                type="checkbox"
+                checked={form.notificar}
+                onChange={(e) => setForm({ ...form, notificar: e.target.checked })}
+                style={{ width: "auto" }}
+              />
+              {t("tv.notificarLabel")}
+            </label>
+          )}
           <div style={{ display: "flex", gap: ".6rem" }}>
             <button type="submit" disabled={enviando}>{enviando ? t("tv.publicando") : t("tv.publicar")}</button>
             <button type="button" className="admin-link-btn" onClick={() => setMostrarFormulario(false)}>{t("tv.cancelar")}</button>

@@ -37,6 +37,17 @@ export default function ZonaSocio({ usuario, salir }) {
   const { t } = useLang();
   const SECCIONES = useSecciones();
   const [seccionGuardada, setSeccion] = useEstadoRecordado("zonaSocio.seccion", "tablon");
+  // Enlace directo a una sección (?seccion=tv), p. ej. desde el aviso push de
+  // "empieza un directo" de VikingsTV: se abre esa sección y se limpia la URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pedida = params.get("seccion");
+    if (!pedida) return;
+    if (SECCIONES.some((s) => s.id === pedida && s.lista)) setSeccion(pedida);
+    params.delete("seccion");
+    const resto = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (resto ? `?${resto}` : "") + window.location.hash);
+  }, []);
   // Al recargar se vuelve a la sección en la que se estaba (si sigue existiendo).
   const seccion = SECCIONES.some((s) => s.id === seccionGuardada && s.lista) ? seccionGuardada : "tablon";
   const [menuAbierto, setMenuAbierto] = useState(false);
