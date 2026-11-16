@@ -13,6 +13,7 @@ import HistoricoPrivado from "./HistoricoPrivado.jsx";
 import Competiciones from "./Competiciones.jsx";
 import CalendarioSocio from "./CalendarioSocio.jsx";
 import VikingsCounter from "./VikingsCounter.jsx";
+import VikingsTV from "./VikingsTV.jsx";
 
 function useSecciones() {
   const { t } = useLang();
@@ -24,6 +25,7 @@ function useSecciones() {
     { id: "competiciones", etiqueta: t("zona.competiciones"), lista: true },
     { id: "calendario", etiqueta: t("zona.calendario"), lista: true },
     { id: "vikingscounter", etiqueta: t("zona.vikingsCounter"), lista: true },
+    { id: "tv", etiqueta: t("zona.tv"), lista: true },
     { id: "galeria-privada", etiqueta: t("zona.galeriaPrivada"), lista: true },
     { id: "trofeos", etiqueta: t("zona.trofeos"), lista: true },
     { id: "equipos", etiqueta: t("zona.equipos"), lista: true },
@@ -43,7 +45,7 @@ export default function ZonaSocio({ usuario, salir }) {
   // de equipos/jugadores, calendario y competiciones); el resto es sobre
   // todo texto/formularios y se queda en el ancho estrecho de siempre, más
   // legible.
-  const SECCIONES_ANCHAS = ["galeria-privada", "jugadores", "equipos", "calendario", "competiciones"];
+  const SECCIONES_ANCHAS = ["tv", "galeria-privada", "jugadores", "equipos", "calendario", "competiciones"];
   const ancho = SECCIONES_ANCHAS.includes(seccion) ? 1100 : 640;
 
   function elegirSeccion(s) {
@@ -113,6 +115,7 @@ export default function ZonaSocio({ usuario, salir }) {
       {seccion === "competiciones" && <Competiciones usuario={usuario} />}
       {seccion === "calendario" && <CalendarioSocio />}
       {seccion === "vikingscounter" && <VikingsCounter />}
+      {seccion === "tv" && <VikingsTV usuario={usuario} />}
       {seccion === "tablon" && <TablonAnuncios usuario={usuario} />}
       {seccion === "jugadores" && <JugadoresClub />}
       {seccion === "galeria-privada" && <GaleriaPrivada usuario={usuario} />}
