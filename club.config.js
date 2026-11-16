@@ -41,6 +41,8 @@ export default {
   marcaNav: { principal: "Vikings", secundario: "Darts Club" },
   // Nombre del marcador de dardos (zona de socios y página de torneo/liga).
   nombreMarcador: "VikingsCounter",
+  // Nombre de la sección de vídeos/emisiones de YouTube de la zona de socios.
+  nombreTv: "VikingsTV",
 
   // ---------- Web ----------
   // Dominio público, sin barra final (canonical, Open Graph, sitemap, robots).

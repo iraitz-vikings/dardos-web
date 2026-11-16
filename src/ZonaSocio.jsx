@@ -13,6 +13,7 @@ import HistoricoPrivado from "./HistoricoPrivado.jsx";
 import Competiciones from "./Competiciones.jsx";
 import CalendarioSocio from "./CalendarioSocio.jsx";
 import VikingsCounter from "./VikingsCounter.jsx";
+import VikingsTV from "./VikingsTV.jsx";
 
 function useSecciones() {
   const { t } = useLang();
@@ -24,6 +25,7 @@ function useSecciones() {
     { id: "competiciones", etiqueta: t("zona.competiciones"), lista: true },
     { id: "calendario", etiqueta: t("zona.calendario"), lista: true },
     { id: "vikingscounter", etiqueta: t("zona.vikingsCounter"), lista: true },
+    { id: "tv", etiqueta: t("zona.tv"), lista: true },
     { id: "galeria-privada", etiqueta: t("zona.galeriaPrivada"), lista: true },
     { id: "trofeos", etiqueta: t("zona.trofeos"), lista: true },
     { id: "equipos", etiqueta: t("zona.equipos"), lista: true },
@@ -35,6 +37,17 @@ export default function ZonaSocio({ usuario, salir }) {
   const { t } = useLang();
   const SECCIONES = useSecciones();
   const [seccionGuardada, setSeccion] = useEstadoRecordado("zonaSocio.seccion", "tablon");
+  // Enlace directo a una sección (?seccion=tv), p. ej. desde el aviso push de
+  // "empieza un directo" de VikingsTV: se abre esa sección y se limpia la URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pedida = params.get("seccion");
+    if (!pedida) return;
+    if (SECCIONES.some((s) => s.id === pedida && s.lista)) setSeccion(pedida);
+    params.delete("seccion");
+    const resto = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (resto ? `?${resto}` : "") + window.location.hash);
+  }, []);
   // Al recargar se vuelve a la sección en la que se estaba (si sigue existiendo).
   const seccion = SECCIONES.some((s) => s.id === seccionGuardada && s.lista) ? seccionGuardada : "tablon";
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -43,7 +56,7 @@ export default function ZonaSocio({ usuario, salir }) {
   // de equipos/jugadores, calendario y competiciones); el resto es sobre
   // todo texto/formularios y se queda en el ancho estrecho de siempre, más
   // legible.
-  const SECCIONES_ANCHAS = ["galeria-privada", "jugadores", "equipos", "calendario", "competiciones"];
+  const SECCIONES_ANCHAS = ["tv", "galeria-privada", "jugadores", "equipos", "calendario", "competiciones"];
   const ancho = SECCIONES_ANCHAS.includes(seccion) ? 1100 : 640;
 
   function elegirSeccion(s) {
@@ -113,6 +126,7 @@ export default function ZonaSocio({ usuario, salir }) {
       {seccion === "competiciones" && <Competiciones usuario={usuario} />}
       {seccion === "calendario" && <CalendarioSocio />}
       {seccion === "vikingscounter" && <VikingsCounter />}
+      {seccion === "tv" && <VikingsTV usuario={usuario} />}
       {seccion === "tablon" && <TablonAnuncios usuario={usuario} />}
       {seccion === "jugadores" && <JugadoresClub />}
       {seccion === "galeria-privada" && <GaleriaPrivada usuario={usuario} />}
